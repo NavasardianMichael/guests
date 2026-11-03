@@ -1,0 +1,44 @@
+# Production Postgres. Lives at $APP_DIR/db/docker-compose.prod.yml on the host.
+#
+# Created by the deploy, once: ensure_database in .github/workflows/deploy.yml copies
+# this file and writes ./.env (POSTGRES_* derived from DATABASE_URL) only when the
+# container does not exist, then runs `up -d --no-recreate`. A running database is never
+# recreated, reconfigured or removed — so an edit here reaches an existing host only by
+# hand:
+#
+#   cd $APP_DIR/db && <copy the new file here> && docker compose -f docker-compose.prod.yml up -d
+#
+# This is deliberately separate from the repo's root docker-compose.yml, which is
+# the dev database (same port, throwaway credentials, different machine).
+
+name: guests-prod
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: guests-postgres-prod
+    restart: unless-stopped
+    ports:
+      # host:container. 5010 beside bookie's 5004 and crossword's 5007 on the same host, and
+      # never 5432, which the server already uses. Loopback only — nothing outside the host
+      # should ever reach it.
+      - '127.0.0.1:5010:5432'
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-guests}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-guests}
+    volumes:
+      - guests-pg-prod:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-guests} -d ${POSTGRES_DB:-guests}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+volumes:
+  guests-pg-prod:

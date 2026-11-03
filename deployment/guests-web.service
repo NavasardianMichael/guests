@@ -1,0 +1,39 @@
+# =============================================================================
+# systemd — web (Next.js standalone). Install to /etc/systemd/system/guests-web.service
+# Paths assume APP_DIR=/home/michael/apps/guests.
+#
+# WorkingDirectory is the `current` symlink, resolved at start, so `systemctl restart` is
+# what promotes a release. Never point it at a concrete releases/<sha> path.
+#
+# No API env: the browser calls the API at NEXT_PUBLIC_API_URL, inlined at build time. This
+# process is also what the API's headless Chrome prints from (RENDER_ORIGIN, port 7010).
+# =============================================================================
+[Unit]
+Description=Guests — web (Next.js)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=michael
+Group=michael
+WorkingDirectory=/home/michael/apps/guests/web/current
+Environment=NODE_ENV=production
+Environment=PORT=7010
+Environment=HOSTNAME=127.0.0.1
+ExecStart=/usr/bin/node server.js
+Restart=always
+RestartSec=2
+KillSignal=SIGTERM
+TimeoutStopSec=30
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+# Next writes its caches (prerendered pages, optimised images) into the release's .next/cache.
+ReadWritePaths=/home/michael/apps/guests/web
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

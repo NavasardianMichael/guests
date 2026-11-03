@@ -1,0 +1,46 @@
+# =============================================================================
+# systemd — API (Express + headless Chrome). Install to /etc/systemd/system/guests-api.service
+# Paths assume APP_DIR=/home/michael/apps/guests.
+#
+# The env file is written by the deploy workflow (mode 600): ENV_API_BASE64 plus the four
+# runtime keys it owns (NODE_ENV, PORT=9010, HOST=127.0.0.1, RENDER_ORIGIN=http://127.0.0.1:7010).
+# systemd's EnvironmentFile is not dotenv — no `export`, no multi-line values.
+# =============================================================================
+[Unit]
+Description=Guests — API (Express)
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=michael
+Group=michael
+WorkingDirectory=/home/michael/apps/guests/api/current
+EnvironmentFile=/home/michael/apps/guests/shared/.env.api
+# Where the deploy's `pnpm install` downloaded Chrome; the same path it exports.
+Environment=PUPPETEER_CACHE_DIR=/home/michael/.cache/puppeteer
+# The home directory is read-only here (ProtectHome), so Chrome's and fontconfig's own
+# config and cache writes go to the service's private /tmp instead.
+Environment=XDG_CONFIG_HOME=/tmp/.config
+Environment=XDG_CACHE_HOME=/tmp/.cache
+ExecStart=/usr/bin/node dist/src/index.js
+Restart=always
+RestartSec=2
+KillSignal=SIGTERM
+TimeoutStopSec=30
+# The cgroup holds Node and the headless Chrome each PDF launches (one at a time, ~150MB at
+# its peak), so this bounds both: the host's other apps cannot be starved. Past MemoryHigh the
+# kernel reclaims and throttles; at MemoryMax it kills the largest process — normally Chrome,
+# failing that one print. Check `systemctl status guests-api` before lowering either.
+MemoryHigh=512M
+MemoryMax=768M
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+# No ReadWritePaths: the API's state is in Postgres, and Chrome's profile is a temp dir.
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
