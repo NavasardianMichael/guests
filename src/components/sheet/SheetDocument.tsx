@@ -1,6 +1,6 @@
 'use client'
 
-import type { CSSProperties, FC, KeyboardEvent, PointerEvent, ReactNode } from 'react'
+import type { CSSProperties, FC, KeyboardEvent, MouseEvent, PointerEvent, ReactNode } from 'react'
 import type { ListDesign, TextStyle } from '@store/lists/single/types'
 import { sheetFontStack } from '@constants/fonts'
 import { cn } from '@helpers/cn'
@@ -53,13 +53,46 @@ const TextLines: FC<{ lines: Lines; className?: string }> = ({ lines, className 
 )
 
 /** A text that the editor can open in place on double click (or Enter, when focused). */
+type CaretDocument = Document & {
+  caretPositionFromPoint?: (x: number, y: number) => { offsetNode: Node; offset: number } | null
+  caretRangeFromPoint?: (x: number, y: number) => Range | null
+}
+
+/**
+ * The character a click landed on, as an offset into the text the lines were wrapped from:
+ * the lines before it, each followed by the space the wrap took, plus the offset in its line.
+ */
+const caretFromClick = (event: MouseEvent, element: HTMLElement): number | undefined => {
+  const doc = document as CaretDocument
+  let node: Node | null = null
+  let offset = 0
+  const position = doc.caretPositionFromPoint?.(event.clientX, event.clientY)
+  if (position) {
+    node = position.offsetNode
+    offset = position.offset
+  } else {
+    const range = doc.caretRangeFromPoint?.(event.clientX, event.clientY)
+    if (range) {
+      node = range.startContainer
+      offset = range.startOffset
+    }
+  }
+  const line = (node?.nodeType === Node.TEXT_NODE ? node.parentElement : (node as Element | null))?.closest('.sh-line')
+  const lines = Array.from(element.querySelectorAll('.sh-line'))
+  const index = line ? lines.indexOf(line) : -1
+  if (index < 0) return undefined
+  return lines.slice(0, index).reduce((sum, previous) => sum + (previous.textContent?.length ?? 0) + 1, 0) + offset
+}
+
 const EditableText: FC<{
   target: EditTarget
   interaction: SheetInteraction | null
   className?: string
   style?: CSSProperties
+  /** Typed in capitals, as it prints (the stored text keeps its own case). */
+  uppercase?: boolean
   children: ReactNode
-}> = ({ target, interaction, className, style, children }) => {
+}> = ({ target, interaction, className, style, uppercase, children }) => {
   if (!interaction) {
     return (
       <div className={className} style={style}>
@@ -69,7 +102,7 @@ const EditableText: FC<{
   }
   if (sameTarget(interaction.editing, target)) {
     return (
-      <div className={cn(className, 'sh-editing')} style={style}>
+      <div className={cn(className, 'sh-editing')} style={{ ...style, textTransform: uppercase ? 'uppercase' : undefined }}>
         {interaction.renderEditor(target)}
       </div>
     )
@@ -80,6 +113,10 @@ const EditableText: FC<{
       interaction.onEdit(target)
     }
   }
+  const open = (event: MouseEvent) => {
+    event.stopPropagation()
+    interaction.onEdit(target, caretFromClick(event, event.currentTarget as HTMLElement))
+  }
   return (
     <div
       className={cn(className, 'sh-editable')}
@@ -87,10 +124,11 @@ const EditableText: FC<{
       role='textbox'
       tabIndex={0}
       aria-readonly='true'
-      onDoubleClick={(event) => {
-        event.stopPropagation()
-        interaction.onEdit(target)
+      // A second click on a selected text, or a double click, puts the caret where it landed.
+      onClick={(event) => {
+        if (event.detail === 1 && interaction.clickOpensEditor(target)) open(event)
       }}
+      onDoubleClick={open}
       onKeyDown={onKeyDown}
     >
       {children}
@@ -105,13 +143,20 @@ const HeaderView: FC<BlockProps<HeaderBlock>> = ({ block, design, interaction })
   return (
     <>
       {block.heading.length > 0 && (
-        <EditableText target={{ kind: 'heading' }} interaction={interaction} className='sh-heading' style={textCss(type.heading, textScale)}>
+        <EditableText
+          target={{ kind: 'heading' }}
+          interaction={interaction}
+          className='sh-heading'
+          uppercase={type.heading.uppercase}
+          style={textCss(type.heading, textScale)}
+        >
           <TextLines lines={block.heading} />
         </EditableText>
       )}
       {block.subheading.length > 0 && (
         <EditableText
           target={{ kind: 'subheading' }}
+          uppercase={type.subheading.uppercase}
           interaction={interaction}
           className='sh-subheading'
           style={{ ...textCss(type.subheading, textScale), marginTop: block.heading.length ? mm(2 * textScale) : 0 }}
@@ -124,7 +169,13 @@ const HeaderView: FC<BlockProps<HeaderBlock>> = ({ block, design, interaction })
 }
 
 const FooterView: FC<BlockProps<FooterBlock>> = ({ block, design, interaction }) => (
-  <EditableText target={{ kind: 'footer' }} interaction={interaction} className='sh-footer-text' style={textCss(design.type.footer, design.textScale)}>
+  <EditableText
+    target={{ kind: 'footer' }}
+    interaction={interaction}
+    className='sh-footer-text'
+    uppercase={design.type.footer.uppercase}
+    style={textCss(design.type.footer, design.textScale)}
+  >
     <TextLines lines={block.lines} />
   </EditableText>
 )
@@ -135,6 +186,7 @@ const GuestView: FC<BlockProps<GuestBlock>> = ({ block, design, interaction }) =
     <div className='sh-guest-row'>
       <EditableText
         target={{ kind: 'guest', id: block.guest.id }}
+        uppercase={type.name.uppercase}
         interaction={interaction}
         className='sh-guest-name'
         style={{ ...textCss(type.name, textScale), width: block.tableName ? mm(block.w - block.tableW - 3 * textScale) : '100%' }}
@@ -157,6 +209,7 @@ const TableView: FC<BlockProps<TableBlock>> = ({ block, design, interaction }) =
       <div className={cn('sh-table-head', `sh-align-${type.group.align}`)} style={{ height: mm(block.headH) }}>
         <EditableText
           target={{ kind: 'table', id: block.table.id }}
+          uppercase={type.group.uppercase}
           interaction={interaction}
           className='sh-table-name'
           style={{ ...textCss(type.group, textScale), paddingBlock: mm(block.headPad), paddingInline: mm(block.headPad * 2) }}
@@ -177,7 +230,12 @@ const TableView: FC<BlockProps<TableBlock>> = ({ block, design, interaction }) =
               data-guest-id={guest.id}
               onPointerDown={interaction ? (event: PointerEvent) => interaction.onNamePointerDown(event, guest.id) : undefined}
             >
-              <EditableText target={{ kind: 'guest', id: guest.id }} interaction={interaction} style={textCss(type.name, textScale)}>
+              <EditableText
+                target={{ kind: 'guest', id: guest.id }}
+                interaction={interaction}
+                uppercase={type.name.uppercase}
+                style={textCss(type.name, textScale)}
+              >
                 <TextLines lines={lines} />
               </EditableText>
             </div>
@@ -199,6 +257,7 @@ const CardFace: FC<{ block: CardBlock; design: ListDesign; flipped?: boolean; in
     <div className={cn('sh-card-face', flipped && 'sh-card-flipped')} style={{ height: mm(block.faceH) }}>
       <EditableText
         target={{ kind: 'guest', id: block.guest.id }}
+        uppercase={type.name.uppercase}
         interaction={flipped ? null : interaction}
         className='sh-card-name'
         style={textCss(type.name, textScale, CARD_NAME_SCALE)}

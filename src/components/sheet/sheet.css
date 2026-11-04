@@ -314,7 +314,9 @@
   background-color: color-mix(in srgb, var(--brand-success) 10%, transparent);
 }
 
-.sh-interactive .sh-editable {
+/* A text says it can be typed into once its block is selected: the next click opens it. */
+.sh-interactive .sh-selected .sh-editable,
+.sh-interactive .sh-selected.sh-name .sh-editable {
   cursor: text;
 }
 
@@ -322,8 +324,20 @@
   outline: 2px solid var(--brand-accent);
 }
 
+/*
+ * The open text. Blocks are `user-select: none` so a drag never selects text; the field must
+ * undo that, or Chrome hides its selection and Safari refuses the caret altogether.
+ */
+.sh-editing,
+.sh-editing * {
+  -webkit-user-select: text;
+  user-select: text;
+  cursor: text;
+}
+
 .sh-editing {
   outline: 2px solid var(--brand-accent);
+  outline-offset: 0.4mm;
   background: color-mix(in srgb, var(--sh-bg) 85%, white);
 }
 
@@ -339,9 +353,16 @@
   color: inherit;
   letter-spacing: inherit;
   text-align: inherit;
+  text-transform: inherit;
   line-height: inherit;
+  /* The text's own colour can be pale gold on cream; the caret stays the app's accent. */
+  caret-color: var(--brand-accent);
   resize: none;
   overflow: hidden;
+}
+
+.sh-inline-input::selection {
+  background: color-mix(in srgb, var(--brand-accent) 35%, transparent);
 }
 
 /* ================================================================ templates */

@@ -1,10 +1,10 @@
 'use client'
 
-import { type PointerEvent as ReactPointerEvent, type RefObject, useEffect, useMemo, useRef, useState } from 'react'
+import { type PointerEvent as ReactPointerEvent, type RefObject, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useListEditorStore, useListEditorStoreBase } from '@store/lists/single/store'
 import { FOOTER_ID, HEADER_ID, type Position } from '@store/lists/single/types'
 import { clampToPage, round, type SheetBlock, type SheetLayout } from '@helpers/sheetLayout'
-import type { EditTarget, SheetInteraction } from '@components/sheet/SheetInteraction'
+import { type EditTarget, type SheetInteraction, targetBlockId } from '@components/sheet/SheetInteraction'
 import { MM_TO_PX } from '@components/sheet/SheetPreview'
 import { InlineEditor } from './InlineEditor'
 
@@ -75,6 +75,10 @@ export const useCanvasInteraction = ({ layout, scale, sheetRef }: Options) => {
   const [guides, setGuides] = useState<Guide[]>([])
   const [marquee, setMarqueeState] = useState<Marquee | null>(null)
   const dragRef = useRef<Drag | null>(null)
+  /** The last press on a block or a name: what it was, whether it was already selected, whether it moved. */
+  const pressRef = useRef<{ id: string; wasSelected: boolean; moved: boolean } | null>(null)
+  /** Where a click opened the text being edited (a character offset). */
+  const caretRef = useRef<number | undefined>(undefined)
   const dropRef = useRef<string | null>(null)
   const marqueeRef = useRef<Marquee | null>(null)
   const layoutRef = useRef(layout)
@@ -175,6 +179,7 @@ export const useCanvasInteraction = ({ layout, scale, sheetRef }: Options) => {
     }
     if (!drag.moved && Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) < DRAG_THRESHOLD_PX) return
     drag.moved = true
+    if (pressRef.current) pressRef.current.moved = true
     const k = pxPerMm()
     const dx = (event.clientX - drag.startX) / k
     const dy = (event.clientY - drag.startY) / k
@@ -344,6 +349,7 @@ export const useCanvasInteraction = ({ layout, scale, sheetRef }: Options) => {
       return
     }
     const ids = store.selection.includes(block.id) ? store.selection : [block.id]
+    pressRef.current = { id: block.id, wasSelected: store.selection.includes(block.id), moved: false }
     if (!store.selection.includes(block.id)) store.select([block.id])
     const index = blockIndex(layoutRef.current)
     const at = pageAt(event.clientX, event.clientY)
@@ -370,6 +376,7 @@ export const useCanvasInteraction = ({ layout, scale, sheetRef }: Options) => {
       store.toggleSelect(guestId)
       return
     }
+    pressRef.current = { id: guestId, wasSelected: store.selection.includes(guestId), moved: false }
     store.select([guestId])
     dragRef.current = {
       type: 'name',
@@ -405,13 +412,26 @@ export const useCanvasInteraction = ({ layout, scale, sheetRef }: Options) => {
       editing,
       onBlockPointerDown,
       onNamePointerDown,
-      onEdit: setEditing,
-      renderEditor: (target) => <InlineEditor target={target} onDone={() => setEditing(null)} />,
+      onEdit: (target, caret) => {
+        caretRef.current = caret
+        setEditing(target)
+      },
+      clickOpensEditor: (target) => {
+        const press = pressRef.current
+        return Boolean(press && press.id === targetBlockId(target) && press.wasSelected && !press.moved)
+      },
+      renderEditor: (target) => <InlineEditor target={target} caret={caretRef.current} onDone={() => setEditing(null)} />,
     }),
     // The handlers read everything else through refs and the store.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [selection, dropTarget, editing]
   )
 
-  return { interaction, guides, marquee, editing, setEditing, onBackgroundPointerDown }
+  /** Opens a text from outside the sheet (the toolbar): the caret at its end. */
+  const openEditor = useCallback((target: EditTarget | null) => {
+    caretRef.current = undefined
+    setEditing(target)
+  }, [])
+
+  return { interaction, guides, marquee, editing, setEditing: openEditor, onBackgroundPointerDown }
 }

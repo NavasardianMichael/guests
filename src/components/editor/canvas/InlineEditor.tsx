@@ -20,21 +20,33 @@ export const writeTarget = (target: EditTarget, value: string): void => {
   else setHeaderText(target.kind, value)
 }
 
-type Props = { target: EditTarget; onDone: () => void }
+type Props = {
+  target: EditTarget
+  /** Where the click landed, as a character offset; the end of the text when unknown. */
+  caret?: number
+  onDone: () => void
+}
 
 /**
  * A text opened on the sheet: one line, typed straight into the document (the sheet re-flows
  * as it grows). Enter or leaving the field keeps it; Escape puts back what was there.
  */
-export const InlineEditor: FC<Props> = ({ target, onDone }) => {
+export const InlineEditor: FC<Props> = ({ target, caret, onDone }) => {
   const t = useTranslations('Editor.canvas')
   const inputRef = useRef<HTMLInputElement>(null)
   const value = useListEditorStoreBase((state) => (state.doc ? targetText(state.doc, target) : ''))
   const initial = useRef(value)
 
   useEffect(() => {
-    inputRef.current?.focus()
-    inputRef.current?.select()
+    const input = inputRef.current
+    if (!input) return
+    input.focus()
+    // The caret where the text was clicked, never the whole text selected: typing goes in at
+    // that point, and a selection would hide the caret.
+    const at = Math.min(Math.max(0, caret ?? input.value.length), input.value.length)
+    input.setSelectionRange(at, at)
+    // Opened by the mount, not by later renders.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return (

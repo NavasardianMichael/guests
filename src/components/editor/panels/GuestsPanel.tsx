@@ -12,7 +12,7 @@ import {
   SnippetsOutlined,
   ThunderboltOutlined,
 } from '@ant-design/icons'
-import { App, Button, Dropdown, Input, InputNumber, Popconfirm, Segmented, Space } from 'antd'
+import { App, Button, Dropdown, Input, InputNumber, Popconfirm, Segmented, Select, Space } from 'antd'
 import { useTranslations } from 'next-intl'
 import { useEditorUiStore } from '@store/editorUi/store'
 import { MAX_GUESTS, useListEditorStore, useListEditorStoreBase } from '@store/lists/single/store'
@@ -22,8 +22,17 @@ import { TileButton } from '@components/ui/TileButton'
 
 type TableOption = { id: string; name: string }
 
-/** A native select in the panel: the same height and border as antd's small inputs. */
-const SELECT_CLASS = 'h-8 cursor-pointer truncate rounded-lg border border-line bg-surface px-2 text-sm text-text'
+/** A table picker's options, "no table" first. Built once per list of tables, shared by every row. */
+type TableSelectOption = { value: string; label: string }
+
+const tableSelectOptions = (tables: TableOption[], noTableLabel: string): TableSelectOption[] => [
+  { value: '', label: noTableLabel },
+  ...tables.map((table) => ({ value: table.id, label: table.name || '—' })),
+]
+
+/** Search a table picker by name once a list has many tables. */
+const filterTable = (input: string, option?: TableSelectOption): boolean =>
+  Boolean(option?.label.toLocaleLowerCase().includes(input.toLocaleLowerCase()))
 
 /** Shown on hover with a mouse; always there on a touch screen, which has no hover. */
 const HOVER_REVEAL = 'opacity-0 group-hover:opacity-100 focus-visible:opacity-100 pointer-coarse:opacity-100'
@@ -40,27 +49,25 @@ const draggedGuest = (event: DragEvent): string | null => event.dataTransfer.get
 type RowProps = {
   guest: Guest
   index: number
-  tables: TableOption[]
+  tableOptions: TableSelectOption[]
   /** `always`, or only on touch screens (the by-table view, where rows are dragged with a mouse). */
   showTable: 'always' | 'touch' | 'never'
   showNote: boolean
   selected: boolean
-  noTableLabel: string
   onDropGuest: (draggedId: string, before: Guest) => void
 }
 
 /**
- * One guest. Native inputs, not antd's: a list runs to hundreds of rows, and each row
- * re-renders only when its own guest changes (`memo` + immer's structural sharing).
+ * One guest. A list runs to hundreds of rows, so each row re-renders only when its own guest
+ * changes (`memo` + immer's structural sharing), and the table options are built once, above.
  */
 const GuestRow: FC<RowProps> = memo(function GuestRow({
   guest,
   index,
-  tables,
+  tableOptions,
   showTable,
   showNote,
   selected,
-  noTableLabel,
   onDropGuest,
 }) {
   const t = useTranslations('Editor.guests')
@@ -114,22 +121,19 @@ const GuestRow: FC<RowProps> = memo(function GuestRow({
         />
       )}
       {showTable !== 'never' && (
-        <select
-          className={cn(
-            'h-7 w-[5.5rem] shrink-0 cursor-pointer truncate rounded-md border border-line bg-surface px-1 text-xs sm:w-24',
-            showTable === 'touch' && 'hidden pointer-coarse:block'
-          )}
-          value={guest.tableId}
-          aria-label={t('table')}
-          onChange={(event) => updateGuest(guest.id, { tableId: event.target.value })}
-        >
-          <option value=''>{noTableLabel}</option>
-          {tables.map((table) => (
-            <option key={table.id} value={table.id}>
-              {table.name || '—'}
-            </option>
-          ))}
-        </select>
+        // A native wrapper does the showing and hiding: antd's own `display` would beat `hidden`.
+        <span className={cn('w-24 shrink-0 sm:w-28', showTable === 'touch' && 'hidden pointer-coarse:block')}>
+          <Select<string, TableSelectOption>
+            size='small'
+            className='w-full'
+            value={guest.tableId}
+            options={tableOptions}
+            aria-label={t('table')}
+            popupMatchSelectWidth={false}
+            showSearch={tableOptions.length > 8 ? { filterOption: filterTable } : false}
+            onChange={(tableId) => updateGuest(guest.id, { tableId })}
+          />
+        </span>
       )}
       <button
         type='button'
@@ -147,7 +151,11 @@ const GuestRow: FC<RowProps> = memo(function GuestRow({
 })
 
 /** Type a name, press Enter, type the next: the quickest way to write a list by hand. */
-const QuickAdd: FC<{ tables: TableOption[]; showTable: boolean }> = ({ tables, showTable }) => {
+const QuickAdd: FC<{ tables: TableOption[]; tableOptions: TableSelectOption[]; showTable: boolean }> = ({
+  tables,
+  tableOptions,
+  showTable,
+}) => {
   const t = useTranslations('Editor.guests')
   const addGuest = useListEditorStore.use.addGuest()
   const [name, setName] = useState('')
@@ -179,21 +187,16 @@ const QuickAdd: FC<{ tables: TableOption[]; showTable: boolean }> = ({ tables, s
         </Button>
       </Space.Compact>
       {showTable && tables.length > 0 && (
-        <label className='flex items-center gap-2 text-xs text-muted'>
+        <div className='flex items-center gap-2 text-xs text-muted'>
           <span className='shrink-0'>{t('quickAddTable')}</span>
-          <select
-            className={cn(SELECT_CLASS, 'min-w-0 flex-1')}
-            value={tableId}
-            onChange={(event) => setTableId(event.target.value)}
-          >
-            <option value=''>{t('noTable')}</option>
-            {tables.map((table) => (
-              <option key={table.id} value={table.id}>
-                {table.name || '—'}
-              </option>
-            ))}
-          </select>
-        </label>
+          <Select<string, TableSelectOption>
+            className='min-w-0 flex-1'
+            value={tables.some((table) => table.id === tableId) ? tableId : ''}
+            options={tableOptions}
+            showSearch={tableOptions.length > 8 ? { filterOption: filterTable } : false}
+            onChange={setTableId}
+          />
+        </div>
       )}
     </div>
   )
@@ -229,7 +232,7 @@ const AutoSeat: FC = () => {
 type GroupProps = {
   table: GuestTable | null
   guests: Guest[]
-  tables: TableOption[]
+  tableOptions: TableSelectOption[]
   selection: ReadonlySet<string>
   noTableLabel: string
   showNote: boolean
@@ -237,7 +240,7 @@ type GroupProps = {
 }
 
 /** A table and the guests at it — or the guests at none — taking dropped rows. */
-const TableGroup: FC<GroupProps> = ({ table, guests, tables, selection, noTableLabel, showNote, onDropGuest }) => {
+const TableGroup: FC<GroupProps> = ({ table, guests, tableOptions, selection, noTableLabel, showNote, onDropGuest }) => {
   const t = useTranslations('Editor.guests')
   const { renameTable, removeTable, updateGuest } = useListEditorStoreBase.getState()
   const [over, setOver] = useState(false)
@@ -291,11 +294,10 @@ const TableGroup: FC<GroupProps> = ({ table, guests, tables, selection, noTableL
               key={guest.id}
               guest={guest}
               index={index}
-              tables={tables}
+              tableOptions={tableOptions}
               showTable='touch'
               showNote={showNote}
               selected={selection.has(guest.id)}
-              noTableLabel={noTableLabel}
               onDropGuest={onDropGuest}
             />
           ))}
@@ -329,6 +331,8 @@ export const GuestsPanel: FC = () => {
     () => content?.tables.map(({ id, name }) => ({ id, name })) ?? [],
     [content?.tables]
   )
+  const noTable = t('noTable')
+  const tableOptions = useMemo(() => tableSelectOptions(tables, noTable), [tables, noTable])
 
   if (!content) return null
   const { addTable, sortGuests, dedupeGuests, clearGuests, seatGuest } = useListEditorStoreBase.getState()
@@ -336,7 +340,7 @@ export const GuestsPanel: FC = () => {
   const needle = query.trim().toLocaleLowerCase()
   const matches = (guest: Guest) => !needle || guest.name.toLocaleLowerCase().includes(needle)
   const filtered = content.guests.filter(matches)
-  const noTableLabel = t('noTable')
+  const noTableLabel = noTable
 
   /** A row dropped on another row: it takes that row's place and its table. */
   const onDropGuest = (draggedId: string, before: Guest) => seatGuest(draggedId, before.tableId, before.id)
@@ -383,7 +387,7 @@ export const GuestsPanel: FC = () => {
         </TileButton>
       </div>
 
-      <QuickAdd tables={tables} showTable={kind !== 'list' || tables.length > 0} />
+      <QuickAdd tables={tables} tableOptions={tableOptions} showTable={kind !== 'list' || tables.length > 0} />
 
       <div className='flex items-center gap-1.5'>
         <Input
@@ -438,7 +442,7 @@ export const GuestsPanel: FC = () => {
                 key={table.id}
                 table={table}
                 guests={filtered.filter((guest) => guest.tableId === table.id)}
-                tables={tables}
+                tableOptions={tableOptions}
                 selection={selection}
                 noTableLabel={noTableLabel}
                 showNote={showNote}
@@ -449,7 +453,7 @@ export const GuestsPanel: FC = () => {
               <TableGroup
                 table={null}
                 guests={unseated}
-                tables={tables}
+                tableOptions={tableOptions}
                 selection={selection}
                 noTableLabel={noTableLabel}
                 showNote={showNote}
@@ -464,11 +468,10 @@ export const GuestsPanel: FC = () => {
                 key={guest.id}
                 guest={guest}
                 index={index}
-                tables={tables}
+                tableOptions={tableOptions}
                 showTable={tables.length > 0 ? 'always' : 'never'}
                 showNote={showNote}
                 selected={selection.has(guest.id)}
-                noTableLabel={noTableLabel}
                 onDropGuest={onDropGuest}
               />
             ))}
