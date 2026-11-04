@@ -47,9 +47,13 @@ const TemplateThumb: FC<{ id: TemplateId; kind: Parameters<typeof templateDesign
         )}
       >
         <SheetPreview doc={doc} />
-        <span className='flex items-center justify-between gap-1 px-1.5 py-1 text-[11px] font-medium'>
-          <span className='truncate'>{t(`names.${id}`)}</span>
-          {free && <span className='rounded bg-canvas px-1 text-[10px] text-muted'>{t('free')}</span>}
+        {free && (
+          <span className='absolute top-1 left-1 rounded-full bg-ink/85 px-1.5 py-0.5 text-[9px] leading-none font-semibold text-white shadow-sm'>
+            {t('free')}
+          </span>
+        )}
+        <span className='block truncate px-1.5 py-1 text-center text-[11px] font-medium' title={t(`names.${id}`)}>
+          {t(`names.${id}`)}
         </span>
         {active && <CheckCircleFilled className='absolute top-1.5 right-1.5 text-accent' />}
       </button>

@@ -443,7 +443,8 @@
       "addTable": "Add table",
       "noMatches": "Nothing found",
       "empty": "The list is empty so far",
-      "autoSeatPer": "people"
+      "autoSeatPer": "people",
+      "quickAddTable": "At table:"
     },
     "layout": {
       "kind": "What we print",
@@ -597,6 +598,12 @@
       "preparing": "Preparing the PDF…",
       "done": "PDF downloaded",
       "printing": "Opening the print dialog…"
+    },
+    "tabsShort": {
+      "guests": "Guests",
+      "layout": "Layout",
+      "design": "Design",
+      "paper": "Paper"
     }
   },
   "Errors": {

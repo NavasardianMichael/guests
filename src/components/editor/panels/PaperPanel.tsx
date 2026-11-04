@@ -1,11 +1,12 @@
 'use client'
 
 import type { FC } from 'react'
-import { Button, InputNumber, Segmented, Slider } from 'antd'
+import { InputNumber, Segmented, Slider } from 'antd'
 import { useTranslations } from 'next-intl'
 import { useListEditorStore, useListEditorStoreBase } from '@store/lists/single/store'
 import { type Orientation, PAPER_FORMATS, PAPER_LIMITS, PAPER_SIZES, type PaperFormat } from '@constants/paper'
 import { pageSize } from '@helpers/sheetLayout'
+import { TileButton } from '@components/ui/TileButton'
 import { PanelSection, Row } from './LayoutPanel'
 
 const formatLabel = (format: PaperFormat): string =>
@@ -22,19 +23,18 @@ export const PaperPanel: FC = () => {
   return (
     <div>
       <PanelSection title={t('format')} hint={t('formatHint')}>
-        <div className='grid grid-cols-3 gap-1.5'>
+        <div className='grid grid-cols-3 gap-2' role='radiogroup' aria-label={t('format')}>
           {PAPER_FORMATS.map((format) => (
-            <Button
+            <TileButton
               key={format}
-              type={paper.format === format ? 'primary' : 'default'}
-              className='h-auto flex-col gap-0 py-1.5'
+              role='radio'
+              aria-checked={paper.format === format}
+              active={paper.format === format}
+              caption={format === 'custom' ? t('anySize') : `${PAPER_SIZES[format].width}×${PAPER_SIZES[format].height}`}
               onClick={() => setPaper({ format })}
             >
-              <span className='text-sm font-semibold'>{format === 'custom' ? t('custom') : formatLabel(format)}</span>
-              <span className='text-[10px] opacity-70'>
-                {format === 'custom' ? t('anySize') : `${PAPER_SIZES[format].width}×${PAPER_SIZES[format].height}`}
-              </span>
-            </Button>
+              <span className='text-sm'>{format === 'custom' ? t('custom') : formatLabel(format)}</span>
+            </TileButton>
           ))}
         </div>
         {paper.format === 'custom' && (

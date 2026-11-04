@@ -91,7 +91,13 @@ cv-builder's notes: under `concurrently` on Windows `tsx watch` never starts the
   `/lists` route scopes by `listOwnerOf(req)`.
 - **Server Components cannot import `@ant-design/icons`**: import from `@components/ui/icons`.
 - **antd styles are unlayered and beat Tailwind utilities** — override antd's own
-  `display`/`height`/`white-space` inline or on a wrapper.
+  `display`/`height`/`white-space` inline or on a wrapper. Hide or show an antd control at a
+  breakpoint through a native wrapper (as `LanguageSwitcher` does), and use `ui/TileButton`, not
+  an antd `Button`, for icon-over-label choices: antd's fixed height and `nowrap` make long
+  Armenian labels overflow.
+- **Three widths, checked:** phones (bottom bar + bottom-sheet panels, `< lg`), tablets (the
+  same, wider sheet), desktop (side panel). Hover-only controls also show on touch
+  (`pointer-coarse:`); row drag handles exist only for a fine pointer.
 
 ## Working rules
 

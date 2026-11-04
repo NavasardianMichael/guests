@@ -15,6 +15,7 @@ import { Alert, Button, InputNumber, Segmented, Slider, Switch } from 'antd'
 import { useTranslations } from 'next-intl'
 import { useListEditorStore, useListEditorStoreBase } from '@store/lists/single/store'
 import type { Flow, LayoutMode, PrintKind, SortOrder } from '@store/lists/single/types'
+import { TileButton } from '@components/ui/TileButton'
 
 export const PanelSection: FC<{ title: string; children: ReactNode; hint?: string }> = ({ title, children, hint }) => (
   <section className='border-b border-line py-4 first:pt-1 last:border-b-0'>
@@ -26,8 +27,8 @@ export const PanelSection: FC<{ title: string; children: ReactNode; hint?: strin
 
 export const Row: FC<{ label: string; children: ReactNode }> = ({ label, children }) => (
   <div className='flex items-center justify-between gap-3 text-sm'>
-    <span className='text-text'>{label}</span>
-    {children}
+    <span className='min-w-0 leading-snug text-text'>{label}</span>
+    <span className='flex shrink-0'>{children}</span>
   </div>
 )
 
@@ -59,21 +60,18 @@ export const LayoutPanel: FC = () => {
   return (
     <div>
       <PanelSection title={t('kind')} hint={t(`kindHint.${kind}`)}>
-        <div className='grid grid-cols-3 gap-1.5' role='radiogroup' aria-label={t('kind')}>
+        <div className='grid grid-cols-3 gap-2' role='radiogroup' aria-label={t('kind')}>
           {(['seating', 'list', 'cards'] as const).map((value) => (
-            <Button
+            <TileButton
               key={value}
               role='radio'
               aria-checked={kind === value}
-              type={kind === value ? 'primary' : 'default'}
-              className='flex-col gap-1 px-1 py-2 text-xs leading-tight'
-              // Inline: antd's own `white-space: nowrap` and fixed height are unlayered.
-              style={{ height: 'auto', whiteSpace: 'normal', overflowWrap: 'anywhere' }}
+              active={kind === value}
+              icon={KIND_ICONS[value]}
               onClick={() => setDesign({ kind: value })}
             >
-              <span className='text-base'>{KIND_ICONS[value]}</span>
-              <span className='block w-full'>{t(`kinds.${value}`)}</span>
-            </Button>
+              {t(`kinds.${value}`)}
+            </TileButton>
           ))}
         </div>
       </PanelSection>

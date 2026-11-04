@@ -2,10 +2,10 @@
 
 import { type FC, useMemo, useState } from 'react'
 import { CameraOutlined, FileExcelOutlined, InboxOutlined, SnippetsOutlined } from '@ant-design/icons'
-import { Alert, App, Input, Modal, Progress, Radio, Segmented, Select, Upload } from 'antd'
+import { Alert, App, Input, Modal, Progress, Radio, Select, Upload } from 'antd'
 import { useTranslations } from 'next-intl'
 import { extractGuestsAPI } from '@api/ai/main'
-import { type ImportSource, useEditorUiStore } from '@store/editorUi/store'
+import { useEditorUiStore } from '@store/editorUi/store'
 import { useListEditorStore, useListEditorStoreBase } from '@store/lists/single/store'
 import type { ImportMode, IncomingGuest } from '@store/lists/single/types'
 import { useCapabilities } from '@hooks/useCapabilities'
@@ -22,6 +22,7 @@ import {
   splitTabular,
 } from '@helpers/guestImport'
 import { fileToUploadDataUrl } from '@helpers/image'
+import { TileButton } from '@components/ui/TileButton'
 import { ColumnMapper } from './ColumnMapper'
 import { ImportPreview } from './ImportPreview'
 
@@ -182,6 +183,8 @@ export const ImportModal: FC = () => {
       onCancel={close}
       title={t('title')}
       width={720}
+      // Phones: nearly the full screen, close to the top, so the preview has room.
+      style={{ maxWidth: 'calc(100vw - 16px)', top: 16 }}
       destroyOnHidden
       okText={t('submit', { count: guests.filter((guest) => guest.name.trim()).length })}
       okButtonProps={{ disabled: !guests.some((guest) => guest.name.trim()) || busy }}
@@ -190,19 +193,30 @@ export const ImportModal: FC = () => {
     >
       {source && (
         <div className='flex flex-col gap-4'>
-          <Segmented<ImportSource>
-            block
-            value={source}
-            onChange={(next) => {
-              reset()
-              openImport(next)
-            }}
-            options={[
-              { value: 'paste', label: t('sources.paste'), icon: <SnippetsOutlined /> },
-              { value: 'file', label: t('sources.file'), icon: <FileExcelOutlined /> },
-              { value: 'photo', label: t('sources.photo'), icon: <CameraOutlined /> },
-            ]}
-          />
+          <div className='grid grid-cols-3 gap-2' role='radiogroup' aria-label={t('title')}>
+            {(
+              [
+                ['paste', <SnippetsOutlined key='paste' />],
+                ['file', <FileExcelOutlined key='file' />],
+                ['photo', <CameraOutlined key='photo' />],
+              ] as const
+            ).map(([value, icon]) => (
+              <TileButton
+                key={value}
+                role='radio'
+                aria-checked={source === value}
+                active={source === value}
+                icon={icon}
+                onClick={() => {
+                  if (value === source) return
+                  reset()
+                  openImport(value)
+                }}
+              >
+                {t(`sources.${value}`)}
+              </TileButton>
+            ))}
+          </div>
 
           {source === 'paste' && (
             <>

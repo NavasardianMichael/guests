@@ -12,14 +12,21 @@ import {
   SnippetsOutlined,
   ThunderboltOutlined,
 } from '@ant-design/icons'
-import { App, Button, Dropdown, Input, InputNumber, Popconfirm, Segmented } from 'antd'
+import { App, Button, Dropdown, Input, InputNumber, Popconfirm, Segmented, Space } from 'antd'
 import { useTranslations } from 'next-intl'
 import { useEditorUiStore } from '@store/editorUi/store'
 import { MAX_GUESTS, useListEditorStore, useListEditorStoreBase } from '@store/lists/single/store'
 import type { Guest, GuestTable } from '@store/lists/single/types'
 import { cn } from '@helpers/cn'
+import { TileButton } from '@components/ui/TileButton'
 
 type TableOption = { id: string; name: string }
+
+/** A native select in the panel: the same height and border as antd's small inputs. */
+const SELECT_CLASS = 'h-8 cursor-pointer truncate rounded-lg border border-line bg-surface px-2 text-sm text-text'
+
+/** Shown on hover with a mouse; always there on a touch screen, which has no hover. */
+const HOVER_REVEAL = 'opacity-0 group-hover:opacity-100 focus-visible:opacity-100 pointer-coarse:opacity-100'
 
 const DRAG_TYPE = 'application/x-guest-id'
 
@@ -34,7 +41,8 @@ type RowProps = {
   guest: Guest
   index: number
   tables: TableOption[]
-  showTable: boolean
+  /** `always`, or only on touch screens (the by-table view, where rows are dragged with a mouse). */
+  showTable: 'always' | 'touch' | 'never'
   showNote: boolean
   selected: boolean
   noTableLabel: string
@@ -45,14 +53,23 @@ type RowProps = {
  * One guest. Native inputs, not antd's: a list runs to hundreds of rows, and each row
  * re-renders only when its own guest changes (`memo` + immer's structural sharing).
  */
-const GuestRow: FC<RowProps> = memo(function GuestRow({ guest, index, tables, showTable, showNote, selected, noTableLabel, onDropGuest }) {
+const GuestRow: FC<RowProps> = memo(function GuestRow({
+  guest,
+  index,
+  tables,
+  showTable,
+  showNote,
+  selected,
+  noTableLabel,
+  onDropGuest,
+}) {
   const t = useTranslations('Editor.guests')
   const [over, setOver] = useState(false)
   const { updateGuest, removeGuests, select } = useListEditorStoreBase.getState()
   return (
     <li
       className={cn(
-        'group flex items-center gap-1 rounded-lg border border-transparent px-1 py-0.5 transition-colors',
+        'group flex items-center gap-1 rounded-lg border border-transparent px-0.5 py-0.5 transition-colors',
         selected && 'border-accent bg-accent-soft/50',
         over && 'border-t-accent'
       )}
@@ -69,7 +86,7 @@ const GuestRow: FC<RowProps> = memo(function GuestRow({ guest, index, tables, sh
       }}
     >
       <span
-        className='cursor-grab px-0.5 text-muted opacity-40 group-hover:opacity-100'
+        className='hidden cursor-grab px-0.5 text-muted opacity-40 group-hover:opacity-100 pointer-fine:inline'
         draggable
         onDragStart={(event) => startRowDrag(event, guest.id)}
         aria-hidden='true'
@@ -78,7 +95,7 @@ const GuestRow: FC<RowProps> = memo(function GuestRow({ guest, index, tables, sh
       </span>
       <span className='w-6 shrink-0 text-right text-[11px] text-muted tabular-nums'>{index + 1}</span>
       <input
-        className='min-w-0 flex-1 rounded-md border-0 bg-transparent px-1.5 py-1 text-sm outline-none focus:bg-surface focus:ring-1 focus:ring-line'
+        className='min-w-0 flex-1 rounded-md border-0 bg-transparent px-1.5 py-1.5 text-sm outline-none focus:bg-surface focus:ring-1 focus:ring-line'
         value={guest.name}
         placeholder={t('namePlaceholder')}
         aria-label={t('name')}
@@ -88,7 +105,7 @@ const GuestRow: FC<RowProps> = memo(function GuestRow({ guest, index, tables, sh
       />
       {showNote && (
         <input
-          className='w-20 min-w-0 rounded-md border-0 bg-transparent px-1.5 py-1 text-xs text-muted outline-none focus:bg-surface focus:ring-1 focus:ring-line'
+          className='w-16 min-w-0 shrink rounded-md border-0 bg-transparent px-1.5 py-1.5 text-xs text-muted outline-none focus:bg-surface focus:ring-1 focus:ring-line sm:w-20'
           value={guest.note}
           placeholder={t('notePlaceholder')}
           aria-label={t('note')}
@@ -96,9 +113,12 @@ const GuestRow: FC<RowProps> = memo(function GuestRow({ guest, index, tables, sh
           onChange={(event) => updateGuest(guest.id, { note: event.target.value })}
         />
       )}
-      {showTable && (
+      {showTable !== 'never' && (
         <select
-          className='w-24 shrink-0 cursor-pointer truncate rounded-md border border-line bg-surface px-1 py-1 text-xs'
+          className={cn(
+            'h-7 w-[5.5rem] shrink-0 cursor-pointer truncate rounded-md border border-line bg-surface px-1 text-xs sm:w-24',
+            showTable === 'touch' && 'hidden pointer-coarse:block'
+          )}
           value={guest.tableId}
           aria-label={t('table')}
           onChange={(event) => updateGuest(guest.id, { tableId: event.target.value })}
@@ -113,7 +133,10 @@ const GuestRow: FC<RowProps> = memo(function GuestRow({ guest, index, tables, sh
       )}
       <button
         type='button'
-        className='cursor-pointer rounded-md border-0 bg-transparent p-1 text-muted opacity-0 group-hover:opacity-100 hover:text-danger focus:opacity-100'
+        className={cn(
+          'grid size-7 shrink-0 cursor-pointer place-items-center rounded-md border-0 bg-transparent text-muted hover:text-danger',
+          HOVER_REVEAL
+        )}
         aria-label={t('remove')}
         onClick={() => removeGuests([guest.id])}
       >
@@ -140,33 +163,38 @@ const QuickAdd: FC<{ tables: TableOption[]; showTable: boolean }> = ({ tables, s
   }
 
   return (
-    <div className='flex gap-1.5'>
-      <Input
-        value={name}
-        onChange={(event) => setName(event.target.value)}
-        onPressEnter={submit}
-        placeholder={full ? t('full', { max: MAX_GUESTS }) : t('quickAdd')}
-        aria-label={t('quickAdd')}
-        disabled={full}
-        maxLength={120}
-        prefix={<PlusOutlined className='text-muted' />}
-      />
+    <div className='flex flex-col gap-1.5'>
+      <Space.Compact block>
+        <Input
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+          onPressEnter={submit}
+          placeholder={full ? t('full', { max: MAX_GUESTS }) : t('quickAdd')}
+          aria-label={t('quickAdd')}
+          disabled={full}
+          maxLength={120}
+        />
+        <Button type='primary' icon={<PlusOutlined />} onClick={submit} disabled={!name.trim() || full}>
+          <span className='hidden xs:inline'>{t('add')}</span>
+        </Button>
+      </Space.Compact>
       {showTable && tables.length > 0 && (
-        <select
-          className='w-24 shrink-0 cursor-pointer rounded-lg border border-line bg-surface px-1 text-xs'
-          value={tableId}
-          aria-label={t('table')}
-          onChange={(event) => setTableId(event.target.value)}
-        >
-          <option value=''>{t('noTable')}</option>
-          {tables.map((table) => (
-            <option key={table.id} value={table.id}>
-              {table.name || '—'}
-            </option>
-          ))}
-        </select>
+        <label className='flex items-center gap-2 text-xs text-muted'>
+          <span className='shrink-0'>{t('quickAddTable')}</span>
+          <select
+            className={cn(SELECT_CLASS, 'min-w-0 flex-1')}
+            value={tableId}
+            onChange={(event) => setTableId(event.target.value)}
+          >
+            <option value=''>{t('noTable')}</option>
+            {tables.map((table) => (
+              <option key={table.id} value={table.id}>
+                {table.name || '—'}
+              </option>
+            ))}
+          </select>
+        </label>
       )}
-      <Button type='primary' icon={<PlusOutlined />} onClick={submit} disabled={!name.trim() || full} aria-label={t('add')} />
     </div>
   )
 }
@@ -178,10 +206,18 @@ const AutoSeat: FC = () => {
   const autoSeat = useListEditorStore.use.autoSeat()
   const [seats, setSeats] = useState(10)
   return (
-    <div className='flex flex-wrap items-center gap-2 rounded-lg bg-canvas p-2 text-xs'>
+    <div className='flex flex-wrap items-center gap-x-2 gap-y-1.5 rounded-xl bg-canvas px-3 py-2.5 text-xs leading-snug'>
       <ThunderboltOutlined className='text-accent-strong' />
-      <span>{t('autoSeat')}</span>
-      <InputNumber size='small' className='w-16' min={1} max={100} value={seats} onChange={(value) => value && setSeats(value)} aria-label={t('seats')} />
+      <span className='min-w-0'>{t('autoSeat')}</span>
+      <InputNumber
+        size='small'
+        className='w-16'
+        min={1}
+        max={100}
+        value={seats}
+        onChange={(value) => value && setSeats(value)}
+        aria-label={t('seats')}
+      />
       <span>{t('autoSeatPer')}</span>
       <Button size='small' onClick={() => autoSeat(seats, (number) => tSamples('table', { number }))}>
         {t('autoSeatGo')}
@@ -209,7 +245,7 @@ const TableGroup: FC<GroupProps> = ({ table, guests, tables, selection, noTableL
     <section
       role='group'
       aria-label={table?.name || noTableLabel}
-      className={cn('rounded-xl border border-line p-2', over && 'border-accent bg-accent-soft/40')}
+      className={cn('rounded-xl border border-line p-1.5 sm:p-2', over && 'border-accent bg-accent-soft/40')}
       onDragOver={(event) => {
         if (!event.dataTransfer.types.includes(DRAG_TYPE)) return
         event.preventDefault()
@@ -237,9 +273,13 @@ const TableGroup: FC<GroupProps> = ({ table, guests, tables, selection, noTableL
         ) : (
           <span className='flex-1 px-1.5 py-1 text-sm font-semibold text-muted'>{noTableLabel}</span>
         )}
-        <span className='rounded-full bg-canvas px-2 text-xs text-muted tabular-nums'>{guests.length}</span>
+        <span className='shrink-0 rounded-full bg-canvas px-2 text-xs text-muted tabular-nums'>{guests.length}</span>
         {table && (
-          <Popconfirm title={t('removeTableConfirm')} onConfirm={() => removeTable(table.id)} okButtonProps={{ danger: true }}>
+          <Popconfirm
+            title={t('removeTableConfirm')}
+            onConfirm={() => removeTable(table.id)}
+            okButtonProps={{ danger: true }}
+          >
             <Button type='text' size='small' icon={<DeleteOutlined />} aria-label={t('removeTable')} />
           </Popconfirm>
         )}
@@ -252,7 +292,7 @@ const TableGroup: FC<GroupProps> = ({ table, guests, tables, selection, noTableL
               guest={guest}
               index={index}
               tables={tables}
-              showTable={false}
+              showTable='touch'
               showNote={showNote}
               selected={selection.has(guest.id)}
               noTableLabel={noTableLabel}
@@ -285,7 +325,10 @@ export const GuestsPanel: FC = () => {
   const [view, setView] = useState<View>(kind === 'seating' ? 'tables' : 'all')
   const listRef = useRef<HTMLDivElement>(null)
   const selection = useMemo(() => new Set(selectionList), [selectionList])
-  const tables = useMemo<TableOption[]>(() => content?.tables.map(({ id, name }) => ({ id, name })) ?? [], [content?.tables])
+  const tables = useMemo<TableOption[]>(
+    () => content?.tables.map(({ id, name }) => ({ id, name })) ?? [],
+    [content?.tables]
+  )
 
   if (!content) return null
   const { addTable, sortGuests, dedupeGuests, clearGuests, seatGuest } = useListEditorStoreBase.getState()
@@ -328,23 +371,22 @@ export const GuestsPanel: FC = () => {
 
   return (
     <div className='flex flex-col gap-3'>
-      <div className='grid grid-cols-3 gap-1.5'>
-        <Button className='h-auto flex-col gap-0.5 py-2 text-xs' icon={<SnippetsOutlined />} onClick={() => openImport('paste')}>
+      <div className='grid grid-cols-3 gap-2'>
+        <TileButton icon={<SnippetsOutlined />} onClick={() => openImport('paste')}>
           {t('importPaste')}
-        </Button>
-        <Button className='h-auto flex-col gap-0.5 py-2 text-xs' icon={<FileExcelOutlined />} onClick={() => openImport('file')}>
+        </TileButton>
+        <TileButton icon={<FileExcelOutlined />} onClick={() => openImport('file')}>
           {t('importFile')}
-        </Button>
-        <Button className='h-auto flex-col gap-0.5 py-2 text-xs' icon={<CameraOutlined />} onClick={() => openImport('photo')}>
+        </TileButton>
+        <TileButton icon={<CameraOutlined />} onClick={() => openImport('photo')}>
           {t('importPhoto')}
-        </Button>
+        </TileButton>
       </div>
 
       <QuickAdd tables={tables} showTable={kind !== 'list' || tables.length > 0} />
 
       <div className='flex items-center gap-1.5'>
         <Input
-          size='small'
           allowClear
           value={query}
           onChange={(event) => setQuery(event.target.value)}
@@ -353,12 +395,14 @@ export const GuestsPanel: FC = () => {
           prefix={<SearchOutlined className='text-muted' />}
         />
         <Dropdown menu={menu} trigger={['click']}>
-          <Button size='small' icon={<MoreOutlined />} aria-label={t('more')} />
+          <Button icon={<MoreOutlined />} aria-label={t('more')} />
         </Dropdown>
       </div>
 
-      <div className='flex items-center justify-between gap-2'>
-        <span className='text-xs text-muted'>{t('counts', { guests: content.guests.length, tables: content.tables.length })}</span>
+      <div className='flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5'>
+        <span className='text-xs text-muted'>
+          {t('counts', { guests: content.guests.length, tables: content.tables.length })}
+        </span>
         <Segmented<View>
           size='small'
           value={view}
@@ -374,7 +418,8 @@ export const GuestsPanel: FC = () => {
         <div className='flex flex-col gap-2'>
           <div className='flex gap-1.5'>
             <Button
-              size='small'
+              block
+              type='dashed'
               icon={<PlusOutlined />}
               onClick={() => addTable(tSamples('table', { number: content.tables.length + 1 }))}
             >
@@ -420,7 +465,7 @@ export const GuestsPanel: FC = () => {
                 guest={guest}
                 index={index}
                 tables={tables}
-                showTable={tables.length > 0}
+                showTable={tables.length > 0 ? 'always' : 'never'}
                 showNote={showNote}
                 selected={selection.has(guest.id)}
                 noTableLabel={noTableLabel}

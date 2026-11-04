@@ -87,7 +87,7 @@ export const EditorTopBar: FC<Props> = ({ zoom, fitZoom, pages, onZoomChange, pr
       </Link>
       <Input
         variant='borderless'
-        className='max-w-56 min-w-0 flex-1 px-1 font-semibold sm:px-2.5'
+        className='max-w-56 min-w-20 flex-1 px-1 font-semibold sm:px-2.5'
         value={title ?? ''}
         placeholder={t('untitled')}
         aria-label={t('titleLabel')}
@@ -116,7 +116,7 @@ export const EditorTopBar: FC<Props> = ({ zoom, fitZoom, pages, onZoomChange, pr
           <Button type='text' size='small' icon={<ZoomInOutlined />} onClick={() => step(1)} aria-label={t('zoomIn')} />
         </div>
         <span className='mr-1 hidden text-xs text-muted xl:inline'>{t('pages', { count: pages })}</span>
-        <LanguageSwitcher size='small' className='hidden xl:block' />
+        <LanguageSwitcher size='small' className='hidden xl:flex' />
         {/* Phones and tablets switch preview from the bottom bar. */}
         <span className='hidden lg:flex'>
           <HintTooltip title={previewing ? t('previewExitHint') : t('previewHint')}>

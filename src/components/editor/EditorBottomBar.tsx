@@ -43,7 +43,7 @@ export const EditorBottomBar: FC<Props> = ({ previewing, onPreviewChange }) => {
   return (
     <nav className='flex shrink-0 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] lg:hidden' aria-label={t('editorTools')}>
       {EDITOR_TABS.map((key) => (
-        <BarButton key={key} icon={TAB_ICONS[key]} label={t(`tabs.${key}`)} active={sheetOpen && tab === key} onClick={() => openTab(key)} />
+        <BarButton key={key} icon={TAB_ICONS[key]} label={t(`tabsShort.${key}`)} active={sheetOpen && tab === key} onClick={() => openTab(key)} />
       ))}
       <BarButton
         icon={previewing ? <EditOutlined /> : <EyeOutlined />}

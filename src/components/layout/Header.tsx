@@ -57,7 +57,7 @@ export const Header: FC = () => {
           ))}
         </nav>
         <div className='ml-auto flex shrink-0 items-center gap-2'>
-          <LanguageSwitcher className='hidden lg:block' />
+          <LanguageSwitcher className='hidden lg:flex' />
           <Link href={newListPath()} className='hidden sm:block'>
             <Button type='primary' shape='round'>
               {t('create')}

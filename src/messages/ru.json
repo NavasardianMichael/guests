@@ -443,7 +443,8 @@
       "addTable": "Добавить стол",
       "noMatches": "Ничего не найдено",
       "empty": "Список пока пуст",
-      "autoSeatPer": "человек"
+      "autoSeatPer": "человек",
+      "quickAddTable": "За стол:"
     },
     "layout": {
       "kind": "Что печатаем",
@@ -597,6 +598,12 @@
       "preparing": "Готовим PDF…",
       "done": "PDF скачан",
       "printing": "Открывается окно печати…"
+    },
+    "tabsShort": {
+      "guests": "Гости",
+      "layout": "Макет",
+      "design": "Дизайн",
+      "paper": "Бумага"
     }
   },
   "Errors": {
