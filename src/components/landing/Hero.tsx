@@ -46,7 +46,7 @@ export const Hero: FC = async () => {
             </Link>
             <Link
               href={newListPath()}
-              className='inline-flex items-center rounded-full bg-surface px-5 py-3 sm:px-6 sm:py-3.5 text-base font-semibold text-ink no-underline ring-1 ring-line transition hover:ring-ink/30'
+              className='inline-flex items-center rounded-full bg-surface px-5 py-3 sm:px-6 sm:py-3.5 text-base font-semibold text-ink no-underline ring-1 ring-line transition hover:-translate-y-0.5 hover:ring-ink/30'
             >
               {t('heroCta')}
             </Link>
