@@ -1,0 +1,22 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: guests-postgres
+    restart: unless-stopped
+    ports:
+      # Host 5010 — never 5432, which a local Postgres or an SSH tunnel often holds.
+      - '5010:5432'
+    environment:
+      POSTGRES_USER: guests
+      POSTGRES_PASSWORD: guests
+      POSTGRES_DB: guests
+    volumes:
+      - guests-pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U guests -d guests']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  guests-pg:

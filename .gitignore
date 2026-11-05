@@ -1,0 +1,40 @@
+# dependencies
+node_modules/
+
+# testing
+coverage/
+test-results/
+playwright-report/
+
+# next.js
+.next/
+/out/
+
+# production
+/build
+dist/
+
+# husky internals
+.husky/_
+
+# misc
+.DS_Store
+*.pem
+*.zip
+
+# debug
+npm-debug.log*
+.pnpm-debug.log*
+
+# env files
+.env*
+!.env.example
+!server/.env.example
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# editors
+.vs/
+.idea/

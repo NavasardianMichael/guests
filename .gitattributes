@@ -1,0 +1,5 @@
+# Normalise every text file to LF in the repository and in the working tree.
+# Without this, git warns "LF will be replaced by CRLF" on every command run on Windows,
+# and seven files were committed with CRLF while the other ~500 use LF.
+# Binary files are detected automatically by `text=auto` and left untouched.
+* text=auto eol=lf

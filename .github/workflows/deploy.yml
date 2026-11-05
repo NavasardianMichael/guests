@@ -1,0 +1,616 @@
+# =============================================================================
+# Build and deploy to production.
+#
+# How it works: docs/DEPLOYMENT.md. The one-time server setup, in order:
+# docs/PRODUCTION_SETUP.md.
+#
+# REQUIRED GITHUB SECRETS:
+#   SSH_HOST, SSH_USER, SSH_KEY, SSH_PORT (optional, default 22)
+#   APP_DIR          deployment root, e.g. /home/michael/apps/guests
+#   ENV_API_BASE64   base64 of the API env file (`pnpm env:base64 production`) — DATABASE_URL,
+#                    JWT_SECRET, CORS_ORIGIN, API_PUBLIC_URL, the mail engine, Google OAuth,
+#                    GEMINI_API_KEY (photo import). NODE_ENV/PORT/HOST/RENDER_ORIGIN are appended
+#                    below, so do not put them in the secret.
+#   NEXT_PUBLIC_API_URL    https://api.guests.eapps.site
+#   NEXT_PUBLIC_SITE_URL   https://guests.eapps.site
+#
+# OPTIONAL (empty = that feature off): NEXT_PUBLIC_SENTRY_DSN, NEXT_PUBLIC_GA_ID,
+#   NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION, NEXT_PUBLIC_YANDEX_VERIFICATION,
+#   NEXT_PUBLIC_BING_VERIFICATION; SENTRY_AUTH_TOKEN + SENTRY_ORG + SENTRY_PROJECT upload
+#   source maps to Sentry. All build-time: change one, redeploy the web.
+#
+# The NEXT_PUBLIC_* values are inlined into the browser bundle, so they are public by
+# construction. They are kept as Secrets, but this workflow also accepts Variables: it
+# reads secrets.* first, then vars.*. Those are different stores: a value in one is
+# invisible to the other, and a Secret with the same name as a Variable wins. An empty
+# value would fall through to localhost and ship a bundle that calls the visitor's machine.
+#
+# On-host layout:
+#   $APP_DIR/web/releases/<sha>/   Next standalone bundle (server.js, .next, public)
+#   $APP_DIR/web/current        -> releases/<sha>
+#   $APP_DIR/api/releases/<sha>/   dist, prisma, package.json, node_modules
+#   $APP_DIR/api/current        -> releases/<sha>
+#   $APP_DIR/shared/.env.api       mode 600, written by this workflow — outside every release
+#   $APP_DIR/db/                   Postgres compose + .env, created by this workflow ONCE
+#                                  (ensure_database: create-only, never recreated or rewritten)
+#   ~/.cache/puppeteer/            Chrome, downloaded by the API install, shared by every release
+# =============================================================================
+
+name: Deploy to Production
+
+on:
+  push:
+    branches: [master]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.claude/**'
+      - '.cursor/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  KEEP_RELEASES: 3
+  WEB_PORT: 7010
+  API_PORT: 9010
+  SSH_OPTS: '-o ServerAliveInterval=30 -o ServerAliveCountMax=120 -o TCPKeepAlive=yes -o ConnectTimeout=30'
+  # On the runners only: nothing here prints a PDF. The host's install downloads Chrome.
+  PUPPETEER_SKIP_DOWNLOAD: 'true'
+
+# Deploys queue rather than abort: cancelling mid-script could leave `current`
+# pointing at a release whose service was never restarted.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    outputs:
+      deploy_web: ${{ steps.flags.outputs.deploy_web }}
+      deploy_api: ${{ steps.flags.outputs.deploy_api }}
+      release_name: ${{ github.sha }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Path filters
+        uses: dorny/paths-filter@v4
+        id: filter
+        with:
+          filters: |
+            web:
+              - 'src/**'
+              - 'public/**'
+              - 'next.config.ts'
+              - 'postcss.config.mjs'
+              - 'tsconfig.json'
+            api:
+              - 'server/**'
+              - 'scripts/build-api-release.mjs'
+            workspace:
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - '.github/workflows/deploy.yml'
+              - '.nvmrc'
+
+      # A manual run deploys both sides; so does anything touching the shared
+      # manifests, since the lockfile governs both builds.
+      - name: Set deploy flags
+        id: flags
+        run: |
+          deploy_web=false
+          deploy_api=false
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || \
+             [ "${{ steps.filter.outputs.workspace }}" = "true" ]; then
+            deploy_web=true
+            deploy_api=true
+          fi
+          if [ "${{ steps.filter.outputs.web }}" = "true" ]; then deploy_web=true; fi
+          if [ "${{ steps.filter.outputs.api }}" = "true" ]; then deploy_api=true; fi
+          echo "deploy_web=$deploy_web" >> "$GITHUB_OUTPUT"
+          echo "deploy_api=$deploy_api" >> "$GITHUB_OUTPUT"
+          echo "deploy_web=$deploy_web deploy_api=$deploy_api"
+
+  verify:
+    name: Verify
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.deploy_web == 'true' || needs.changes.outputs.deploy_api == 'true'
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+      # Its postinstall (scripts/postinstall.mjs) generates the Prisma client that types
+      # server/src, and so tests/ and the web build; CI=true skips the database setup.
+      - run: pnpm install --frozen-lockfile
+      # The non-build half of `pnpm verify`; the build jobs below cover the rest.
+      - run: pnpm typecheck
+      - run: pnpm typecheck:server
+      - run: pnpm lint
+      - run: pnpm test
+
+  build-web:
+    name: Build / web
+    runs-on: ubuntu-latest
+    needs: [changes, verify]
+    if: needs.changes.outputs.deploy_web == 'true'
+    env:
+      NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL || vars.NEXT_PUBLIC_API_URL }}
+      NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL || vars.NEXT_PUBLIC_SITE_URL }}
+      # Optional; each one empty turns its feature off (Sentry, GA, a verification tag).
+      NEXT_PUBLIC_SENTRY_DSN: ${{ secrets.NEXT_PUBLIC_SENTRY_DSN || vars.NEXT_PUBLIC_SENTRY_DSN }}
+      NEXT_PUBLIC_GA_ID: ${{ secrets.NEXT_PUBLIC_GA_ID || vars.NEXT_PUBLIC_GA_ID }}
+      NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION: ${{ secrets.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || vars.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION }}
+      NEXT_PUBLIC_YANDEX_VERIFICATION: ${{ secrets.NEXT_PUBLIC_YANDEX_VERIFICATION || vars.NEXT_PUBLIC_YANDEX_VERIFICATION }}
+      NEXT_PUBLIC_BING_VERIFICATION: ${{ secrets.NEXT_PUBLIC_BING_VERIFICATION || vars.NEXT_PUBLIC_BING_VERIFICATION }}
+      # Source maps to Sentry (next.config.ts): uploaded only when the token is set.
+      SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+      SENTRY_ORG: ${{ secrets.SENTRY_ORG || vars.SENTRY_ORG }}
+      SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT || vars.SENTRY_PROJECT }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+
+      # Empty or loopback here ships a bundle whose API calls go to the visitor's own machine
+      # (src/api falls back to localhost:9010) and whose canonicals, sitemap and JSON-LD name
+      # localhost:7010. Fail before that bundle ships.
+      - name: Require public origins
+        run: |
+          fail=0
+          check() {
+            name="$1"
+            value="$2"
+            if [ -z "$value" ]; then
+              echo "::error::$name is empty. Set it as a repository Secret or Variable — secrets.* and vars.* are different stores."
+              fail=1
+              return
+            fi
+            if printf '%s' "$value" | grep -Eqi 'localhost|127\.0\.0\.1|^http://'; then
+              echo "::error::$name must be a public https origin, not the local fallback. Refusing to ship a bundle that talks to the visitor's machine."
+              fail=1
+            fi
+          }
+          check NEXT_PUBLIC_API_URL "$NEXT_PUBLIC_API_URL"
+          check NEXT_PUBLIC_SITE_URL "$NEXT_PUBLIC_SITE_URL"
+          exit "$fail"
+
+      - name: Build
+        run: pnpm build
+
+      # `output: 'standalone'` traces node_modules into .next/standalone but leaves
+      # public/ and .next/static out on purpose — a CDN would normally serve them.
+      # We serve them from nginx off the same directory, and headless Chrome loads them from
+      # Node when it prints /render, so they have to be copied in.
+      - name: Assemble standalone bundle
+        run: |
+          cp -r public .next/standalone/
+          cp -r .next/static .next/standalone/.next/
+          test -f .next/standalone/server.js
+          tar -czf web-build.tar.gz -C .next/standalone .
+          echo "bundle: $(du -sh web-build.tar.gz | cut -f1)"
+
+      # Boot what actually ships. Output file tracing can copy a package's manifest without
+      # the files behind its `exports` map, and the result is an ERR_MODULE_NOT_FOUND that
+      # appears only when node runs server.js. `next build` stays green, and because the
+      # deploy restarts the API first, finding it on the host leaves production with a
+      # migrated database behind a frontend that will not boot.
+      #
+      # Any HTTP response proves the server booted; the home page needs neither the API nor
+      # the database, so this does not tie the build to production's uptime.
+      - name: Smoke-test the standalone bundle
+        working-directory: .next/standalone
+        env:
+          PORT: ${{ env.WEB_PORT }}
+          HOSTNAME: 127.0.0.1
+          NODE_ENV: production
+        run: |
+          node server.js > /tmp/web-smoke.log 2>&1 &
+          pid=$!
+          for i in $(seq 1 30); do
+            if ! kill -0 "$pid" 2>/dev/null; then
+              echo "::error::the standalone bundle exited before it listened on $PORT"
+              cat /tmp/web-smoke.log
+              exit 1
+            fi
+            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 "http://127.0.0.1:$PORT/" || true)
+            if [ -n "$code" ] && [ "$code" != "000" ]; then
+              echo "standalone bundle answered / with HTTP $code after ${i}s"
+              kill "$pid" 2>/dev/null || true
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::the standalone bundle never answered on port $PORT"
+          cat /tmp/web-smoke.log
+          kill "$pid" 2>/dev/null || true
+          exit 1
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: web-build
+          path: web-build.tar.gz
+          retention-days: 1
+
+  build-api:
+    name: Build / api
+    runs-on: ubuntu-latest
+    needs: [changes, verify]
+    if: needs.changes.outputs.deploy_api == 'true'
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+
+      # tsc -> server/dist, then scripts/build-api-release.mjs assembles a standalone
+      # single-package project in out/api. See that script's header for why the API cannot
+      # ship as a workspace slice or as a prebuilt node_modules.
+      - name: Build API release
+        run: pnpm build:api
+
+      # Resolve the release's own lockfile here so the host install can be
+      # --frozen-lockfile. Versions are already pinned exactly by the build script,
+      # so this only resolves transitives.
+      - name: Resolve release lockfile
+        working-directory: out/api
+        run: pnpm install --prod --lockfile-only
+
+      # The production compose file rides along so the deploy can create the database on
+      # a host that has none yet (ensure_database below). It is never applied to a running one.
+      - name: Create API archive
+        run: |
+          cp deployment/docker-compose.prod.yml out/api/
+          tar -czf api-build.tar.gz -C out/api .
+          echo "bundle: $(du -sh api-build.tar.gz | cut -f1)"
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: api-build
+          path: api-build.tar.gz
+          retention-days: 1
+
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    needs: [changes, verify, build-web, build-api]
+    # `always()` because a side with no changes skips its build job, and a skipped need
+    # would otherwise skip this job too. That is also why "not failed" is not enough: a
+    # failed verify SKIPS both builds rather than failing them. So: verify must have
+    # passed, and every side that is deploying must have built.
+    if: |
+      always() &&
+      needs.verify.result == 'success' &&
+      (needs.changes.outputs.deploy_web == 'true' || needs.changes.outputs.deploy_api == 'true') &&
+      (needs.changes.outputs.deploy_web != 'true' || needs.build-web.result == 'success') &&
+      (needs.changes.outputs.deploy_api != 'true' || needs.build-api.result == 'success')
+    steps:
+      - name: Download web artifact
+        if: needs.changes.outputs.deploy_web == 'true'
+        uses: actions/download-artifact@v7
+        with:
+          name: web-build
+
+      - name: Download API artifact
+        if: needs.changes.outputs.deploy_api == 'true'
+        uses: actions/download-artifact@v7
+        with:
+          name: api-build
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.10.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_KEY }}
+
+      - name: Add server to known hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -p "${{ secrets.SSH_PORT || 22 }}" "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts
+
+      # The runtime half of the API env is owned here rather than by the secret, so it
+      # cannot drift from the paths and ports this workflow and the systemd units actually
+      # use. RENDER_ORIGIN is the web process itself: headless Chrome prints /render over
+      # loopback, not through nginx and the public TLS hop. Stale lines are stripped before
+      # the current values are appended.
+      - name: Prepare API env file
+        if: needs.changes.outputs.deploy_api == 'true'
+        run: |
+          echo "${{ secrets.ENV_API_BASE64 }}" | base64 -d | tr -d '\r' > /tmp/env.api
+          sed -i '/^\(NODE_ENV\|PORT\|HOST\|RENDER_ORIGIN\)=/d' /tmp/env.api
+          {
+            echo ""
+            echo "NODE_ENV=production"
+            echo "PORT=${{ env.API_PORT }}"
+            echo "HOST=127.0.0.1"
+            echo "RENDER_ORIGIN=http://127.0.0.1:${{ env.WEB_PORT }}"
+          } >> /tmp/env.api
+          echo "env file: $(grep -c '=' /tmp/env.api) assignments"
+          echo "keys:"; sed -n 's/^\([A-Z_]*\)=.*/  - \1/p' /tmp/env.api
+
+      - name: Copy artifacts to host
+        run: |
+          FILES=""
+          if [ "${{ needs.changes.outputs.deploy_web }}" = "true" ]; then FILES="$FILES web-build.tar.gz"; fi
+          if [ "${{ needs.changes.outputs.deploy_api }}" = "true" ]; then FILES="$FILES api-build.tar.gz /tmp/env.api"; fi
+          scp ${{ env.SSH_OPTS }} -P "${{ secrets.SSH_PORT || 22 }}" \
+            $FILES "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/tmp/"
+
+      # API first: the web calls it from the browser the moment new pages serve, so the
+      # schema and the API must be new before they do. The PDF check runs last, once both
+      # sides are live, because a print needs both: the API's Chrome and the web's /render.
+      - name: Deploy
+        run: |
+          ssh ${{ env.SSH_OPTS }} -p "${{ secrets.SSH_PORT || 22 }}" \
+            "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" bash -s -- \
+            "${{ secrets.APP_DIR }}" \
+            "${{ needs.changes.outputs.release_name }}" \
+            "${{ env.KEEP_RELEASES }}" \
+            "${{ needs.changes.outputs.deploy_web }}" \
+            "${{ needs.changes.outputs.deploy_api }}" \
+            "${{ env.WEB_PORT }}" \
+            "${{ env.API_PORT }}" << 'EOF'
+          set -euo pipefail
+          APP_DIR="$1"; RELEASE="$2"; KEEP="$3"
+          DEPLOY_WEB="$4"; DEPLOY_API="$5"; WEB_PORT="$6"; API_PORT="$7"
+
+          mkdir -p "$APP_DIR/shared" "$APP_DIR/web/releases" "$APP_DIR/api/releases"
+
+          wait_for() {
+            local name="$1" url="$2" unit="$3"
+            for i in $(seq 1 45); do
+              if curl -sf -o /dev/null --max-time 5 "$url"; then
+                echo "$name healthy after $((i * 2))s"
+                return 0
+              fi
+              sleep 2
+            done
+            echo "::error::$name did not become healthy within 90s ($url)"
+            systemctl status "$unit" --no-pager --lines=20 || true
+            journalctl -u "$unit" -n 200 --no-pager || true
+            return 1
+          }
+
+          # Creates the production Postgres when, and only when, it does not exist yet. It never
+          # recreates, reconfigures or removes anything: an existing container is at most
+          # started, an existing db/.env or compose file is never rewritten, and nothing here
+          # runs `down`, `rm` or touches a volume. If the container is gone but its volume
+          # survived, `up` reattaches that data — Postgres ignores POSTGRES_* on an initialised
+          # volume, so DATABASE_URL must still carry the password the volume was created with.
+          ensure_database() {
+            local compose_src="$1" db_dir="$APP_DIR/db"
+            local name=guests-postgres-prod volume=guests-prod_guests-pg-prod
+
+            # Only the container on this host is ours to create; any other DATABASE_URL is left alone.
+            local target
+            target=$(node -e 'const u = new URL(process.env.DATABASE_URL); console.log(`${u.hostname}:${u.port}`)')
+            case "$target" in
+              127.0.0.1:5010 | localhost:5010) ;;
+              *)
+                echo "database: DATABASE_URL points at $target, not this host's container — not managed"
+                return 0
+                ;;
+            esac
+
+            if docker container inspect "$name" >/dev/null 2>&1; then
+              if [ "$(docker container inspect -f '{{.State.Running}}' "$name")" = "true" ]; then
+                echo "database: $name already running — left as is"
+              else
+                echo "database: $name exists but is stopped — starting it"
+                docker start "$name" >/dev/null
+              fi
+            else
+              mkdir -p "$db_dir"
+              [ -f "$db_dir/docker-compose.prod.yml" ] || cp "$compose_src" "$db_dir/docker-compose.prod.yml"
+              # POSTGRES_* derived from DATABASE_URL, so the two cannot disagree on a first
+              # install. Restricted to URL-safe characters: compose interpolates `$` in .env.
+              if [ ! -f "$db_dir/.env" ]; then
+                ( umask 077; node -e '
+                  const u = new URL(process.env.DATABASE_URL)
+                  const values = {
+                    POSTGRES_USER: decodeURIComponent(u.username),
+                    POSTGRES_PASSWORD: decodeURIComponent(u.password),
+                    POSTGRES_DB: u.pathname.replace(/^\//, ""),
+                  }
+                  for (const [key, value] of Object.entries(values)) {
+                    if (!/^[A-Za-z0-9._~-]+$/.test(value)) {
+                      console.error(`${key} from DATABASE_URL is empty or has characters other than A-Z a-z 0-9 . _ ~ - (use openssl rand -hex 32)`)
+                      process.exit(1)
+                    }
+                  }
+                  console.log(Object.entries(values).map(([key, value]) => `${key}=${value}`).join("\n"))
+                ' > "$db_dir/.env.new" ) || { rm -f "$db_dir/.env.new"; echo "::error::cannot derive POSTGRES_* from DATABASE_URL"; return 1; }
+                chmod 600 "$db_dir/.env.new" && mv "$db_dir/.env.new" "$db_dir/.env"
+              fi
+              if docker volume inspect "$volume" >/dev/null 2>&1; then
+                echo "database: $name missing but volume $volume exists — reattaching the existing data"
+              else
+                echo "database: creating $name with a new, empty volume $volume"
+              fi
+              ( cd "$db_dir" && docker compose -f docker-compose.prod.yml up -d --no-recreate )
+            fi
+
+            for i in $(seq 1 30); do
+              if [ "$(docker container inspect -f '{{.State.Health.Status}}' "$name" 2>/dev/null)" = "healthy" ]; then
+                echo "database: healthy"
+                return 0
+              fi
+              sleep 2
+            done
+            echo "::error::$name did not become healthy within 60s"
+            docker logs --tail 100 "$name" || true
+            return 1
+          }
+
+          # Puppeteer downloads its own Chrome, but Chrome links against the host's system
+          # libraries. A missing one fails every PDF at runtime while /health stays green, so
+          # it stops the deploy here, before the symlink moves.
+          ensure_chrome() {
+            local chrome missing
+            # The binary services/pdf.ts launches: chrome-headless-shell, not full Chrome.
+            chrome=$(node -e "import('puppeteer').then((p) => console.log(p.default.executablePath({ headless: 'shell' })))")
+            if [ ! -x "$chrome" ]; then
+              echo "::error::no Chrome at $chrome — puppeteer's postinstall did not download it"
+              return 1
+            fi
+            missing=$(ldd "$chrome" | awk '/not found/ { print $1 }')
+            if [ -n "$missing" ]; then
+              echo "::error::Chrome cannot start, these system libraries are missing — docs/PRODUCTION_SETUP.md step 2"
+              echo "$missing" | sed 's/^/  /'
+              return 1
+            fi
+            echo "chrome: $chrome"
+          }
+
+          # The product is the PDF, and no health check covers it: Chrome on this host printing
+          # the live web's /render page. Printing an empty draft runs the whole path, needs no
+          # account, and is the same code every list's PDF uses.
+          check_pdf() {
+            local origin out=/tmp/guests-pdf-check.pdf result
+            origin=$(sed -n 's/^CORS_ORIGIN=//p' "$APP_DIR/shared/.env.api" | tail -n 1 | tr -d "\"'" | sed 's:/*$::')
+            result=$(curl -s -o "$out" -w '%{http_code} %{content_type}' --max-time 90 \
+              -X POST "http://127.0.0.1:$API_PORT/pdf" \
+              -H "Origin: $origin" -H 'Content-Type: application/json' \
+              --data '{"title":"Deploy check","content":{"heading":"Deploy check"},"design":{}}' || true)
+            case "$result" in
+              "200 application/pdf"*)
+                echo "pdf: printed $(wc -c < "$out") bytes"
+                rm -f "$out"
+                return 0
+                ;;
+            esac
+            echo "::error::the PDF check failed (status, type: ${result:-no answer})"
+            head -c 300 "$out" 2>/dev/null && echo || true
+            rm -f "$out"
+            journalctl -u guests-api -n 60 --no-pager || true
+            echo "'No usable sandbox' in the log above: docs/PRODUCTION_SETUP.md, PUPPETEER_NO_SANDBOX"
+            return 1
+          }
+
+          if [ "$DEPLOY_API" = "true" ]; then
+            echo "==> API $RELEASE"
+            NEW="$APP_DIR/api/releases/$RELEASE"
+            rm -rf "$NEW"; mkdir -p "$NEW"
+            tar -xzf /tmp/api-build.tar.gz -C "$NEW"
+            install -m 600 /tmp/env.api "$APP_DIR/shared/.env.api"
+
+            cd "$NEW"
+
+            # `ssh host bash -s` is a non-interactive, NON-LOGIN shell: it reads neither
+            # ~/.profile nor ~/.bashrc, which on Debian returns early unless interactive.
+            # So every PATH entry a shell profile owns is invisible here, and `pnpm -v`
+            # can work when you ssh in by hand while the deploy three lines later says
+            # "command not found". Resolve it here rather than inheriting a login PATH
+            # this workflow does not control.
+            resolve_pnpm() {
+              export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+              export PNPM_HOME="${PNPM_HOME:-$HOME/.local/share/pnpm}"
+              export PATH="$PNPM_HOME:$HOME/.local/bin:/usr/local/bin:$PATH"
+              command -v pnpm >/dev/null && return 0
+
+              # The version that resolved the lockfile, straight off the release manifest,
+              # so a self-installed pnpm cannot be a major behind --frozen-lockfile.
+              want=$(node -p "require('./package.json').packageManager || 'pnpm@latest'" 2>/dev/null || echo 'pnpm@latest')
+              mkdir -p "$HOME/.local/bin"
+
+              # corepack, when the distribution ships it. --install-directory puts the shim
+              # in $HOME, which survives a node reinstall and needs no sudo. Naming pnpm
+              # matters: a bare `corepack enable` also shims npm.
+              if command -v corepack >/dev/null; then
+                echo "resolving pnpm through corepack"
+                corepack enable --install-directory "$HOME/.local/bin" pnpm || true
+                command -v pnpm >/dev/null && return 0
+              fi
+
+              # npm is the one package manager guaranteed to sit beside node. --prefix keeps
+              # the install in $HOME — no sudo, and $HOME/.local/bin is already on the PATH.
+              if command -v npm >/dev/null; then
+                echo "corepack absent; installing $want with npm"
+                npm install --global --prefix "$HOME/.local" "$want" || true
+                command -v pnpm >/dev/null && return 0
+              fi
+
+              echo "::error::pnpm is not reachable from a non-interactive shell, and could not be installed"
+              echo "  node:     $(command -v node || echo MISSING)"
+              echo "  npm:      $(command -v npm || echo MISSING)"
+              echo "  corepack: $(command -v corepack || echo MISSING)"
+              echo "  wanted:   $want"
+              echo "  PATH:     $PATH"
+              echo "  fix: install pnpm for the deploy user, e.g."
+              echo "       npm install --global --prefix \"$HOME/.local\" $want"
+              return 1
+            }
+            resolve_pnpm
+            echo "pnpm $(pnpm --version) at $(command -v pnpm)"
+
+            # The same directory guests-api.service names. Spelled out rather than left to
+            # puppeteer's default, so the install and the service cannot look in different places.
+            # A Chrome version already there is reused; an upgrade adds the new one beside it.
+            export PUPPETEER_CACHE_DIR="$HOME/.cache/puppeteer"
+
+            # A normal install, which is what makes @prisma/client's and puppeteer's
+            # postinstalls run and fetches every native dependency for THIS host's platform.
+            # The release manifest carries `packageManager`, so this runs the same pnpm that
+            # resolved the lockfile whatever the host happens to have.
+            pnpm install --prod --frozen-lockfile
+            # Explicit: the postinstall above does not always locate the schema.
+            ./node_modules/.bin/prisma generate --schema prisma/schema.prisma
+            ensure_chrome
+
+            set -a; . "$APP_DIR/shared/.env.api"; set +a
+            ensure_database "$NEW/docker-compose.prod.yml"
+            ./node_modules/.bin/prisma migrate deploy --schema prisma/schema.prisma
+            # No seed: prisma/seed.ts creates the dev test accounts and is not in the release.
+
+            ln -sfn "$NEW" "$APP_DIR/api/current"
+            sudo systemctl restart guests-api
+            wait_for "API" "http://127.0.0.1:$API_PORT/health" guests-api
+          fi
+
+          if [ "$DEPLOY_WEB" = "true" ]; then
+            echo "==> web $RELEASE"
+            NEW="$APP_DIR/web/releases/$RELEASE"
+            rm -rf "$NEW"; mkdir -p "$NEW"
+            tar -xzf /tmp/web-build.tar.gz -C "$NEW"
+            ln -sfn "$NEW" "$APP_DIR/web/current"
+            sudo systemctl restart guests-web
+            wait_for "web" "http://127.0.0.1:$WEB_PORT/" guests-web
+          fi
+
+          check_pdf
+
+          # Keep the newest $KEEP releases so a rollback target survives.
+          for side in web api; do
+            d="$APP_DIR/$side/releases"
+            [ -d "$d" ] || continue
+            ( cd "$d" && ls -t | tail -n +$((KEEP + 1)) | xargs -r rm -rf )
+          done
+
+          rm -f /tmp/web-build.tar.gz /tmp/api-build.tar.gz /tmp/env.api
+          echo "==> done"
+          EOF
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "## Deployment"
+            echo "**Release:** \`${{ needs.changes.outputs.release_name }}\`"
+            echo ""
+            if [ "${{ needs.changes.outputs.deploy_web }}" = "true" ]; then echo "- web (\`web/current\`, systemd \`guests-web\`)"; fi
+            if [ "${{ needs.changes.outputs.deploy_api }}" = "true" ]; then echo "- api (\`api/current\`, systemd \`guests-api\`) + \`prisma migrate deploy\`"; fi
+          } >> "$GITHUB_STEP_SUMMARY"

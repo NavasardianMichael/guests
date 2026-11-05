@@ -1,0 +1,69 @@
+# =============================================================================
+# CI — the `pnpm verify` gate, plus the API release build, on every pull request.
+#
+# Steps are spelled out individually so the Actions UI names the gate that broke,
+# in the order `verify` runs them: fastest-failing first.
+#
+# No database: the tests are unit tests only, and `next build` needs no API.
+# No Chrome either: nothing here prints a PDF, so Puppeteer's download is skipped.
+# =============================================================================
+
+name: CI
+
+on:
+  pull_request:
+    branches: [master]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PUPPETEER_SKIP_DOWNLOAD: 'true'
+
+jobs:
+  ci:
+    name: CI
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+
+      # Its postinstall (scripts/postinstall.mjs) generates the Prisma client that types
+      # server/src; CI=true skips the env files, Docker, migrations and seed.
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck (web)
+        run: pnpm typecheck
+
+      - name: Typecheck (server)
+        run: pnpm typecheck:server
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Unit tests
+        run: pnpm test
+
+      - name: Build (web)
+        run: pnpm build
+        env:
+          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL || vars.NEXT_PUBLIC_API_URL }}
+          NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL || vars.NEXT_PUBLIC_SITE_URL }}
+
+      - name: Build (API release)
+        run: pnpm build:api

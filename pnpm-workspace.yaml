@@ -1,0 +1,18 @@
+packages:
+  - server
+
+onlyBuiltDependencies:
+  - '@prisma/client'
+  - '@prisma/engines'
+  - prisma
+  - puppeteer
+  - '@node-rs/argon2'
+
+ignoredBuiltDependencies:
+  - '@google/genai'
+  - '@parcel/watcher'
+  - '@swc/core'
+  - protobufjs
+  - esbuild
+  - sharp
+  - unrs-resolver

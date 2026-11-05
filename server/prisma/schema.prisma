@@ -1,0 +1,64 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// An account. Signs in with a password, Google, or both.
+model User {
+  id                     String    @id @default(cuid())
+  email                  String    @unique
+  fullName               String
+  /// Null for a Google-only account.
+  passwordHash           String?
+  googleId               String?   @unique
+  avatarUrl              String?
+  /// Set when the inbox was proven: Google vouched for it, or the owner opened an emailed
+  /// link (verification or password reset). A password account cannot sign in until it is
+  /// set (routes/identity.ts), and Google linking claims an account where it is not
+  /// (routes/identity-google.ts).
+  emailVerifiedAt        DateTime?
+  /// The pending verification link (hashed, like the reset token). Cleared once used.
+  emailVerifyTokenHash   String?   @unique
+  emailVerifyExpiresAt   DateTime?
+  /// Bumped by password reset/change and account delete; every session cookie minted
+  /// against an older value stops being honoured (middleware/auth.ts).
+  tokenVersion           Int       @default(0)
+  passwordResetTokenHash String?   @unique
+  passwordResetExpiresAt DateTime?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  lists GuestList[]
+}
+
+/// One guest list and how it prints. `content` and `design` are JSON coerced by
+/// services/listDocument.ts on every write: the shape is the web's `ListContent` / `ListDesign`.
+///
+/// Owned by an account (`userId`) or by a browser's guest key (`guestKeyHash`, lib/guest.ts) —
+/// exactly one of the two, enforced by a CHECK constraint in the migration. Signing in moves a
+/// guest's lists to the account.
+model GuestList {
+  id           String    @id @default(cuid())
+  userId       String?
+  user         User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// SHA-256 of the guest cookie's key; the key itself is never stored.
+  guestKeyHash String?
+  title        String
+  /// Denormalised from `design` / `content` for listing without parsing JSON.
+  templateId   String
+  kind         String
+  guestCount   Int       @default(0)
+  content      Json
+  design       Json
+  /// Set once billing is live and this list is paid for (docs/BILLING.md). Never set today.
+  paidAt       DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([userId, updatedAt])
+  @@index([guestKeyHash, updatedAt])
+}
