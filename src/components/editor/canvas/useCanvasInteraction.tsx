@@ -53,6 +53,12 @@ type NameDrag = {
   element: HTMLElement
   startX: number
   startY: number
+  /**
+   * From the pointer to the name's centre, px, at the press. A name grabbed by its grip is held
+   * outside its left end — outside its table — so a drag straight down never has the pointer over
+   * a table; the name's centre is (`seatAt`).
+   */
+  grab: { x: number; y: number }
   moved: boolean
   /** The table it was taken from, raised above the others for the drag. */
   table: HTMLElement | null
@@ -311,17 +317,19 @@ export const useCanvasInteraction = ({ layout, scale, sheetRef }: Options) => {
   }
 
   /**
-   * The seat under the pointer: in the table it is over, before the first name whose middle is
-   * below it. Measured on the sheet as the drag found it, so names making room never move out
-   * from under the pointer and back.
+   * The seat the dragged name is over: in the table under the pointer — or, failing that, under
+   * the name's centre — before the first name whose middle is below the name's own. Measured on
+   * the sheet as the drag found it, so names making room never move out from under the pointer
+   * and back.
    */
   const seatAt = (drag: NameDrag, clientX: number, clientY: number): Seat | null => {
     const root = sheetRef.current
     if (!root || !drag.boxes) return null
     const origin = root.getBoundingClientRect()
-    const x = clientX - origin.left
-    const y = clientY - origin.top
-    const table = drag.boxes.tables.find(({ box }) => x >= box.left && x <= box.right && y >= box.top && y <= box.bottom)
+    const y = clientY + drag.grab.y - origin.top
+    const over = (x: number) =>
+      drag.boxes?.tables.find(({ box }) => x >= box.left && x <= box.right && y >= box.top && y <= box.bottom)
+    const table = over(clientX - origin.left) ?? over(clientX + drag.grab.x - origin.left)
     if (!table) return null
     const next = drag.boxes.names.find(
       (name) => name.tableId === table.id && name.id !== drag.guestId && (name.box.top + name.box.bottom) / 2 > y
@@ -760,12 +768,15 @@ export const useCanvasInteraction = ({ layout, scale, sheetRef }: Options) => {
     }
     pressRef.current = { id: guestId, wasSelected: store.selection.includes(guestId), moved: false }
     store.select([guestId])
+    const element = event.currentTarget as HTMLElement
+    const rect = element.getBoundingClientRect()
     dragRef.current = {
       type: 'name',
       guestId,
-      element: event.currentTarget as HTMLElement,
+      element,
       startX: event.clientX,
       startY: event.clientY,
+      grab: { x: rect.left + rect.width / 2 - event.clientX, y: rect.top + rect.height / 2 - event.clientY },
       moved: false,
       table: null,
       boxes: null,
