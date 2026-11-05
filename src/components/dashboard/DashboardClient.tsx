@@ -104,7 +104,7 @@ export const DashboardClient: FC = () => {
     return (
       <div className='mt-10 grid grid-cols-2 gap-x-6 gap-y-10 md:grid-cols-3 xl:grid-cols-4'>
         {lists.map((item) => (
-          <ListCard key={item.id} list={item} onDuplicate={onDuplicate} onDelete={onDelete} onDownload={(target) => void run(target.id, target, 'download')} />
+          <ListCard key={item.id} list={item} onDuplicate={onDuplicate} onDelete={onDelete} onDownload={(target) => void run(target.id, target, target.paidAt)} />
         ))}
       </div>
     )

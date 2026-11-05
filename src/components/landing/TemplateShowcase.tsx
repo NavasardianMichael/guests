@@ -7,8 +7,8 @@ import { type TemplateId, TEMPLATES } from '@constants/templates'
 import { TemplateCard } from '@components/templates/TemplateCard'
 import { ArrowRightOutlined } from '@components/ui/icons'
 
-/** A spread of tastes, not the first six in catalogue order. */
-const FEATURED: TemplateId[] = ['ivory', 'ornament', 'midnight', 'botanical', 'watercolor', 'classic']
+/** The free template first, then a spread of tastes — not the first six in catalogue order. */
+const FEATURED: TemplateId[] = ['memorial', 'ivory', 'ornament', 'midnight', 'botanical', 'watercolor']
 
 export const TemplateShowcase: FC = async () => {
   const t = await getTranslations('Home')

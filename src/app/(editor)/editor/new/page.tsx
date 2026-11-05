@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { getTranslations } from 'next-intl/server'
 import { PRINT_KINDS, type PrintKind } from '@store/lists/single/types'
-import { KIND_QUERY, SAMPLE_QUERY, TEMPLATE_QUERY } from '@constants/routes'
+import { KIND_QUERY, TEMPLATE_QUERY } from '@constants/routes'
 import { DEFAULT_TEMPLATE_ID, isTemplateId } from '@constants/templates'
 import { NewListClient } from '@components/editor/NewListClient'
 
@@ -22,7 +22,6 @@ export default async function NewListPage({ searchParams }: Props) {
     <NewListClient
       templateId={isTemplateId(template) ? template : DEFAULT_TEMPLATE_ID}
       kind={isKind(kind) ? kind : 'seating'}
-      sample={query[SAMPLE_QUERY] === '1'}
     />
   )
 }

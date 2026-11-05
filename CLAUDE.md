@@ -44,17 +44,18 @@ cv-builder's notes: under `concurrently` on Windows `tsx watch` never starts the
 | Templates (palette, typography, table style, free/premium) | `src/constants/templates.ts`; decor in `src/components/sheet/sheet.css` under `.sht-<id>` |
 | Paper formats | `src/constants/paper.ts` |
 | **Layout engine** (where every block sits, mm; text wrapping) | `src/helpers/sheetLayout.ts` · browser text metrics `src/helpers/measureText.ts` · re-layout when fonts load `src/hooks/useSheetLayout.ts` |
+| "Fit to the page" (button at the first page's top-right corner): columns + text size, fewest pages, names whole | `src/helpers/fitSheet.ts` · store `fitToPage` · button in `EditorCanvas` page extras |
 | The renderer (editor, previews, PDF) | `src/components/sheet/SheetDocument.tsx` + `sheet.css`; scaled previews `SheetPreview.tsx` |
 | Editor interactions (drag, drop, snap, marquee, inline edit) | `src/components/editor/canvas/useCanvasInteraction.tsx`, given to the sheet through `SheetInteraction.tsx`; selection actions `SelectionBar.tsx`; keys `useCanvasShortcuts.ts` |
 | Editor state, undo/redo | `src/store/lists/single/store.ts` · autosave `src/components/editor/useAutosave.ts` · chrome state `src/store/editorUi/store.ts` |
-| Panels = the editor's steps, in order (`EDITOR_TABS`) | `src/components/editor/panels/` — Kind, Design, Guests (quick add, by-table view, rows sorted with @dnd-kit across tables), Layout, Paper. Until a list has guests, every step but Guests draws the canvas read-only on sample names (`EditorShell`) |
+| Panels = the editor's steps, in order (`EDITOR_TABS`) | `src/components/editor/panels/` — Kind, Design, Guests (quick add, by-table view, rows sorted with @dnd-kit across tables), Layout, Paper. A new list starts with the sample wedding as its own, editable guests and opens at Kind (`newListDocument`, `markJustCreated`) |
 | Reset buttons (top bar: all; tab header; section header) | what each scope puts back `src/helpers/designReset.ts` · button + confirm `src/components/editor/controls/ResetButton.tsx` · paper change maths `src/helpers/paperChange.ts` |
 | "Leave this page?" while unsaved | `src/components/LeaveGuard.tsx` (tab close/reload, links, Back) · register with `useLeaveGuard` (`src/hooks/`) — the editor's autosave does |
 | Print preview (fullscreen modal) | `src/components/editor/PreviewModal.tsx` |
 | Import | `src/components/editor/import/` · parsing `src/helpers/guestImport.ts` · photo → `server/src/routes/ai.ts` → `services/guestReader.ts` (Gemini) |
 | Guest drafts (localStorage) | `src/helpers/localDraft.ts` — imported on sign-in by `EditorShell` |
-| PDF and printing | `server/src/services/pdf.ts` prints the web's `/render` page (`src/app/render/`); Print in the editor prints that PDF through a hidden frame (`src/hooks/usePdfDownload.ts`) |
-| Who may print what | `server/src/services/entitlement.ts` (billing off: everything) |
+| PDF | `server/src/services/pdf.ts` prints the web's `/render` page (`src/app/render/`); the editor and dashboard only download it (`src/hooks/usePdfDownload.ts`, `PdfActions`) — no browser printing |
+| Who may print what | `server/src/services/entitlement.ts`: only the free template (`memorial`, shown as “Classic”) unless paid; web twin `isPrintable` |
 | Languages | `src/i18n/request.ts` (cookie `NEXT_LOCALE`, default hy) · `src/messages/{hy,ru,en}.json` · switcher `components/layout/LanguageSwitcher.tsx` |
 | Auth (password + Google), guest key | as cv-builder: `server/src/routes/identity*.ts`, `lib/guest.ts`, `services/guestLists.ts` |
 | CI/CD, production | `.github/workflows/{ci,deploy}.yml` · `docs/DEPLOYMENT.md` · `docs/PRODUCTION_SETUP.md` · `deployment/` |
@@ -79,11 +80,13 @@ cv-builder's notes: under `concurrently` on Windows `tsx watch` never starts the
   another table re-seats the guest. In free mode `layout.positions` pins blocks; a block never
   dragged keeps its grid place. Changing the grid (columns, gaps, cards) clears positions in
   grid mode; changing the paper scales them.
-- **Resizing** (the handle at a block's bottom-right corner) writes `layout.sizes[id]` in any
+- **Resizing** is for tables only (the handle at a table's bottom-right corner); guests, cards,
+  header and footer are moved by grabbing, not sized. It writes `layout.sizes[id]` in any
   mode: `w` re-wraps the text (capped at the column in a grid, at the sheet when free), `h` is
-  a *least* height — `layoutSheet` never makes a block shorter than its text. Place cards have
-  no per-card size: resizing one sets `cardWidth`/`cardHeight` for all. Sizes are cleaned up
-  wherever positions are, and scaled with the paper.
+  a *least* height — `layoutSheet` never makes a block shorter than its text. Sizes saved on
+  other blocks earlier still apply until reset. Place cards are sized in the Layout step
+  (`cardWidth`/`cardHeight`, for all). Sizes are cleaned up wherever positions are, and scaled
+  with the paper.
 - **Sheet colours and typography are document data**, so hex values live in `templates.ts`,
   not `tokens.ts`. App-chrome colours live only in `tokens.ts`.
 - **The API coerces, it does not reject**, every list write (`coerceContent`/`coerceDesign`):

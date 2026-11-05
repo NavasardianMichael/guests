@@ -183,8 +183,8 @@ export const ImportModal: FC = () => {
       onCancel={close}
       title={t('title')}
       width={720}
-      // Phones: nearly the full screen, close to the top, so the preview has room.
-      style={{ maxWidth: 'calc(100vw - 16px)', top: 16 }}
+      // Phones: nearly the full width, so the preview has room.
+      style={{ maxWidth: 'calc(100vw - 16px)' }}
       destroyOnHidden
       okText={t('submit', { count: guests.filter((guest) => guest.name.trim()).length })}
       okButtonProps={{ disabled: !guests.some((guest) => guest.name.trim()) || busy }}

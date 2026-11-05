@@ -8,6 +8,7 @@ import { useListEditorStore, useListEditorStoreBase } from '@store/lists/single/
 import type { Flow, LayoutMode, SortOrder } from '@store/lists/single/types'
 import type { ResetScope } from '@helpers/designReset'
 import { ResetButton } from '../controls/ResetButton'
+import { SpreadsheetButton } from '../spreadsheet/SpreadsheetModal'
 
 /** A panel's section; `reset` puts a reset button for that part of the design in its header. */
 export const PanelSection: FC<{ title: string; children: ReactNode; hint?: string; reset?: ResetScope }> = ({ title, children, hint, reset }) => (
@@ -51,6 +52,9 @@ export const LayoutPanel: FC = () => {
 
   return (
     <div>
+      <div className='pb-3'>
+        <SpreadsheetButton />
+      </div>
       <PanelSection title={t('arrangement')} reset='layout.arrangement' hint={t(layout.mode === 'free' ? 'freeHint' : 'gridHint')}>
         <Segmented<LayoutMode>
           block

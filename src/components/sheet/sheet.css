@@ -302,15 +302,76 @@
   background: color-mix(in srgb, var(--brand-accent) 14%, transparent);
 }
 
+/*
+ * A guest (a list row, or a name under its table) shows a six-dot grip just outside its left
+ * end while hovered — and all along while selected, as the resize handle does — saying it can be
+ * dragged. It is the guest's own pseudo-element, so a press on it starts the same drag, and the
+ * gap to the name is part of it. Screen pixels over the zoom, like the resize handle; mouse and pen
+ * only (a finger does not drag on the canvas), and never while the name is open for typing.
+ */
+@media (hover: hover) and (pointer: fine) {
+  .sh-interactive .sh-name {
+    position: relative;
+  }
+
+  .sh-interactive .sh-guest::before,
+  .sh-interactive .sh-name::before {
+    --sh-dot: calc(5.5px / var(--canvas-zoom, 1));
+    content: '';
+    position: absolute;
+    top: 50%;
+    right: 100%;
+    z-index: 5;
+    box-sizing: content-box;
+    width: calc(var(--sh-dot) * 2);
+    height: calc(var(--sh-dot) * 3);
+    padding-right: calc(6px / var(--canvas-zoom, 1));
+    translate: 0 -50%;
+    background: radial-gradient(
+        circle,
+        var(--brand-accent) calc(1.4px / var(--canvas-zoom, 1)),
+        transparent calc(1.8px / var(--canvas-zoom, 1))
+      )
+      content-box 0 0 / var(--sh-dot) var(--sh-dot);
+    cursor: grab;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 120ms ease;
+  }
+
+  .sh-interactive .sh-guest:is(:hover, .sh-selected):not(:has(.sh-editing))::before,
+  .sh-interactive .sh-name:is(:hover, .sh-selected):not(:has(.sh-editing))::before,
+  .sh-interactive .sh-guest.sh-dragging::before,
+  .sh-interactive .sh-name.sh-dragging::before {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
 .sh-interactive .sh-selected,
 .sh-interactive .sh-block.sh-selected:hover {
   outline: 2px solid var(--brand-accent);
   outline-offset: 0.6mm;
 }
 
-/* Grid mode, mid-drag: the other blocks slide to where the drop would leave them. */
-[data-sorting] .sh-interactive .sh-block:not(.sh-dragging) {
-  transition: translate 200ms cubic-bezier(0.2, 0, 0, 1);
+/*
+ * The outline sits outside the block, and blocks can touch (place cards share their cut
+ * lines), so a block painted later covered an outlined one's right and bottom edges. The
+ * outlined block comes to the front; a drag's inline `z-index: 20` still wins.
+ */
+.sh-interactive .sh-block:is(.sh-selected, [data-resizing], .sh-drop-target) {
+  z-index: 10;
+}
+
+/*
+ * Mid-drag, the others slide to where the drop would leave them: blocks in grid mode; and, for
+ * a name taken from its table, the names around it and the tables, which grow and shrink too.
+ */
+[data-sorting] .sh-interactive .sh-block:not(.sh-dragging),
+[data-sorting] .sh-interactive .sh-name:not(.sh-dragging) {
+  transition:
+    translate 200ms cubic-bezier(0.2, 0, 0, 1),
+    height 200ms cubic-bezier(0.2, 0, 0, 1);
 }
 
 /* What the pointer is carrying. */
@@ -376,10 +437,20 @@
   background-color: color-mix(in srgb, var(--brand-success) 10%, transparent);
 }
 
-/* A text says it can be typed into once its block is selected: the next click opens it. */
-.sh-interactive .sh-selected .sh-editable,
-.sh-interactive .sh-selected.sh-name .sh-editable {
-  cursor: text;
+/*
+ * Pressed, a block (or a table's name) is about to move: the hand closes. A selected block's
+ * text keeps the hand too — a press there drags it as well; the caret shows once it is open
+ * for typing (`.sh-editing`).
+ */
+.sh-interactive .sh-block:active,
+.sh-interactive .sh-name:active {
+  cursor: grabbing;
+}
+
+/* Mid-drag the closed hand stays, over every block it crosses and outside the sheet. */
+html[data-canvas-dragging],
+html[data-canvas-dragging] * {
+  cursor: grabbing !important;
 }
 
 .sh-interactive .sh-editable:focus-visible {

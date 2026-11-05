@@ -119,7 +119,7 @@ const SAMPLE_GUESTS: string[][] = [
   ['Միքայել Զաքարյան', 'Սյուզաննա Զաքարյան', 'Հրանտ Եղիազարյան', 'Արփի Եղիազարյան', 'Լևոն Դանիելյան', 'Մարինե Դանիելյան'],
 ]
 
-/** A wedding's guests at six tables: what previews show and what "start with a sample" fills in. */
+/** A wedding's guests at six tables: what previews show and what a new list starts with. */
 export const sampleContent = (texts: SampleTexts, tableCount = SAMPLE_GUESTS.length): ListContent => {
   const tables: GuestTable[] = []
   const guests: Guest[] = []
@@ -131,20 +131,17 @@ export const sampleContent = (texts: SampleTexts, tableCount = SAMPLE_GUESTS.len
   return { heading: texts.heading, subheading: texts.subheading, footer: texts.footer, guests, tables }
 }
 
-export const emptyContent = (texts: Pick<SampleTexts, 'heading'>): ListContent => ({
-  heading: texts.heading,
-  subheading: '',
-  footer: '',
-  guests: [],
-  tables: [],
-})
-
+/**
+ * A new list starts with the sample wedding as its own guests and tables — real data, so every
+ * step shows the look on names and the user edits, removes or replaces them in place. Place
+ * cards get two tables: a card per guest would otherwise run to several pages.
+ */
 export const newListDocument = (
   templateId: TemplateId,
   kind: PrintKind,
-  options: { sample: boolean; title: string; texts: SampleTexts }
+  options: { title: string; texts: SampleTexts }
 ): ListDocument => ({
   title: options.title.trim() || DEFAULT_LIST_TITLE,
-  content: options.sample ? sampleContent(options.texts) : emptyContent(options.texts),
+  content: sampleContent(options.texts, kind === 'cards' ? 2 : undefined),
   design: templateDesign(templateId, kind),
 })

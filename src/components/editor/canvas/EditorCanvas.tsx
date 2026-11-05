@@ -1,28 +1,22 @@
 'use client'
 
 import { type FC, useEffect, useLayoutEffect, useRef, useState } from 'react'
-import {
-  CameraOutlined,
-  EyeOutlined,
-  FileExcelOutlined,
-  SnippetsOutlined,
-  TeamOutlined,
-  WarningOutlined,
-} from '@ant-design/icons'
-import { Button } from 'antd'
+import { CameraOutlined, ExpandOutlined, FileExcelOutlined, SnippetsOutlined, WarningOutlined } from '@ant-design/icons'
+import { App, Button, Tooltip } from 'antd'
 import { useTranslations } from 'next-intl'
 import { useEditorUiStore } from '@store/editorUi/store'
-import { DEFAULT_SEATS_PER_TABLE, useListEditorStore } from '@store/lists/single/store'
+import { DEFAULT_SEATS_PER_TABLE, useListEditorStore, useListEditorStoreBase } from '@store/lists/single/store'
 import type { ListDocument } from '@store/lists/single/types'
 import { useSheetLayout } from '@hooks/useSheetLayout'
 import { clampZoom } from '@helpers/canvasZoom'
+import { fitSheet } from '@helpers/fitSheet'
+import { measureText } from '@helpers/measureText'
 import { SheetDocument } from '@components/sheet/SheetDocument'
 import { SheetInteractionProvider } from '@components/sheet/SheetInteraction'
 import { MM_TO_PX } from '@components/sheet/SheetPreview'
 import { SelectionBar } from './SelectionBar'
 import { PAGE_GAP_MM, useCanvasInteraction } from './useCanvasInteraction'
 import { useCanvasShortcuts } from './useCanvasShortcuts'
-import { EDITOR_TABS } from '../panels/EditorPanel'
 
 type Props = {
   doc: ListDocument
@@ -34,11 +28,6 @@ type Props = {
   onPagesChange: (pages: number) => void
   /** The preview is open over the canvas: its shortcuts are off and any open text closes. */
   previewing: boolean
-  /**
-   * `doc` carries sample guests, shown only to give the look some names before there are real
-   * ones: the sheet is drawn read-only (nothing on it is the user's to drag, edit or delete).
-   */
-  sample?: boolean
 }
 
 /** The space beside the sheet, both sides together: less on a phone, where width is scarce. */
@@ -57,18 +46,18 @@ const distanceOf = (touches: TouchPoints): number =>
  *
  * Touch screens pinch to zoom the sheet, not the page (as in cv-builder's editor).
  */
-export const EditorCanvas: FC<Props> = ({
-  doc,
-  zoom,
-  onZoomChange,
-  onFitZoomChange,
-  onPagesChange,
-  previewing,
-  sample = false,
-}) => {
+export const EditorCanvas: FC<Props> = ({ doc, zoom, onZoomChange, onFitZoomChange, onPagesChange, previewing }) => {
   const t = useTranslations('Editor.canvas')
   const tSamples = useTranslations('Samples')
   const autoSeat = useListEditorStore.use.autoSeat()
+  const fitToPage = useListEditorStore.use.fitToPage()
+  const { message } = App.useApp()
+  // Something to fit: tables on a seating board, names on a list (cards are sized by the card).
+  const canFit = useListEditorStoreBase((state) => {
+    const current = state.doc
+    if (!current || current.design.kind === 'cards') return false
+    return (current.design.kind === 'seating' ? current.content.tables.length : current.content.guests.length) > 0
+  })
   const layout = useSheetLayout(doc)
   const scrollerRef = useRef<HTMLDivElement>(null)
   const sheetRef = useRef<HTMLDivElement>(null)
@@ -84,7 +73,7 @@ export const EditorCanvas: FC<Props> = ({
   const pageWidthPx = layout.width * MM_TO_PX
   const stackHeightMm = layout.pages * layout.height + (layout.pages - 1) * PAGE_GAP_MM
 
-  useCanvasShortcuts({ layout, enabled: !previewing && !sample })
+  useCanvasShortcuts({ layout, enabled: !previewing })
 
   useEffect(() => {
     const scroller = scrollerRef.current
@@ -163,8 +152,48 @@ export const EditorCanvas: FC<Props> = ({
     scroller.scrollTop = anchor.y * scroller.scrollHeight - anchor.top
   }, [scale])
 
+  /** Columns and text size fitted to the paper, nobody moved (`helpers/fitSheet`), measured as the canvas measures. */
+  const fit = () => {
+    const current = useListEditorStoreBase.getState().doc
+    const result = current ? fitSheet(current, measureText) : null
+    if (!result) return
+    fitToPage(result)
+    const summary = [
+      t('fitColumns', { count: result.columns }),
+      result.rows ? t('fitRows', { count: result.rows }) : '',
+      t('fitText', { percent: Math.round(result.textScale * 100) }),
+      result.pages > 1 ? t('fitPages', { count: result.pages }) : '',
+    ]
+      .filter(Boolean)
+      .join(' · ')
+    void message.success(t('fitted', { summary }))
+  }
+
+  /** Sized in screen pixels over the zoom, as the resize handles are: the same button at any zoom. */
+  const onScreen = (px: number): string => `calc(${px}px / var(--canvas-zoom, 1))`
+
   const pageExtras = (page: number) => (
     <>
+      {page === 0 && canFit && (
+        <Tooltip title={t('fitHint')} placement='left'>
+          <button
+            type='button'
+            data-canvas-ui
+            aria-label={t('fit')}
+            onClick={fit}
+            className='absolute right-0 z-30 grid cursor-pointer place-items-center rounded-full border-solid border-line bg-surface p-0 text-ink shadow-sm transition-colors hover:border-accent hover:text-accent-strong focus-visible:outline-2 focus-visible:outline-accent'
+            style={{
+              top: onScreen(-34),
+              width: onScreen(28),
+              height: onScreen(28),
+              borderWidth: onScreen(1),
+              fontSize: onScreen(14),
+            }}
+          >
+            <ExpandOutlined />
+          </button>
+        </Tooltip>
+      )}
       <span
         className='pointer-events-none absolute -top-[7mm] left-0 text-[3.2mm] font-medium text-muted'
         style={{ fontFamily: 'var(--font-ui), system-ui, sans-serif' }}
@@ -207,7 +236,7 @@ export const EditorCanvas: FC<Props> = ({
   return (
     <div className='relative flex min-w-0 flex-1 flex-col'>
       <div className='pointer-events-none absolute inset-x-0 top-3 z-20 flex justify-center'>
-        {!sample && <SelectionBar layout={layout} onEdit={setEditing} />}
+        <SelectionBar layout={layout} onEdit={setEditing} />
       </div>
       <div
         ref={scrollerRef}
@@ -217,22 +246,7 @@ export const EditorCanvas: FC<Props> = ({
           className='min-h-full w-max min-w-full px-3 pt-8 pb-24 sm:px-8 sm:pt-12'
           onPointerDown={onBackgroundPointerDown}
         >
-          {sample && (
-            <div
-              data-canvas-ui
-              className='mx-auto mb-5 flex max-w-xl items-center gap-3 rounded-xl bg-surface px-4 py-2.5 shadow-sm ring-1 ring-black/5'
-            >
-              <EyeOutlined className='shrink-0 text-lg text-accent-strong' />
-              <span className='min-w-0 flex-1 text-sm leading-snug'>
-                <span className='font-semibold text-ink'>{t('sampleTitle')}</span>
-                <span className='text-muted'> — {t('sampleText', { number: EDITOR_TABS.indexOf('guests') + 1 })}</span>
-              </span>
-              <Button size='small' icon={<TeamOutlined />} onClick={() => openTab('guests')}>
-                {t('sampleAction')}
-              </Button>
-            </div>
-          )}
-          {!sample && (empty || unseated > 0) && (
+          {(empty || unseated > 0) && (
             <div data-canvas-ui className='mx-auto mb-5 max-w-xl'>
               {empty ? (
                 <div className='rounded-2xl bg-surface p-4 text-center shadow-sm ring-1 ring-black/5 sm:p-5'>
@@ -276,23 +290,14 @@ export const EditorCanvas: FC<Props> = ({
               // `--canvas-zoom` keeps the editor's handles the same size on screen at any zoom.
               style={{ width: pageWidthPx, transform: `scale(${scale})`, ['--canvas-zoom' as string]: scale }}
             >
-              {sample ? (
+              <SheetInteractionProvider value={interaction}>
                 <SheetDocument
                   design={doc.design}
                   layout={layout}
                   className='sh-stacked'
                   renderPageExtras={pageExtras}
                 />
-              ) : (
-                <SheetInteractionProvider value={interaction}>
-                  <SheetDocument
-                    design={doc.design}
-                    layout={layout}
-                    className='sh-stacked'
-                    renderPageExtras={pageExtras}
-                  />
-                </SheetInteractionProvider>
-              )}
+              </SheetInteractionProvider>
             </div>
           </div>
         </div>

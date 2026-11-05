@@ -28,11 +28,10 @@ export const templatePath = (id: TemplateId): string => `${ROUTES.templates}/${i
 
 export const editorPath = (listId: string): string => `${ROUTES.editor}/${listId}`
 
-export const newListPath = (options: { template?: TemplateId; kind?: PrintKind; sample?: boolean } = {}): string => {
+export const newListPath = (options: { template?: TemplateId; kind?: PrintKind } = {}): string => {
   const query = new URLSearchParams()
   if (options.template) query.set(TEMPLATE_QUERY, options.template)
   if (options.kind) query.set(KIND_QUERY, options.kind)
-  if (options.sample) query.set(SAMPLE_QUERY, '1')
   const search = query.toString()
   return search ? `${ROUTES.editorNew}?${search}` : ROUTES.editorNew
 }
@@ -44,4 +43,3 @@ export const PROTECTED_PREFIXES = [ROUTES.dashboard, ROUTES.account]
 export const RETURN_TO_QUERY = 'returnTo'
 export const TEMPLATE_QUERY = 'template'
 export const KIND_QUERY = 'kind'
-export const SAMPLE_QUERY = 'sample'

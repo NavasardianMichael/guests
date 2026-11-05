@@ -52,7 +52,7 @@
     "heroTitleAccent": "beautiful and ready to print",
     "heroSubtitle": "Import the list from Excel or a single photo, drag guests to their tables, and print a seating chart, an entrance list or place cards on paper of any size.",
     "heroCta": "Create a list for free",
-    "heroSecondary": "Start with an example",
+    "heroSecondary": "Browse templates",
     "heroNote": "No sign-up. Everything changes right on the sheet.",
     "heroTemplates": "See the templates",
     "stats": {
@@ -85,7 +85,7 @@
       },
       "print": {
         "title": "Print on the spot",
-        "text": "Download a PDF or send it straight to a printer: fonts embedded, sizes exact."
+        "text": "Download a PDF and print it on any printer: fonts embedded, sizes exact."
       }
     },
     "stepsTitle": "Three steps to a finished chart",
@@ -100,7 +100,7 @@
       },
       "print": {
         "title": "Print",
-        "text": "Download a PDF or print right away: a chart, a list or place cards."
+        "text": "Download a PDF and print it: a chart, a list or place cards."
       }
     },
     "templatesTitle": "Templates for every celebration",
@@ -113,7 +113,7 @@
   "Faq": {
     "price": {
       "q": "How much does it cost?",
-      "a": "Everything is free for now. Later, making a list and printing in the classic templates will stay free, and printing in the other templates will cost {price} per list — once, no subscription."
+      "a": "Making a list and downloading it as a PDF in the “Classic” template is free. The other templates will cost {price} per list — once, no subscription; payments are coming soon."
     },
     "account": {
       "q": "Do I need an account?",
@@ -125,7 +125,7 @@
     },
     "print": {
       "q": "How do I print?",
-      "a": "Press “Print” and your browser’s print dialog opens with the finished pages, or download the PDF and print it at any print shop. The page size matches the paper you chose."
+      "a": "Press “Download PDF” and print the file at home or at any print shop. The page size matches the paper you chose."
     },
     "paper": {
       "q": "What paper sizes can I print on?",
@@ -150,7 +150,7 @@
     "free": "Free",
     "premium": "Premium",
     "names": {
-      "classic": "Classic",
+      "classic": "Traditional",
       "minimal": "Minimal",
       "ivory": "Ivory",
       "ornament": "Eternity",
@@ -195,7 +195,7 @@
       "retro": "Retro",
       "neon": "Neon",
       "balloons": "Balloons",
-      "memorial": "Memorial"
+      "memorial": "Classic"
     },
     "taglines": {
       "classic": "Black and white, a double rule, GHEA Grapalat",
@@ -254,8 +254,7 @@
     "style": "Style",
     "price": "Price",
     "fonts": "Fonts",
-    "useThis": "Start blank",
-    "startSample": "Start with an example",
+    "useThis": "Use this template",
     "otherTemplates": "Other templates",
     "detailTitle": "“{name}” template",
     "detailDescription": "The “{name}” template for seating charts, guest lists and place cards: {tagline}.",
@@ -268,17 +267,17 @@
   },
   "Pricing": {
     "metaTitle": "Pricing",
-    "metaDescription": "Making a list and printing in the templates marked “Free” costs nothing. Printing in the other templates is {price} per list, once.",
+    "metaDescription": "Making a list and printing in the “Classic” template costs nothing. Printing in the other templates is {price} per list, once.",
     "title": "One price, once",
     "subtitle": "No subscription. Making a list is always free; printing in the template you chose is paid once per list.",
-    "beta": "Until payments launch, printing in every template is free",
+    "beta": "Payments are coming soon; until then, PDFs download only in the free “Classic” template",
     "free": "Free",
     "freePrice": "0 AMD",
     "freeItems": [
       "Unlimited lists and guests",
       "Import from Excel, CSV and photos",
-      "Every template marked “Free”",
-      "Any paper size, PDF and printing"
+      "The “Classic” template",
+      "Any paper size, PDF download"
     ],
     "paid": "All templates",
     "perList": "per list",
@@ -286,7 +285,7 @@
       "Any of the 46 templates",
       "Any colour, ornament and font",
       "Seating chart, list and place cards",
-      "Unlimited editing and printing"
+      "Unlimited editing and downloads"
     ],
     "cta": "Create a list"
   },
@@ -430,8 +429,8 @@
       "next": "Next: {step}",
       "hints": {
         "kind": "Choose what you are making. You can change it at any step.",
-        "design": "Pick a template, fonts and colours. Until you add guests, sample names show the look.",
-        "guests": "Add the names and seat everyone at a table.",
+        "design": "Pick a template, fonts and colours.",
+        "guests": "Add the names and seat everyone at a table. A new list starts with example guests — change them right on the sheet or replace them with your list.",
         "layout": "Arrange the names on the sheet: columns, spacing and order.",
         "paper": "Set the paper size and margins, then print."
       }
@@ -455,9 +454,6 @@
       "emptyPaste": "Paste text",
       "emptyFile": "Excel / CSV",
       "emptyPhoto": "From a photo",
-      "sampleTitle": "Sample guests",
-      "sampleText": "These names only show the look — they are not saved or printed. Add your own guests in step {number}.",
-      "sampleAction": "Add guests",
       "unseated": "{count, plural, one {# guest has} other {# guests have}} no table and won’t appear on the chart.",
       "unseatedAction": "Seat them",
       "edit": {
@@ -466,7 +462,14 @@
         "footer": "Closing line",
         "guest": "Guest name",
         "table": "Table name"
-      }
+      },
+      "fit": "Fit to the page",
+      "fitHint": "Fit to the page: picks the text size and the number of columns so everything fits. Nobody changes tables.",
+      "fitted": "Fitted: {summary}",
+      "fitColumns": "{count, plural, one {# column} other {# columns}}",
+      "fitRows": "{count, plural, one {# row} other {# rows}}",
+      "fitText": "text {percent}%",
+      "fitPages": "{count, plural, one {# page} other {# pages}}"
     },
     "selection": {
       "label": "Selection tools",
@@ -681,11 +684,12 @@
     },
     "download": {
       "button": "Download PDF",
-      "print": "Print",
-      "printHint": "Open the print dialog with the finished pages",
       "preparing": "Preparing the PDF…",
       "done": "PDF downloaded",
-      "printing": "Opening the print dialog…"
+      "premiumTitle": "“{template}” is a premium template",
+      "premiumText": "Payments for premium templates are coming soon. Until then, PDFs download only in the free “{free}” template. Your guests and layout stay as they are.",
+      "premiumSwitch": "Switch to “{free}”",
+      "premiumShort": "“{template}” is a premium template: for now, PDFs download only in “{free}”."
     },
     "tabsShort": {
       "kind": "Type",
@@ -703,6 +707,17 @@
       "confirmAllText": "Layout, design and paper go back to the template’s defaults. Guests, tables and texts stay as they are, and Undo brings the settings back.",
       "ok": "Reset",
       "done": "Settings reset"
+    },
+    "spreadsheet": {
+      "open": "Edit as a spreadsheet",
+      "title": "Guests as a spreadsheet",
+      "done": "Done",
+      "row": "Row",
+      "tableMenu": "Table actions",
+      "moveLeft": "Move left",
+      "moveRight": "Move right",
+      "keys": "Enter moves down, Tab moves right, Escape puts the text back; a block copied from Excel pastes into the cells. Ctrl+Z undoes.",
+      "hint": "Each column is a table: rename it in its header, type a guest’s name in a cell, empty a cell to remove the guest. Drag a guest or a table by its grip to move it."
     }
   },
   "Errors": {

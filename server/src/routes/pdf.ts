@@ -29,7 +29,7 @@ pdfRouter.post(
       return fail(res, 'Too many prints', ERROR_CODE.rateLimited, 429)
     }
     const design = coerceDesign(req.body?.design)
-    // A draft is never paid for: with billing on, only the free templates print.
+    // A draft is never paid for: only the free template prints.
     const terms = printTerms({ templateId: design.templateId, paidAt: null })
     if (!terms.allowed) return fail(res, 'Payment required', ERROR_CODE.listNotPaid, 402)
     await sendPdf(res, 'a guest draft', {

@@ -9,13 +9,17 @@ import type { FontSlug } from './fonts'
  * names (preferably one with its own Cyrillic and Latin, `FONTS[slug].latin`), colours that
  * read when printed — names at least 7:1 against the sheet, decor free to be softer.
  *
- * `free`: printable without paying once billing is switched on (`docs/BILLING.md`).
+ * `free`: printable without paying. Only `memorial` (named “Classic” in the interface — the id
+ * predates the name and stays, as saved lists store it) is free, and premium templates do not
+ * print until a list is paid for (`server/src/services/entitlement.ts`, `docs/BILLING.md`).
+ * The free template comes first in `TEMPLATE_IDS`, so every gallery opens with it.
  *
  * Twin: `TEMPLATE_IDS` and `FREE_TEMPLATE_IDS` in `server/src/lib/catalogue.ts` (pinned by
  * `twins.spec.ts`, which also checks every design survives the server's coercion unchanged:
  * lower-case `#rrggbb` colours, catalogue fonts, sizes 5–120, tracking −5–40).
  */
 export const TEMPLATE_IDS = [
+  'memorial',
   'classic',
   'minimal',
   'ivory',
@@ -61,7 +65,6 @@ export const TEMPLATE_IDS = [
   'retro',
   'neon',
   'balloons',
-  'memorial',
 ] as const
 
 export type TemplateId = (typeof TEMPLATE_IDS)[number]
@@ -104,7 +107,7 @@ export const TEMPLATES: Record<TemplateId, TemplateMeta> = {
   classic: t({
     id: 'classic',
     category: 'classic',
-    free: true,
+    free: false,
     palette: { background: '#ffffff', accent: '#1f1f1f', panel: '#f4f4f4' },
     heading: { font: 'ghea-grapalat', size: 27, color: '#111111', bold: true, uppercase: true, tracking: 8 },
     subheading: { font: 'arian-grqi', size: 13.5, color: '#3d3d3d' },
@@ -116,7 +119,7 @@ export const TEMPLATES: Record<TemplateId, TemplateMeta> = {
   minimal: t({
     id: 'minimal',
     category: 'modern',
-    free: true,
+    free: false,
     palette: { background: '#ffffff', accent: '#9a9a9a', panel: '#f5f5f5' },
     heading: { font: 'montserrat-armenian', size: 23, color: '#1d1d1d', uppercase: true, tracking: 24 },
     subheading: { font: 'mardoto', size: 10, color: '#6b6b6b', uppercase: true, tracking: 16 },
@@ -296,7 +299,7 @@ export const TEMPLATES: Record<TemplateId, TemplateMeta> = {
   mono: t({
     id: 'mono',
     category: 'modern',
-    free: true,
+    free: false,
     palette: { background: '#ffffff', accent: '#111111', panel: '#f2f2f2' },
     heading: { font: 'berd', size: 44, color: '#111111' },
     subheading: { font: 'bainsley', size: 10.5, color: '#555555', uppercase: true, tracking: 18 },
@@ -308,7 +311,7 @@ export const TEMPLATES: Record<TemplateId, TemplateMeta> = {
   corporate: t({
     id: 'corporate',
     category: 'modern',
-    free: true,
+    free: false,
     palette: { background: '#ffffff', accent: '#0f4c81', panel: '#eef3f8' },
     heading: { font: 'montserrat-armenian', size: 26, color: '#0f2a44', bold: true },
     subheading: { font: 'arian-amu', size: 12, color: '#4a5a6a' },
@@ -320,7 +323,7 @@ export const TEMPLATES: Record<TemplateId, TemplateMeta> = {
   scandi: t({
     id: 'scandi',
     category: 'modern',
-    free: true,
+    free: false,
     palette: { background: '#f8f6f1', accent: '#8c9a86', panel: '#efece4' },
     heading: { font: 'shk-aida', size: 30, color: '#2f2f2c', tracking: 4 },
     subheading: { font: 'bainsley', size: 9.5, color: '#66635c', uppercase: true, tracking: 18 },
@@ -332,7 +335,7 @@ export const TEMPLATES: Record<TemplateId, TemplateMeta> = {
   spring: t({
     id: 'spring',
     category: 'playful',
-    free: true,
+    free: false,
     palette: { background: '#fdfbf4', accent: '#e48aa3', panel: '#fdecf1' },
     heading: { font: 'arti', size: 40, color: '#a8466f' },
     subheading: { font: 'gaa-gayane', size: 12, color: '#6f5d80' },
@@ -344,7 +347,7 @@ export const TEMPLATES: Record<TemplateId, TemplateMeta> = {
   christening: t({
     id: 'christening',
     category: 'elegant',
-    free: true,
+    free: false,
     palette: { background: '#f7fbff', accent: '#7fa7d4', panel: '#e9f2fc' },
     heading: { font: 'arm-hmks-script', size: 42, color: '#3a6597' },
     subheading: { font: 'gaa-gayane', size: 12, color: '#566d86' },
@@ -356,7 +359,7 @@ export const TEMPLATES: Record<TemplateId, TemplateMeta> = {
   apricot: t({
     id: 'apricot',
     category: 'playful',
-    free: true,
+    free: false,
     palette: { background: '#fff8ef', accent: '#e08a3c', panel: '#ffe9d3' },
     heading: { font: 'poqrik-dzeragir', size: 42, color: '#a34a12' },
     subheading: { font: 'gaa-gayane', size: 12, color: '#77563c' },
@@ -657,10 +660,14 @@ export const TEMPLATES: Record<TemplateId, TemplateMeta> = {
 
 export const TEMPLATE_LIST: TemplateMeta[] = TEMPLATE_IDS.map((id) => TEMPLATES[id])
 
-export const DEFAULT_TEMPLATE_ID: TemplateId = 'ivory'
+export const DEFAULT_TEMPLATE_ID: TemplateId = 'memorial'
 
-/** The design a free print uses when billing is on and the chosen template is not free. */
-export const FREE_TEMPLATE_ID: TemplateId = 'classic'
+/** The one free template: what a new list starts in and what a premium print is offered instead. */
+export const FREE_TEMPLATE_ID: TemplateId = 'memorial'
+
+/** May this list download? The free template always; a premium one once paid. Twin: `printTerms` on the server. */
+export const isPrintable = (templateId: TemplateId, paidAt: string | null): boolean =>
+  Boolean(paidAt) || TEMPLATES[templateId].free
 
 export const isTemplateId = (value: unknown): value is TemplateId =>
   typeof value === 'string' && (TEMPLATE_IDS as readonly string[]).includes(value)

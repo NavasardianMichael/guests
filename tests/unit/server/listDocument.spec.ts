@@ -50,7 +50,7 @@ describe('coerceDesign', () => {
       type: { name: { font: 'comic-sans', size: 400, color: '#123456' } },
       layout: { columns: 40, positions: { ok: { page: 1, x: 10, y: 20 }, 'bad id!': { page: 0, x: 0, y: 0 } } },
     })
-    expect(design.templateId).toBe('ivory')
+    expect(design.templateId).toBe('memorial')
     expect(design.kind).toBe('seating')
     expect(design.paper).toMatchObject({ width: 50, height: 1189, margin: 0 })
     expect(design.palette).toMatchObject({ background: '#ffffff', accent: '#abcdef' })
@@ -85,8 +85,13 @@ describe('coerceTitle', () => {
 })
 
 describe('printTerms', () => {
-  it('prints everything, unmarked, while billing is off', () => {
-    expect(printTerms({ templateId: 'ivory', paidAt: null })).toEqual({ allowed: true, watermark: false })
-    expect(printTerms({ templateId: 'classic', paidAt: null })).toEqual({ allowed: true, watermark: false })
+  it('prints the free template, unmarked while billing is off', () => {
+    expect(printTerms({ templateId: 'memorial', paidAt: null })).toEqual({ allowed: true, watermark: false })
+  })
+
+  it('refuses a premium template until the list is paid', () => {
+    expect(printTerms({ templateId: 'ivory', paidAt: null }).allowed).toBe(false)
+    expect(printTerms({ templateId: 'classic', paidAt: null }).allowed).toBe(false)
+    expect(printTerms({ templateId: 'ivory', paidAt: new Date() })).toEqual({ allowed: true, watermark: false })
   })
 })

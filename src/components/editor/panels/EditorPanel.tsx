@@ -14,8 +14,8 @@ import { ResetButton } from '../controls/ResetButton'
 import { PdfActions } from '../PdfActions'
 
 /**
- * The steps, in order: what is being made, how it looks (on sample guests until there are real
- * ones), the guests, how they are arranged, and the paper.
+ * The steps, in order: what is being made, how it looks (a new list's sample guests give it
+ * names to show), the guests, how they are arranged, and the paper.
  */
 export const EDITOR_TABS: EditorTab[] = ['kind', 'design', 'guests', 'layout', 'paper']
 
@@ -74,17 +74,27 @@ export const EditorPanel: FC = () => {
       </div>
       <footer className='flex shrink-0 items-center gap-2 border-t border-line bg-surface px-4 py-3'>
         {previous && (
-          <Button icon={<ArrowLeftOutlined />} onClick={() => openTab(previous)}>
+          <Button icon={<ArrowLeftOutlined />} onClick={() => openTab(previous)} style={{ flexShrink: 0 }}>
             {tCommon('back')}
           </Button>
         )}
-        <div className='ml-auto'>
+        {/* A long next step's name ("Next: Arrangement" in Armenian) is cut with an ellipsis, not
+            pushed past the panel: the wrapper may shrink, and so may the button (inline, as antd's
+            own width beats utilities). */}
+        <div className='ml-auto flex min-w-0 justify-end'>
           {next ? (
-            <Button type='primary' icon={<ArrowRightOutlined />} iconPlacement='end' onClick={() => openTab(next)}>
-              {t('steps.next', { step: t(`tabs.${next}`) })}
+            <Button
+              type='primary'
+              icon={<ArrowRightOutlined />}
+              iconPlacement='end'
+              onClick={() => openTab(next)}
+              title={t('steps.next', { step: t(`tabs.${next}`) })}
+              style={{ maxWidth: '100%', minWidth: 0 }}
+            >
+              <span className='min-w-0 truncate'>{t('steps.next', { step: t(`tabs.${next}`) })}</span>
             </Button>
           ) : (
-            <PdfActions printLabel />
+            <PdfActions label />
           )}
         </div>
       </footer>

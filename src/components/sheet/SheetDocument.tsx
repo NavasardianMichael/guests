@@ -311,7 +311,8 @@ const BlockView: FC<{ block: SheetBlock; design: ListDesign; interaction: SheetI
       {block.type === 'guest' && <GuestView block={block} design={design} interaction={interaction} />}
       {block.type === 'table' && <TableView block={block} design={design} interaction={interaction} />}
       {block.type === 'card' && <CardView block={block} design={design} interaction={interaction} />}
-      {interaction && (
+      {/* Only a table is resized by hand; names, cards and texts are moved, not sized. */}
+      {interaction && block.type === 'table' && (
         <span
           className='sh-resize'
           aria-hidden='true'

@@ -25,7 +25,13 @@ const AuthBootstrap: FC = () => {
 export const App: FC<PropsWithChildren> = ({ children }) => {
   const locale = useLocale()
   return (
-    <ConfigProvider theme={antdTheme} locale={ANTD_LOCALES[isLocale(locale) ? locale : 'hy']}>
+    <ConfigProvider
+      theme={antdTheme}
+      locale={ANTD_LOCALES[isLocale(locale) ? locale : 'hy']}
+      // Every modal and confirm dialog sits in the middle of the viewport. A modal must not set
+      // `style.top`, which would push it off the centre.
+      modal={{ centered: true }}
+    >
       {/* component={false}: context only, no wrapper element — enables App.useApp(). */}
       <AntApp component={false}>
         <AuthBootstrap />

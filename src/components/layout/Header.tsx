@@ -46,9 +46,11 @@ export const Header: FC = () => {
               key={item.href}
               href={item.href}
               aria-current={isActive(item.href) ? 'page' : undefined}
+              // The current page: dark text and an accent bar under it, no background.
               className={cn(
-                'rounded-full px-3.5 py-1.5 text-[15px] font-medium text-muted no-underline transition-colors hover:text-ink',
-                isActive(item.href) && 'bg-surface text-ink shadow-sm'
+                'relative px-3.5 py-1.5 text-[15px] font-medium text-muted no-underline transition-colors hover:text-ink',
+                isActive(item.href) &&
+                  'text-ink after:absolute after:inset-x-3.5 after:-bottom-0.5 after:h-0.5 after:rounded-full after:bg-accent'
               )}
             >
               {item.label}
@@ -79,10 +81,10 @@ export const Header: FC = () => {
               aria-current={isActive(item.href) ? 'page' : undefined}
               className={cn(
                 'flex items-center gap-3 rounded-lg px-3 py-2.5 text-base font-medium no-underline hover:bg-canvas',
-                isActive(item.href) && 'bg-canvas'
+                isActive(item.href) && 'text-accent-strong'
               )}
             >
-              <span className='flex text-lg text-muted' aria-hidden='true'>
+              <span className={cn('flex text-lg', isActive(item.href) ? 'text-accent' : 'text-muted')} aria-hidden='true'>
                 {item.icon}
               </span>
               {item.label}

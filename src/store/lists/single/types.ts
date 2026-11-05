@@ -179,6 +179,18 @@ export type IncomingGuest = { name: string; table?: string; note?: string }
 
 export type ImportMode = 'append' | 'replace'
 
+/** A guest's cell changed in the spreadsheet: an existing guest (`id`) renamed, or a new one at a table. */
+export type GuestEdit = { id: string; name: string } | { name: string; tableId: string }
+
+/** A spreadsheet edit (a typed cell, a pasted block): one undo step. */
+export type SheetEdit = {
+  guests: GuestEdit[]
+  /** Renamed tables. */
+  tables?: { id: string; name: string }[]
+  /** Guests whose cell was emptied. */
+  remove?: string[]
+}
+
 export type ListEditorState = {
   listId: string | null
   doc: ListDocument | null
@@ -217,6 +229,8 @@ export type ListEditorActions = {
   /** Removes repeated names (same letters, case and spacing ignored); answers how many. */
   dedupeGuests: () => number
   clearGuests: () => void
+  /** The spreadsheet's edits: guests changed, added and removed, tables renamed — one undo step. */
+  editSheet: (edit: SheetEdit) => void
 
   addTable: (name?: string) => string
   renameTable: (tableId: string, name: string) => void
@@ -231,6 +245,8 @@ export type ListEditorActions = {
   setPalette: (patch: Partial<Palette>) => void
   setTextStyle: (role: TextRole, patch: Partial<TextStyle>) => void
   setLayout: (patch: Partial<Omit<Layout, 'positions' | 'sizes'>>) => void
+  /** The sheet fitted to its paper (`helpers/fitSheet`): columns and text size, back on the grid — one undo step. */
+  fitToPage: (fit: { columns: number; textScale: number }) => void
   /** The template's look replaces the current one; the guests, tables and layout stay. */
   applyTemplate: (templateId: TemplateId) => void
   /** Puts `scope`'s settings back at the template's defaults, one undo step (`helpers/designReset`). */

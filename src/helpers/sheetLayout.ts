@@ -51,7 +51,8 @@ const HEADER_TEXT_GAP = 2
 const HEADER_AFTER = 9
 const FOOTER_BEFORE = 6
 const CARD_PAD = 5
-const LIST_TABLE_GAP = 3
+/** A plain list: between a name and its table on the right, mm (scaled with the text). */
+export const LIST_TABLE_GAP = 3
 
 export type Lines = string[]
 

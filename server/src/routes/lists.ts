@@ -145,7 +145,7 @@ listsRouter.delete(
   })
 )
 
-/** The PDF, as designed — on the terms `services/entitlement.ts` sets (today: free for all). */
+/** The PDF, as designed — on the terms `services/entitlement.ts` sets (a premium template only once paid). */
 listsRouter.get(
   '/:id/pdf',
   asyncHandler(async (req, res) => {

@@ -39,16 +39,16 @@ export const Hero: FC = async () => {
           <p className='mt-5 max-w-xl text-base leading-relaxed text-muted sm:mt-6 sm:text-lg'>{t('heroSubtitle')}</p>
           <div className='mt-8 flex flex-wrap items-center gap-3'>
             <Link
-              href={newListPath()}
+              href={ROUTES.templates}
               className='inline-flex items-center gap-2 rounded-full bg-ink px-5 py-3 sm:px-6 sm:py-3.5 text-base font-semibold text-white no-underline shadow-lg shadow-ink/20 transition hover:-translate-y-0.5 hover:bg-ink-deep'
             >
-              {t('heroCta')} <ArrowRightOutlined />
+              {t('heroSecondary')} <ArrowRightOutlined />
             </Link>
             <Link
-              href={newListPath({ sample: true })}
+              href={newListPath()}
               className='inline-flex items-center rounded-full bg-surface px-5 py-3 sm:px-6 sm:py-3.5 text-base font-semibold text-ink no-underline ring-1 ring-line transition hover:ring-ink/30'
             >
-              {t('heroSecondary')}
+              {t('heroCta')}
             </Link>
           </div>
           <p className='mt-4 text-sm text-muted'>{t('heroNote')}</p>

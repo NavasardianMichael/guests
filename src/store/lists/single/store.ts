@@ -184,7 +184,8 @@ export const useListEditorStoreBase = create<ListEditorState & ListEditorActions
                 delete doc.design.layout.sizes[id]
               }
             })
-            state.selection = state.selection.filter((id) => !ids.has(id))
+            // A new array only when it changes: everything showing the selection re-renders for one.
+            if (state.selection.some((id) => ids.has(id))) state.selection = state.selection.filter((id) => !ids.has(id))
           })
         },
         moveGuest: (guestId, beforeId) => {
@@ -231,6 +232,33 @@ export const useListEditorStoreBase = create<ListEditorState & ListEditorActions
             state.selection = state.selection.filter((id) => !ids.has(id))
           })
           return duplicates.length
+        },
+        editSheet: ({ guests, tables = [], remove = [] }) => {
+          const removed = new Set(remove)
+          set((state) => {
+            edit(state, null, (doc) => {
+              for (const change of tables) {
+                const table = doc.content.tables.find((item) => item.id === change.id)
+                if (table) table.name = change.name
+              }
+              for (const change of guests) {
+                if ('id' in change) {
+                  const guest = doc.content.guests.find((item) => item.id === change.id)
+                  if (guest) guest.name = change.name
+                } else if (doc.content.guests.length < MAX_GUESTS) {
+                  doc.content.guests.push(newGuest(change.name, change.tableId))
+                }
+              }
+              if (removed.size) {
+                doc.content.guests = doc.content.guests.filter((guest) => !removed.has(guest.id))
+                for (const id of removed) {
+                  delete doc.design.layout.positions[id]
+                  delete doc.design.layout.sizes[id]
+                }
+              }
+            })
+            if (state.selection.some((id) => removed.has(id))) state.selection = state.selection.filter((id) => !removed.has(id))
+          })
         },
         clearGuests: () => {
           set((state) => {
@@ -337,6 +365,15 @@ export const useListEditorStoreBase = create<ListEditorState & ListEditorActions
               // A grid change re-flows the sheet; dragged blocks would sit on top of it.
               const regrid = ['columns', 'flow', 'gapX', 'gapY', 'cardWidth', 'cardHeight', 'cardFold'].some((key) => key in patch)
               if (regrid && doc.design.layout.mode === 'grid') doc.design.layout.positions = {}
+            })
+          )
+        },
+        fitToPage: ({ columns, textScale }) => {
+          set((state) =>
+            edit(state, null, (doc) => {
+              doc.design.textScale = textScale
+              // Fitted on the grid: blocks dragged by hand would sit on top of it.
+              Object.assign(doc.design.layout, { columns, mode: 'grid', positions: {} })
             })
           )
         },

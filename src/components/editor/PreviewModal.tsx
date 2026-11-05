@@ -68,7 +68,7 @@ export const PreviewModal: FC<Props> = ({ open, onClose, doc }) => {
           <span className='text-xs font-normal text-muted'>{t('previewHint')}</span>
         </span>
       }
-      style={{ top: 0, maxWidth: '100vw', margin: 0, paddingBottom: 0 }}
+      style={{ maxWidth: '100vw', margin: 0 }}
       styles={{
         container: { display: 'flex', flexDirection: 'column', height: '100dvh', padding: 0, borderRadius: 0 },
         header: { margin: 0, padding: '12px 56px 12px 16px', borderBottom: '1px solid var(--color-line)' },

@@ -6,7 +6,7 @@ import { produce } from 'immer'
 import { MIN_BLOCK_SIZE, moveBefore, useListEditorStore, useListEditorStoreBase } from '@store/lists/single/store'
 import { FOOTER_ID, HEADER_ID, type ListDocument, type Position, type Size } from '@store/lists/single/types'
 import { measureText } from '@helpers/measureText'
-import { clampToPage, compareNames, layoutSheet, round, type SheetBlock, type SheetLayout } from '@helpers/sheetLayout'
+import { clampToPage, compareNames, layoutSheet, lineHeight, round, type SheetBlock, type SheetLayout } from '@helpers/sheetLayout'
 import { type EditTarget, type SheetInteraction, targetBlockId } from '@components/sheet/SheetInteraction'
 import { MM_TO_PX } from '@components/sheet/SheetPreview'
 import { InlineEditor } from './InlineEditor'
@@ -41,7 +41,35 @@ type BlockDrag = {
   target: string | null
 }
 
-type NameDrag = { type: 'name'; guestId: string; element: HTMLElement; startX: number; startY: number; moved: boolean }
+/** A rectangle relative to the sheet's own corner, screen px — taken once, when a name drag begins. */
+type Box = { left: number; top: number; right: number; bottom: number }
+
+/** Where a dragged name would sit: at `tableId`, before `beforeId` (null: after its last guest). */
+type Seat = { tableId: string; beforeId: string | null }
+
+type NameDrag = {
+  type: 'name'
+  guestId: string
+  element: HTMLElement
+  startX: number
+  startY: number
+  moved: boolean
+  /** The table it was taken from, raised above the others for the drag. */
+  table: HTMLElement | null
+  /** Every table and name as they stood when the drag began: what the pointer is measured on. */
+  boxes: { tables: { id: string; box: Box }[]; names: { id: string; tableId: string; box: Box }[] } | null
+  /** The seat a drop would take; null, its own. */
+  seat: Seat | null
+  /** Whether a drop on `seat` changes anything the sheet shows. */
+  changes: boolean
+  /** How far its own table has been slid to make room, mm: the name keeps to the pointer regardless. */
+  tableShift: { dx: number; dy: number }
+  /** The pointer's travel so far, mm. */
+  lastDx: number
+  lastDy: number
+  /** Tables given a preview height, and the height they had. */
+  heights: Map<HTMLElement, string>
+}
 
 type MarqueeDrag = { type: 'marquee'; additive: boolean }
 
@@ -64,6 +92,15 @@ const beforeFor = (items: { id: string }[], id: string, target: string): string 
   return from < to ? (items[to + 1]?.id ?? null) : target
 }
 
+/** A hand-placed guest makes the order manual: the guests are first put in the order shown. */
+const toManualOrder = (draft: ListDocument) => {
+  const { layout } = draft.design
+  if (layout.sort === 'manual') return
+  const sign = layout.sort === 'za' ? -1 : 1
+  draft.content.guests.sort((a, b) => compareNames(a.name, b.name) * sign)
+  layout.sort = 'manual'
+}
+
 /** The document as a grid drop of `primary` on `target` would leave it — what `onFinish` commits. */
 const reordered = (doc: ListDocument, primary: SheetBlock, target: string): ListDocument =>
   produce(doc, (draft) => {
@@ -71,14 +108,37 @@ const reordered = (doc: ListDocument, primary: SheetBlock, target: string): List
       moveBefore(draft.content.tables, primary.id, beforeFor(draft.content.tables, primary.id, target))
       return
     }
-    const { layout } = draft.design
-    if (layout.sort !== 'manual') {
-      const sign = layout.sort === 'za' ? -1 : 1
-      draft.content.guests.sort((a, b) => compareNames(a.name, b.name) * sign)
-      layout.sort = 'manual'
-    }
+    toManualOrder(draft)
     moveBefore(draft.content.guests, primary.id, beforeFor(draft.content.guests, primary.id, target))
   })
+
+/** The document as dropping `guestId` on `seat` would leave it. */
+const reseated = (doc: ListDocument, guestId: string, seat: Seat): ListDocument =>
+  produce(doc, (draft) => {
+    toManualOrder(draft)
+    const guest = draft.content.guests.find((item) => item.id === guestId)
+    if (!guest) return
+    guest.tableId = seat.tableId
+    moveBefore(draft.content.guests, guestId, seat.beforeId)
+  })
+
+/** Each table's names, in order: what a seat change shows. */
+const seatingOf = (sheet: SheetLayout): string =>
+  sheet.blocks.map((block) => (block.type === 'table' ? `${block.id}:${block.guests.map(({ guest }) => guest.id).join(',')}` : '')).join('|')
+
+/** Where each name starts inside its table, mm: under the head, one after the other. */
+const nameTops = (sheet: SheetLayout, nameLH: number): Map<string, number> => {
+  const tops = new Map<string, number>()
+  for (const block of sheet.blocks) {
+    if (block.type !== 'table') continue
+    let y = block.pad + block.headH + block.headGap
+    for (const { guest, lines } of block.guests) {
+      tops.set(guest.id, y)
+      y += Math.max(1, lines.length) * nameLH
+    }
+  }
+  return tops
+}
 
 /** A block or a table's name, as one element across a re-render (a header repeats per page). */
 const flipKey = (element: HTMLElement): string => {
@@ -117,8 +177,9 @@ type Options = {
  *   is recomputed once per change of target, not per frame).
  * - **Free mode:** blocks go where they are dropped, on any page, snapping to the edges and
  *   centres of the blocks around them (Alt turns snapping off). A selection moves together.
- * - **A name inside a table** is dragged on its own: dropped on another table, or on a name
- *   at one, the guest moves there.
+ * - **A name inside a table** is dragged on its own, in any mode: over a table, the names there
+ *   make room where it would go (those it left close up, the tables resize and move), and the
+ *   drop seats the guest there — at another table, or elsewhere in its own.
  * - **The corner handle** resizes a block: its width (the text re-wraps) and a least height. In
  *   a grid it stays within its column; place cards all take the new card size.
  * - **Empty paper:** a drag draws a selection rectangle; Shift/Ctrl+click adds to a selection.
@@ -127,7 +188,7 @@ export const useCanvasInteraction = ({ layout, scale, sheetRef }: Options) => {
   const selection = useListEditorStore.use.selection()
   const mode = useListEditorStoreBase((state) => state.doc?.design.layout.mode ?? 'grid')
   const [editing, setEditing] = useState<EditTarget | null>(null)
-  const [dropTarget, setDropTargetState] = useState<string | null>(null)
+  const [dropTarget, setDropTarget] = useState<string | null>(null)
   const [guides, setGuides] = useState<Guide[]>([])
   const [marquee, setMarqueeState] = useState<Marquee | null>(null)
   const dragRef = useRef<Drag | null>(null)
@@ -135,7 +196,6 @@ export const useCanvasInteraction = ({ layout, scale, sheetRef }: Options) => {
   const pressRef = useRef<{ id: string; wasSelected: boolean; moved: boolean } | null>(null)
   /** Where a click opened the text being edited (a character offset). */
   const caretRef = useRef<number | undefined>(undefined)
-  const dropRef = useRef<string | null>(null)
   const marqueeRef = useRef<Marquee | null>(null)
   const layoutRef = useRef(layout)
   const scaleRef = useRef(scale)
@@ -146,10 +206,6 @@ export const useCanvasInteraction = ({ layout, scale, sheetRef }: Options) => {
     modeRef.current = mode
   })
 
-  const setDropTarget = (id: string | null) => {
-    dropRef.current = id
-    setDropTargetState(id)
-  }
   const setMarquee = (next: Marquee | null) => {
     marqueeRef.current = next
     setMarqueeState(next)
@@ -227,6 +283,108 @@ export const useCanvasInteraction = ({ layout, scale, sheetRef }: Options) => {
     }
   }
 
+  /** The tables and names as they stand, relative to the sheet's corner: measured once per drag. */
+  const nameBoxes = (): NonNullable<NameDrag['boxes']> => {
+    const root = sheetRef.current
+    if (!root) return { tables: [], names: [] }
+    const origin = root.getBoundingClientRect()
+    const boxOf = (element: HTMLElement): Box => {
+      const rect = element.getBoundingClientRect()
+      return {
+        left: rect.left - origin.left,
+        top: rect.top - origin.top,
+        right: rect.right - origin.left,
+        bottom: rect.bottom - origin.top,
+      }
+    }
+    return {
+      tables: [...root.querySelectorAll<HTMLElement>('[data-block-type="table"]')].map((element) => ({
+        id: element.dataset.blockId ?? '',
+        box: boxOf(element),
+      })),
+      names: [...root.querySelectorAll<HTMLElement>('[data-guest-id]')].map((element) => ({
+        id: element.dataset.guestId ?? '',
+        tableId: element.closest<HTMLElement>('[data-block-id]')?.dataset.blockId ?? '',
+        box: boxOf(element),
+      })),
+    }
+  }
+
+  /**
+   * The seat under the pointer: in the table it is over, before the first name whose middle is
+   * below it. Measured on the sheet as the drag found it, so names making room never move out
+   * from under the pointer and back.
+   */
+  const seatAt = (drag: NameDrag, clientX: number, clientY: number): Seat | null => {
+    const root = sheetRef.current
+    if (!root || !drag.boxes) return null
+    const origin = root.getBoundingClientRect()
+    const x = clientX - origin.left
+    const y = clientY - origin.top
+    const table = drag.boxes.tables.find(({ box }) => x >= box.left && x <= box.right && y >= box.top && y <= box.bottom)
+    if (!table) return null
+    const next = drag.boxes.names.find(
+      (name) => name.tableId === table.id && name.id !== drag.guestId && (name.box.top + name.box.bottom) / 2 > y
+    )
+    return { tableId: table.id, beforeId: next?.id ?? null }
+  }
+
+  /** Puts back the heights a preview gave the tables. */
+  const restoreHeights = (drag: NameDrag) => {
+    for (const [element, height] of drag.heights) element.style.height = height
+    drag.heights.clear()
+  }
+
+  /**
+   * Slides the names and tables to where dropping the name on `drag.seat` would leave them: the
+   * names below its old place close up, those below its new one make room, and the tables grow,
+   * shrink and move as the new layout has them.
+   */
+  const shuffleNames = (drag: NameDrag) => {
+    const root = sheetRef.current
+    const doc = useListEditorStoreBase.getState().doc
+    if (!root || !doc) return
+    root.dataset.sorting = ''
+    const sheet = layoutRef.current
+    const preview = drag.seat ? layoutSheet(reseated(doc, drag.guestId, drag.seat), measureText) : sheet
+    drag.changes = seatingOf(preview) !== seatingOf(sheet)
+    const target = drag.changes ? preview : sheet
+    const to = blockIndex(target)
+    const nameLH = lineHeight(doc.design.type.name, doc.design.textScale)
+    const fromTops = nameTops(sheet, nameLH)
+    const toTops = nameTops(target, nameLH)
+    const stride = sheet.height + PAGE_GAP_MM
+    const ownTable = drag.table?.dataset.blockId
+    drag.tableShift = { dx: 0, dy: 0 }
+    restoreHeights(drag)
+
+    for (const block of blockIndex(sheet).values()) {
+      if (block.type !== 'table') continue
+      const next = to.get(block.id)
+      const dx = next ? next.x - block.x : 0
+      const dy = next ? next.y - block.y + (next.page - block.page) * stride : 0
+      if (block.id === ownTable) drag.tableShift = { dx, dy }
+      for (const element of elementsOf([block.id])) {
+        element.style.translate = Math.abs(dx) < 0.01 && Math.abs(dy) < 0.01 ? '' : `${dx}mm ${dy}mm`
+        if (next && Math.abs(next.h - block.h) >= 0.01) {
+          drag.heights.set(element, element.style.height)
+          element.style.height = `${next.h}mm`
+        }
+      }
+    }
+    // A name moves within its own table (the table carries it): only from one top to the other.
+    for (const element of root.querySelectorAll<HTMLElement>('[data-guest-id]')) {
+      const id = element.dataset.guestId ?? ''
+      if (id === drag.guestId) continue
+      const from = fromTops.get(id)
+      const dy = from === undefined ? 0 : (toTops.get(id) ?? from) - from
+      element.style.translate = Math.abs(dy) < 0.01 ? '' : `0mm ${dy}mm`
+    }
+    // Its own table may have slid: the name stays under the pointer.
+    lift(drag.element, drag.lastDx - drag.tableShift.dx, drag.lastDy - drag.tableShift.dy)
+    setDropTarget(drag.changes && drag.seat && drag.seat.tableId !== ownTable ? drag.seat.tableId : null)
+  }
+
   /** Where every block and table name is on screen, before a drop re-renders them. */
   const capture = (): Map<string, DOMRect> => {
     const rects = new Map<string, DOMRect>()
@@ -250,6 +408,11 @@ export const useCanvasInteraction = ({ layout, scale, sheetRef }: Options) => {
     const names = [...root.querySelectorAll<HTMLElement>('[data-guest-id]')]
     const all = [...blocks, ...names]
     const lifted = all.filter((element) => element.classList.contains('sh-dragging'))
+    // A name is lifted with its table, or it would glide home under the tables around.
+    for (const element of [...lifted]) {
+      const table = element.dataset.guestId ? element.closest<HTMLElement>('[data-block-type="table"]') : null
+      if (table) lifted.push(table)
+    }
     for (const element of all) {
       element.style.transition = 'none'
       element.style.translate = ''
@@ -369,6 +532,8 @@ export const useCanvasInteraction = ({ layout, scale, sheetRef }: Options) => {
       return
     }
     if (!drag.moved && Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) < DRAG_THRESHOLD_PX) return
+    // The closed hand for the whole drag, whatever the pointer crosses (`sheet.css`).
+    if (!drag.moved) document.documentElement.dataset.canvasDragging = ''
     drag.moved = true
     if (pressRef.current) pressRef.current.moved = true
     const k = pxPerMm()
@@ -376,22 +541,19 @@ export const useCanvasInteraction = ({ layout, scale, sheetRef }: Options) => {
     const dy = (event.clientY - drag.startY) / k
 
     if (drag.type === 'name') {
-      lift(drag.element, dx, dy)
-      const under = document.elementsFromPoint(event.clientX, event.clientY)
-      let target: string | null = null
-      for (const element of under) {
-        const name = element.closest<HTMLElement>('[data-guest-id]')
-        if (name && name !== drag.element) {
-          target = name.dataset.guestId ?? null
-          break
-        }
-        const table = element.closest<HTMLElement>('[data-block-type="table"]')
-        if (table) {
-          target = table.dataset.blockId ?? null
-          break
-        }
+      if (!drag.boxes) {
+        drag.boxes = nameBoxes()
+        // Its table above the rest, so the name it carries passes over the other tables.
+        drag.table = drag.element.closest<HTMLElement>('[data-block-type="table"]')
+        if (drag.table) drag.table.style.zIndex = '20'
       }
-      setDropTarget(target)
+      drag.lastDx = dx
+      drag.lastDy = dy
+      lift(drag.element, dx - drag.tableShift.dx, dy - drag.tableShift.dy)
+      const seat = seatAt(drag, event.clientX, event.clientY)
+      if (seat?.tableId === drag.seat?.tableId && seat?.beforeId === drag.seat?.beforeId) return
+      drag.seat = seat
+      shuffleNames(drag)
       return
     }
 
@@ -421,7 +583,7 @@ export const useCanvasInteraction = ({ layout, scale, sheetRef }: Options) => {
   const onFinish = (event: PointerEvent) => {
     const drag = dragRef.current
     dragRef.current = null
-    const target = dropRef.current
+    delete document.documentElement.dataset.canvasDragging
     setDropTarget(null)
     setGuides([])
     const store = useListEditorStoreBase.getState()
@@ -460,11 +622,14 @@ export const useCanvasInteraction = ({ layout, scale, sheetRef }: Options) => {
     const before = capture()
 
     if (drag.type === 'name') {
+      // The tables take their heights from the store again (the same ones, once it has the drop).
+      restoreHeights(drag)
+      const seat = drag.seat
       flushSync(() => {
-        if (!drag.moved || cancelled || !target) return
-        const targetGuest = doc.content.guests.find((guest) => guest.id === target)
-        if (targetGuest) store.seatGuest(drag.guestId, targetGuest.tableId, targetGuest.id)
-        else if (doc.content.tables.some((table) => table.id === target)) store.seatGuest(drag.guestId, target, null)
+        if (!drag.moved || cancelled || !seat || !drag.changes) return
+        // A guest placed by hand: the printed order is the list's own from now on.
+        if (doc.design.layout.sort !== 'manual') store.sortGuests(doc.design.layout.sort)
+        store.seatGuest(drag.guestId, seat.tableId, seat.beforeId)
       })
       settle(before)
       return
@@ -532,7 +697,13 @@ export const useCanvasInteraction = ({ layout, scale, sheetRef }: Options) => {
     stopRef.current = () => controller.abort()
   }
   // Unmounting mid-drag leaves no listeners behind.
-  useEffect(() => () => stopRef.current?.(), [])
+  useEffect(
+    () => () => {
+      stopRef.current?.()
+      delete document.documentElement.dataset.canvasDragging
+    },
+    []
+  )
 
   const onBlockPointerDown = (event: ReactPointerEvent, block: SheetBlock) => {
     if (event.button !== 0 || (event.target as HTMLElement).closest('input')) return
@@ -564,7 +735,8 @@ export const useCanvasInteraction = ({ layout, scale, sheetRef }: Options) => {
   }
 
   const onResizePointerDown = (event: ReactPointerEvent, block: SheetBlock) => {
-    if (event.button !== 0) return
+    // Tables only (the only blocks with a handle); every other block is moved, not sized.
+    if (event.button !== 0 || block.type !== 'table') return
     event.stopPropagation()
     event.preventDefault()
     const store = useListEditorStoreBase.getState()
@@ -595,6 +767,14 @@ export const useCanvasInteraction = ({ layout, scale, sheetRef }: Options) => {
       startX: event.clientX,
       startY: event.clientY,
       moved: false,
+      table: null,
+      boxes: null,
+      seat: null,
+      changes: false,
+      tableShift: { dx: 0, dy: 0 },
+      lastDx: 0,
+      lastDy: 0,
+      heights: new Map(),
     }
     startListening()
   }

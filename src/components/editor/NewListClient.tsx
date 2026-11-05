@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { createListAPI } from '@api/lists/main'
 import { useAuthStore } from '@store/auth/store'
+import { useEditorUiStore } from '@store/editorUi/store'
 import { DRAFT_ID, type ListDocument, type PrintKind } from '@store/lists/single/types'
 import { editorPath, ROUTES } from '@constants/routes'
 import type { TemplateId } from '@constants/templates'
@@ -15,13 +16,14 @@ import { newListDocument } from '@helpers/listFactory'
 import { readLocalDraft, writeLocalDraft } from '@helpers/localDraft'
 import { ErrorState } from '@components/ui/ErrorState'
 
-type Props = { templateId: TemplateId; kind: PrintKind; sample: boolean }
+type Props = { templateId: TemplateId; kind: PrintKind }
 
 /**
- * Starts a list and opens it. Signed in: created on the server. Guest: written as the local
- * draft — after asking, if a draft is already there, since there is only one.
+ * Starts a list — on the sample wedding's guests, the user's to change — and opens it at the
+ * first step. Signed in: created on the server. Guest: written as the local draft — after
+ * asking, if a draft is already there, since there is only one.
  */
-export const NewListClient: FC<Props> = ({ templateId, kind, sample }) => {
+export const NewListClient: FC<Props> = ({ templateId, kind }) => {
   const t = useTranslations('Editor')
   const tCommon = useTranslations('Common')
   const tSamples = useTranslations('Samples')
@@ -34,7 +36,6 @@ export const NewListClient: FC<Props> = ({ templateId, kind, sample }) => {
   const build = useCallback(
     (): ListDocument =>
       newListDocument(templateId, kind, {
-        sample,
         title: t('untitled'),
         texts: {
           heading: tSamples('heading'),
@@ -43,22 +44,24 @@ export const NewListClient: FC<Props> = ({ templateId, kind, sample }) => {
           table: (number) => tSamples('table', { number }),
         },
       }),
-    [kind, sample, t, tSamples, templateId]
+    [kind, t, tSamples, templateId]
   )
 
   const startDraft = useCallback(() => {
     writeLocalDraft(build())
+    useEditorUiStore.getState().markJustCreated(DRAFT_ID)
     router.replace(editorPath(DRAFT_ID))
   }, [build, router])
 
   const start = useCallback(async () => {
     if (user) {
-      const id = await dedupe(`new-list:${templateId}:${kind}:${sample}`, async () => (await createListAPI(build())).id)
+      const id = await dedupe(`new-list:${templateId}:${kind}`, async () => (await createListAPI(build())).id)
+      useEditorUiStore.getState().markJustCreated(id)
       return router.replace(editorPath(id))
     }
     if (readLocalDraft()) return setAskReplace(true)
     startDraft()
-  }, [build, kind, router, sample, startDraft, templateId, user])
+  }, [build, kind, router, startDraft, templateId, user])
 
   // Once per visit: a re-render must never start a second list.
   const startedRef = useRef(false)

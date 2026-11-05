@@ -9,7 +9,7 @@ export const GA_ID = process.env.NEXT_PUBLIC_GA_ID ?? ''
 
 type AnalyticsEvents = {
   /** A PDF saved or sent to the printer: which kind of sheet, in which template. */
-  list_pdf: { action: 'download' | 'print'; kind: string; template: string }
+  list_pdf: { kind: string; template: string }
   /** A list imported: from where, and how many guests came in. */
   guests_import: { source: 'paste' | 'file' | 'photo'; count: number }
   sign_up: { method: 'password' }

@@ -4,6 +4,7 @@
  * (`src/constants/templates.ts`, `fonts.ts`, `paper.ts`, `src/store/lists/single/types.ts`).
  */
 export const TEMPLATE_IDS = [
+  'memorial',
   'classic',
   'minimal',
   'ivory',
@@ -49,25 +50,14 @@ export const TEMPLATE_IDS = [
   'retro',
   'neon',
   'balloons',
-  'memorial',
 ] as const
 
 export type TemplateId = (typeof TEMPLATE_IDS)[number]
 
-/** Printable without paying once billing is on (`docs/BILLING.md`). Twin: `free` in the web's templates. */
-export const FREE_TEMPLATE_IDS: readonly TemplateId[] = [
-  'classic',
-  'minimal',
-  'mono',
-  'corporate',
-  'scandi',
-  'spring',
-  'christening',
-  'apricot',
-  'memorial',
-]
+/** Printable without paying; every other template prints only once paid (`services/entitlement.ts`). Twin: `free` in the web's templates. */
+export const FREE_TEMPLATE_IDS: readonly TemplateId[] = ['memorial']
 
-export const DEFAULT_TEMPLATE_ID: TemplateId = 'ivory'
+export const DEFAULT_TEMPLATE_ID: TemplateId = 'memorial'
 
 export const TABLE_STYLES = ['plain', 'underline', 'boxed', 'filled', 'ribbon', 'badge'] as const
 

@@ -40,13 +40,16 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { App, Button, Dropdown, Input, InputNumber, Popconfirm, Segmented, Select, Space } from 'antd'
+import { App, Button, Dropdown, Input, InputNumber, type MenuProps, Popconfirm, Segmented, Select, Space } from 'antd'
 import { useTranslations } from 'next-intl'
 import { useEditorUiStore } from '@store/editorUi/store'
 import { DEFAULT_SEATS_PER_TABLE, MAX_GUESTS, useListEditorStore, useListEditorStoreBase } from '@store/lists/single/store'
 import type { Guest, GuestTable } from '@store/lists/single/types'
+import { useBehindSpreadsheet } from '@hooks/useBehindSpreadsheet'
 import { cn } from '@helpers/cn'
+import { HintTooltip } from '@components/ui/HintTooltip'
 import { TileButton } from '@components/ui/TileButton'
+import { SpreadsheetButton } from '../spreadsheet/SpreadsheetModal'
 
 type TableOption = { id: string; name: string }
 
@@ -197,39 +200,71 @@ const DraggedRow: FC<{ name: string }> = ({ name }) => {
   )
 }
 
+type GuestBarProps = {
+  text: string
+  onTextChange: (text: string) => void
+  /** Whether the list is filtered by `text`. */
+  searching: boolean
+  onSearchingChange: (searching: boolean) => void
+  menu: MenuProps
+}
+
 /**
- * Type a name, press Enter, type the next: the quickest way to write a list by hand. Guests
- * added here have no table; a table's own field (`TableAdd`) adds straight to it.
+ * One field, two uses. Type a name and press Enter (or +) to add it, then type the next: the
+ * quickest way to write a list by hand. Guests added here have no table; a table's own field
+ * (`TableAdd`) adds straight to it. The search button filters the list by the same text, live
+ * while it stays on; clearing the field ends the search.
  */
-const QuickAdd: FC = () => {
+const GuestBar: FC<GuestBarProps> = ({ text, onTextChange, searching, onSearchingChange, menu }) => {
   const t = useTranslations('Editor.guests')
   const addGuest = useListEditorStore.use.addGuest()
-  const [name, setName] = useState('')
   const count = useListEditorStoreBase((state) => state.doc?.content.guests.length ?? 0)
   const full = count >= MAX_GUESTS
+  const trimmed = text.trim()
 
-  const submit = () => {
-    const trimmed = name.trim()
+  const change = (next: string) => {
+    onTextChange(next)
+    if (!next.trim()) onSearchingChange(false)
+  }
+
+  const add = () => {
     if (!trimmed || full) return
     addGuest(trimmed)
-    setName('')
+    change('')
   }
 
   return (
-    <Space.Compact block>
+    <div className='flex items-center gap-1.5'>
+      <Space.Compact block>
         <Input
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-          onPressEnter={submit}
-          placeholder={full ? t('full', { max: MAX_GUESTS }) : t('quickAdd')}
-          aria-label={t('quickAdd')}
-          disabled={full}
+          allowClear
+          value={text}
+          onChange={(event) => change(event.target.value)}
+          // While searching, the list already follows the text: Enter adds nothing by surprise.
+          onPressEnter={searching ? undefined : add}
+          placeholder={searching ? t('search') : full ? t('full', { max: MAX_GUESTS }) : t('quickAdd')}
+          aria-label={searching ? t('search') : t('quickAdd')}
           maxLength={120}
         />
-        <Button type='primary' icon={<PlusOutlined />} onClick={submit} disabled={!name.trim() || full}>
-          <span className='hidden xs:inline'>{t('add')}</span>
-        </Button>
-    </Space.Compact>
+        <HintTooltip title={t('add')}>
+          <Button type='primary' icon={<PlusOutlined />} aria-label={t('add')} onClick={add} disabled={!trimmed || full} />
+        </HintTooltip>
+      </Space.Compact>
+      <HintTooltip title={t('search')}>
+        <Button
+          type={searching ? 'primary' : 'default'}
+          ghost={searching}
+          icon={<SearchOutlined />}
+          aria-label={t('search')}
+          aria-pressed={searching}
+          disabled={!searching && !trimmed}
+          onClick={() => onSearchingChange(!searching)}
+        />
+      </HintTooltip>
+      <Dropdown menu={menu} trigger={['click']}>
+        <Button icon={<MoreOutlined />} aria-label={t('more')} />
+      </Dropdown>
+    </div>
   )
 }
 
@@ -383,11 +418,14 @@ export const GuestsPanel: FC = () => {
   const t = useTranslations('Editor.guests')
   const tSamples = useTranslations('Samples')
   const { message, modal } = App.useApp()
-  const content = useListEditorStoreBase((state) => state.doc?.content)
-  const kind = useListEditorStoreBase((state) => state.doc?.design.kind ?? 'seating')
+  // Held while the spreadsheet covers the panel: its edits do not re-render hundreds of rows behind it.
+  const content = useBehindSpreadsheet((doc) => doc?.content)
+  const kind = useBehindSpreadsheet((doc) => doc?.design.kind ?? 'seating')
   const selectionList = useListEditorStore.use.selection()
   const openImport = useEditorUiStore.use.openImport()
-  const [query, setQuery] = useState('')
+  /** The quick-add field's text; the list is filtered by it only while `searching`. */
+  const [text, setText] = useState('')
+  const [searching, setSearching] = useState(false)
   const [view, setView] = useState<View>(kind === 'seating' ? 'tables' : 'all')
   const [drag, setDragState] = useState<DragState | null>(null)
   /** The drag as last set: a drop can arrive before the render of the last move. */
@@ -409,7 +447,7 @@ export const GuestsPanel: FC = () => {
   if (!content) return null
   const { addTable, sortGuests, dedupeGuests, clearGuests, moveGuest, seatGuest } = useListEditorStoreBase.getState()
   const showNote = kind === 'cards'
-  const needle = query.trim().toLocaleLowerCase()
+  const needle = searching ? text.trim().toLocaleLowerCase() : ''
   const matches = (guest: Guest) => !needle || guest.name.toLocaleLowerCase().includes(needle)
   const filtered = content.guests.filter(matches)
   const noTableLabel = noTable
@@ -561,21 +599,15 @@ export const GuestsPanel: FC = () => {
         </TileButton>
       </div>
 
-      <QuickAdd />
+      <SpreadsheetButton />
 
-      <div className='flex items-center gap-1.5'>
-        <Input
-          allowClear
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder={t('search')}
-          aria-label={t('search')}
-          prefix={<SearchOutlined className='text-muted' />}
-        />
-        <Dropdown menu={menu} trigger={['click']}>
-          <Button icon={<MoreOutlined />} aria-label={t('more')} />
-        </Dropdown>
-      </div>
+      <GuestBar
+        text={text}
+        onTextChange={setText}
+        searching={searching}
+        onSearchingChange={setSearching}
+        menu={menu}
+      />
 
       <div className='flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5'>
         <span className='text-xs text-muted'>

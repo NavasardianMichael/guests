@@ -118,14 +118,8 @@ export default async function TemplatePage({ params }: Props) {
 
           <div className='mt-9 flex flex-wrap gap-3'>
             <Link
-              href={newListPath({ template: templateId, sample: true })}
-              className='inline-flex items-center rounded-full bg-ink px-5 py-3 sm:px-6 sm:py-3.5 font-semibold text-white no-underline shadow-lg shadow-ink/20 transition hover:-translate-y-0.5'
-            >
-              {t('startSample')}
-            </Link>
-            <Link
               href={newListPath({ template: templateId })}
-              className='inline-flex items-center rounded-full bg-surface px-5 py-3 sm:px-6 sm:py-3.5 font-semibold text-ink no-underline ring-1 ring-line transition hover:-translate-y-0.5'
+              className='inline-flex items-center rounded-full bg-ink px-5 py-3 sm:px-6 sm:py-3.5 font-semibold text-white no-underline shadow-lg shadow-ink/20 transition hover:-translate-y-0.5'
             >
               {t('useThis')}
             </Link>
