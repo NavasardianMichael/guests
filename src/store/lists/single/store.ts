@@ -3,10 +3,11 @@ import { create } from 'zustand'
 import { combine } from 'zustand/middleware'
 import { immer } from 'zustand/middleware/immer'
 import { appendSelectors } from '@store/appendSelectors'
-import { PAPER_SIZES } from '@constants/paper'
 import { TEMPLATES } from '@constants/templates'
+import { resetDesign } from '@helpers/designReset'
 import { KIND_ALIGN, KIND_LAYOUT, newGuest, newTable, templateTypography } from '@helpers/listFactory'
-import { compareNames, pageSize } from '@helpers/sheetLayout'
+import { applyPaperPatch, MIN_BLOCK_SIZE } from '@helpers/paperChange'
+import { compareNames } from '@helpers/sheetLayout'
 import type { GuestTable, ListDocument, ListEditorActions, ListEditorState } from './types'
 import { TEXT_ROLES } from './types'
 
@@ -23,7 +24,11 @@ const COALESCE_MS = 1000
 
 /** Hard caps, mirrored by the API's coercion (`LIST_LIMITS`). */
 export const MAX_GUESTS = 2000
+/** The smallest a block can be resized to, mm (defined beside the paper maths that scales sizes). */
+export { MIN_BLOCK_SIZE } from '@helpers/paperChange'
 export const MAX_TABLES = 300
+/** Guests per table that auto-seating starts from. */
+export const DEFAULT_SEATS_PER_TABLE = 10
 
 const initialState: ListEditorState = {
   listId: null,
@@ -58,7 +63,7 @@ const edit = (state: EditorDraft, key: string | null, mutate: (doc: Draft<ListDo
 }
 
 /** Moves `id` before `beforeId` (last when null) within `items`. */
-const moveBefore = <T extends { id: string }>(items: T[], id: string, beforeId: string | null): void => {
+export const moveBefore = <T extends { id: string }>(items: T[], id: string, beforeId: string | null): void => {
   const from = items.findIndex((item) => item.id === id)
   if (from < 0 || id === beforeId) return
   const [item] = items.splice(from, 1)
@@ -86,7 +91,11 @@ export const useListEditorStoreBase = create<ListEditorState & ListEditorActions
       initialState,
       (set, get): ListEditorActions => ({
         loadDocument: ({ listId, doc, paidAt }) => {
-          set((state) => ({ ...state, ...initialState, listId, doc, paidAt }))
+          // A draft saved in this browser before blocks could be resized has no `sizes`.
+          const stored: Partial<Pick<ListDocument['design']['layout'], 'sizes'>> = doc.design.layout
+          const layout = { ...doc.design.layout, sizes: stored.sizes ?? {} }
+          const loaded = { ...doc, design: { ...doc.design, layout } }
+          set((state) => ({ ...state, ...initialState, listId, doc: loaded, paidAt }))
         },
         reset: () => {
           set((state) => ({ ...state, ...initialState }))
@@ -146,6 +155,7 @@ export const useListEditorStoreBase = create<ListEditorState & ListEditorActions
                 doc.content.guests = []
                 doc.content.tables = []
                 doc.design.layout.positions = {}
+                doc.design.layout.sizes = {}
               }
               for (const row of rows) {
                 const name = row.name.replace(/\s+/g, ' ').trim()
@@ -169,7 +179,10 @@ export const useListEditorStoreBase = create<ListEditorState & ListEditorActions
           set((state) => {
             edit(state, null, (doc) => {
               doc.content.guests = doc.content.guests.filter((guest) => !ids.has(guest.id))
-              for (const id of ids) delete doc.design.layout.positions[id]
+              for (const id of ids) {
+                delete doc.design.layout.positions[id]
+                delete doc.design.layout.sizes[id]
+              }
             })
             state.selection = state.selection.filter((id) => !ids.has(id))
           })
@@ -210,7 +223,10 @@ export const useListEditorStoreBase = create<ListEditorState & ListEditorActions
           set((state) => {
             edit(state, null, (doc) => {
               doc.content.guests = doc.content.guests.filter((guest) => !ids.has(guest.id))
-              for (const id of ids) delete doc.design.layout.positions[id]
+              for (const id of ids) {
+                delete doc.design.layout.positions[id]
+                delete doc.design.layout.sizes[id]
+              }
             })
             state.selection = state.selection.filter((id) => !ids.has(id))
           })
@@ -221,6 +237,7 @@ export const useListEditorStoreBase = create<ListEditorState & ListEditorActions
             edit(state, null, (doc) => {
               doc.content.guests = []
               doc.design.layout.positions = {}
+              doc.design.layout.sizes = {}
             })
             state.selection = []
           })
@@ -249,6 +266,7 @@ export const useListEditorStoreBase = create<ListEditorState & ListEditorActions
               doc.content.tables = doc.content.tables.filter((table) => table.id !== tableId)
               for (const guest of doc.content.guests) if (guest.tableId === tableId) guest.tableId = ''
               delete doc.design.layout.positions[tableId]
+              delete doc.design.layout.sizes[tableId]
             })
             state.selection = state.selection.filter((id) => id !== tableId)
           })
@@ -288,43 +306,15 @@ export const useListEditorStoreBase = create<ListEditorState & ListEditorActions
               Object.assign(doc.design, patch)
               if (kindChanged && patch.kind) {
                 // Each kind has its own grid: a seating board in rows of tables, a plain list
-                // in columns of names, cards edge to edge. Dragged positions belong to the old one.
-                Object.assign(doc.design.layout, KIND_LAYOUT[patch.kind], { mode: 'grid', positions: {} })
+                // in columns of names, cards edge to edge. Dragged and resized blocks belong to the old one.
+                Object.assign(doc.design.layout, KIND_LAYOUT[patch.kind], { mode: 'grid', positions: {}, sizes: {} })
                 for (const role of TEXT_ROLES) doc.design.type[role].align = KIND_ALIGN[patch.kind][role]
               }
             })
           )
         },
         setPaper: (patch) => {
-          set((state) =>
-            edit(state, `paper.${Object.keys(patch).join(',')}`, (doc) => {
-              const previous = { ...doc.design.paper }
-              const before = pageSize(previous)
-              const paper = { ...previous, ...patch }
-              if (patch.format && patch.format !== 'custom') Object.assign(paper, PAPER_SIZES[patch.format])
-              // Turning a custom sheet swaps its sides, the way a named size turns.
-              if (paper.format === 'custom' && patch.orientation && patch.orientation !== previous.orientation) {
-                Object.assign(paper, { width: paper.height, height: paper.width })
-              }
-              doc.design.paper = paper
-              const after = pageSize(paper)
-              // A new named size scales the letters with it: what read well on A4 reads the
-              // same on A2. A custom size or a turn leaves them as they are.
-              if (patch.format && patch.format !== 'custom' && patch.format !== previous.format) {
-                const ratio = Math.min(after.width, after.height) / Math.min(before.width, before.height)
-                doc.design.textScale = Math.min(4, Math.max(0.4, Math.round(doc.design.textScale * ratio * 100) / 100))
-              }
-              // Dragged blocks keep their place relative to the sheet.
-              if (after.width !== before.width || after.height !== before.height) {
-                const sx = after.width / before.width
-                const sy = after.height / before.height
-                for (const position of Object.values(doc.design.layout.positions)) {
-                  position.x = Math.round(position.x * sx * 10) / 10
-                  position.y = Math.round(position.y * sy * 10) / 10
-                }
-              }
-            })
-          )
+          set((state) => edit(state, `paper.${Object.keys(patch).join(',')}`, (doc) => applyPaperPatch(doc.design, patch)))
         },
         setPalette: (patch) => {
           set((state) =>
@@ -365,6 +355,13 @@ export const useListEditorStoreBase = create<ListEditorState & ListEditorActions
           )
         },
 
+        resetDesign: (scope) => {
+          const design = get().doc?.design
+          if (!design) return
+          const next = resetDesign(design, scope)
+          set((state) => edit(state, null, (doc) => void (doc.design = next)))
+        },
+
         setPositions: (positions) => {
           set((state) =>
             edit(state, null, (doc) => {
@@ -380,6 +377,25 @@ export const useListEditorStoreBase = create<ListEditorState & ListEditorActions
                 doc.design.layout.positions = {}
                 doc.design.layout.mode = 'grid'
               } else for (const id of blockIds) delete doc.design.layout.positions[id]
+            })
+          )
+        },
+        setSize: (blockId, size) => {
+          set((state) =>
+            // Every frame of one resize lands in one undo step.
+            edit(state, `size.${blockId}`, (doc) => {
+              doc.design.layout.sizes[blockId] = {
+                w: Math.max(MIN_BLOCK_SIZE.w, size.w),
+                h: Math.max(MIN_BLOCK_SIZE.h, size.h),
+              }
+            })
+          )
+        },
+        resetSizes: (blockIds) => {
+          set((state) =>
+            edit(state, null, (doc) => {
+              if (!blockIds) doc.design.layout.sizes = {}
+              else for (const id of blockIds) delete doc.design.layout.sizes[id]
             })
           )
         },

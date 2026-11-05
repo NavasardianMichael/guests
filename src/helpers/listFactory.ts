@@ -58,6 +58,7 @@ export const defaultLayout = (kind: PrintKind): Layout => ({
   cardFold: false,
   cutMarks: true,
   positions: {},
+  sizes: {},
 })
 
 export const defaultPaper = (): Paper => ({ format: 'A4', ...PAPER_SIZES.A4, orientation: 'portrait', margin: 15 })

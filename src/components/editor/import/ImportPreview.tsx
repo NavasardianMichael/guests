@@ -22,7 +22,7 @@ export const ImportPreview: FC<Props> = ({ guests, onChange }) => {
   return (
     <div className='flex flex-col gap-2'>
       <p className='m-0 text-sm font-medium'>{t('found', { guests: guests.length, tables })}</p>
-      <ul className='m-0 max-h-72 list-none overflow-y-auto rounded-lg border border-line p-1'>
+      <ul className='m-0 max-h-72 list-none scrollbar-thin overflow-y-auto rounded-lg border border-line p-1'>
         {guests.map((guest, index) => (
           <li key={index} className='group flex items-center gap-1'>
             <span className='w-7 shrink-0 text-right text-[11px] text-muted tabular-nums'>{index + 1}</span>

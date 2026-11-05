@@ -1,6 +1,7 @@
 'use client'
 
-import { type DragEvent, type FC, memo, useMemo, useRef, useState } from 'react'
+import { type FC, memo, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import {
   CameraOutlined,
   DeleteOutlined,
@@ -12,10 +13,37 @@ import {
   SnippetsOutlined,
   ThunderboltOutlined,
 } from '@ant-design/icons'
+import {
+  closestCenter,
+  closestCorners,
+  type CollisionDetection,
+  DndContext,
+  type DragEndEvent,
+  type DragOverEvent,
+  DragOverlay,
+  type DragStartEvent,
+  KeyboardSensor,
+  MeasuringStrategy,
+  type Modifier,
+  PointerSensor,
+  pointerWithin,
+  type UniqueIdentifier,
+  useDroppable,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core'
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { App, Button, Dropdown, Input, InputNumber, Popconfirm, Segmented, Select, Space } from 'antd'
 import { useTranslations } from 'next-intl'
 import { useEditorUiStore } from '@store/editorUi/store'
-import { MAX_GUESTS, useListEditorStore, useListEditorStoreBase } from '@store/lists/single/store'
+import { DEFAULT_SEATS_PER_TABLE, MAX_GUESTS, useListEditorStore, useListEditorStoreBase } from '@store/lists/single/store'
 import type { Guest, GuestTable } from '@store/lists/single/types'
 import { cn } from '@helpers/cn'
 import { TileButton } from '@components/ui/TileButton'
@@ -37,14 +65,21 @@ const filterTable = (input: string, option?: TableSelectOption): boolean =>
 /** Shown on hover with a mouse; always there on a touch screen, which has no hover. */
 const HOVER_REVEAL = 'opacity-0 group-hover:opacity-100 focus-visible:opacity-100 pointer-coarse:opacity-100'
 
-const DRAG_TYPE = 'application/x-guest-id'
+/** A droppable group of rows: a table (`group:<id>`), the guests at none (`group:`), or every guest. */
+const GROUP = 'group:'
+const ALL_GUESTS = `${GROUP}*`
+const groupId = (table: GuestTable | null): string => `${GROUP}${table?.id ?? ''}`
 
-const startRowDrag = (event: DragEvent, guestId: string) => {
-  event.dataTransfer.setData(DRAG_TYPE, guestId)
-  event.dataTransfer.effectAllowed = 'move'
-}
+/** Row ids per group, in display order. */
+type Groups = Record<string, string[]>
 
-const draggedGuest = (event: DragEvent): string | null => event.dataTransfer.getData(DRAG_TYPE) || null
+const groupOf = (groups: Groups, id: UniqueIdentifier): string | undefined =>
+  String(id) in groups ? String(id) : Object.keys(groups).find((key) => groups[key].includes(String(id)))
+
+/** Rows only ever move up and down. */
+const vertical: Modifier = ({ transform }) => ({ ...transform, x: 0 })
+
+const SETTLE = { duration: 180, easing: 'cubic-bezier(0.2, 0, 0, 1)' }
 
 type RowProps = {
   guest: Guest
@@ -53,53 +88,18 @@ type RowProps = {
   /** `always`, or only on touch screens (the by-table view, where rows are dragged with a mouse). */
   showTable: 'always' | 'touch' | 'never'
   showNote: boolean
-  selected: boolean
-  onDropGuest: (draggedId: string, before: Guest) => void
 }
 
 /**
- * One guest. A list runs to hundreds of rows, so each row re-renders only when its own guest
- * changes (`memo` + immer's structural sharing), and the table options are built once, above.
+ * One guest's fields. A list runs to hundreds of rows, so they re-render only when their own
+ * guest changes (`memo` + immer's structural sharing) — not on every frame of a drag, which
+ * re-renders the sortable row around them — and the table options are built once, above.
  */
-const GuestRow: FC<RowProps> = memo(function GuestRow({
-  guest,
-  index,
-  tableOptions,
-  showTable,
-  showNote,
-  selected,
-  onDropGuest,
-}) {
+const GuestFields: FC<RowProps> = memo(function GuestFields({ guest, index, tableOptions, showTable, showNote }) {
   const t = useTranslations('Editor.guests')
-  const [over, setOver] = useState(false)
   const { updateGuest, removeGuests, select } = useListEditorStoreBase.getState()
   return (
-    <li
-      className={cn(
-        'group flex items-center gap-1 rounded-lg border border-transparent px-0.5 py-0.5 transition-colors',
-        selected && 'border-accent bg-accent-soft/50',
-        over && 'border-t-accent'
-      )}
-      onDragOver={(event) => {
-        if (!event.dataTransfer.types.includes(DRAG_TYPE)) return
-        event.preventDefault()
-        setOver(true)
-      }}
-      onDragLeave={() => setOver(false)}
-      onDrop={(event) => {
-        setOver(false)
-        const dragged = draggedGuest(event)
-        if (dragged && dragged !== guest.id) onDropGuest(dragged, guest)
-      }}
-    >
-      <span
-        className='hidden cursor-grab px-0.5 text-muted opacity-40 group-hover:opacity-100 pointer-fine:inline'
-        draggable
-        onDragStart={(event) => startRowDrag(event, guest.id)}
-        aria-hidden='true'
-      >
-        <HolderOutlined />
-      </span>
+    <>
       <span className='w-6 shrink-0 text-right text-[11px] text-muted tabular-nums'>{index + 1}</span>
       <input
         className='min-w-0 flex-1 rounded-md border-0 bg-transparent px-1.5 py-1.5 text-sm outline-none focus:bg-surface focus:ring-1 focus:ring-line'
@@ -146,33 +146,77 @@ const GuestRow: FC<RowProps> = memo(function GuestRow({
       >
         <DeleteOutlined />
       </button>
-    </li>
+    </>
   )
 })
 
-/** Type a name, press Enter, type the next: the quickest way to write a list by hand. */
-const QuickAdd: FC<{ tables: TableOption[]; tableOptions: TableSelectOption[]; showTable: boolean }> = ({
-  tables,
-  tableOptions,
-  showTable,
-}) => {
+/**
+ * A guest row, dragged by its handle with a mouse or the keyboard (on a touch screen the table
+ * picker moves a guest instead). While dragged it stays in the list, faded, as the gap the row
+ * will drop into; the overlay follows the pointer.
+ */
+const GuestRow: FC<RowProps & { selected: boolean }> = ({ selected, ...row }) => {
+  const t = useTranslations('Editor.guests')
+  const { setNodeRef, setActivatorNodeRef, attributes, listeners, transform, transition, isDragging } = useSortable({
+    id: row.guest.id,
+    attributes: { roleDescription: t('dragRole') },
+  })
+  return (
+    <li
+      ref={setNodeRef}
+      style={{ transform: CSS.Translate.toString(transform), transition }}
+      className={cn(
+        'group flex items-center gap-1 rounded-lg border border-transparent px-0.5 py-0.5',
+        selected && 'border-accent bg-accent-soft/50',
+        isDragging && 'border-dashed border-accent bg-accent-soft/30 *:opacity-30'
+      )}
+    >
+      <button
+        type='button'
+        ref={setActivatorNodeRef}
+        {...attributes}
+        {...listeners}
+        aria-label={t('dragHandle')}
+        className='hidden cursor-grab touch-none place-items-center rounded-md border-0 bg-transparent px-0.5 py-1.5 text-muted opacity-40 group-hover:opacity-100 focus-visible:opacity-100 active:cursor-grabbing pointer-fine:grid'
+      >
+        <HolderOutlined />
+      </button>
+      <GuestFields {...row} />
+    </li>
+  )
+}
+
+/** What follows the pointer while a row is dragged. */
+const DraggedRow: FC<{ name: string }> = ({ name }) => {
+  const t = useTranslations('Editor.guests')
+  return (
+    <div className='flex h-full cursor-grabbing items-center gap-2 rounded-lg border border-accent bg-surface px-1.5 text-sm shadow-lg'>
+      <HolderOutlined className='text-muted' />
+      <span className='truncate'>{name || t('namePlaceholder')}</span>
+    </div>
+  )
+}
+
+/**
+ * Type a name, press Enter, type the next: the quickest way to write a list by hand. Guests
+ * added here have no table; a table's own field (`TableAdd`) adds straight to it.
+ */
+const QuickAdd: FC = () => {
   const t = useTranslations('Editor.guests')
   const addGuest = useListEditorStore.use.addGuest()
   const [name, setName] = useState('')
-  const [tableId, setTableId] = useState('')
   const count = useListEditorStoreBase((state) => state.doc?.content.guests.length ?? 0)
   const full = count >= MAX_GUESTS
 
   const submit = () => {
     const trimmed = name.trim()
     if (!trimmed || full) return
-    addGuest(trimmed, tables.some((table) => table.id === tableId) ? tableId : '')
+    addGuest(trimmed)
     setName('')
   }
 
   return (
-    <div className='flex flex-col gap-1.5'>
-      <Space.Compact block>
+    <Space.Compact block>
         <Input
           value={name}
           onChange={(event) => setName(event.target.value)}
@@ -185,20 +229,42 @@ const QuickAdd: FC<{ tables: TableOption[]; tableOptions: TableSelectOption[]; s
         <Button type='primary' icon={<PlusOutlined />} onClick={submit} disabled={!name.trim() || full}>
           <span className='hidden xs:inline'>{t('add')}</span>
         </Button>
-      </Space.Compact>
-      {showTable && tables.length > 0 && (
-        <div className='flex items-center gap-2 text-xs text-muted'>
-          <span className='shrink-0'>{t('quickAddTable')}</span>
-          <Select<string, TableSelectOption>
-            className='min-w-0 flex-1'
-            value={tables.some((table) => table.id === tableId) ? tableId : ''}
-            options={tableOptions}
-            showSearch={tableOptions.length > 8 ? { filterOption: filterTable } : false}
-            onChange={setTableId}
-          />
-        </div>
-      )}
-    </div>
+    </Space.Compact>
+  )
+}
+
+/** A table's own add field, at its foot: Enter adds the name to this table and keeps the field for the next. */
+const TableAdd: FC<{ tableId: string; label: string }> = ({ tableId, label }) => {
+  const t = useTranslations('Editor.guests')
+  const addGuest = useListEditorStore.use.addGuest()
+  const full = useListEditorStoreBase((state) => (state.doc?.content.guests.length ?? 0) >= MAX_GUESTS)
+  const [name, setName] = useState('')
+  if (full) return null
+
+  const submit = () => {
+    const trimmed = name.trim()
+    if (!trimmed) return
+    addGuest(trimmed, tableId)
+    setName('')
+  }
+
+  return (
+    <label className='mt-0.5 flex items-center gap-1.5 rounded-md px-1.5 py-0.5 text-muted focus-within:bg-surface focus-within:ring-1 focus-within:ring-line'>
+      <PlusOutlined className='shrink-0 text-xs' />
+      <input
+        className='min-w-0 flex-1 border-0 bg-transparent py-1 text-sm text-text outline-none placeholder:text-muted'
+        value={name}
+        placeholder={t('addHere')}
+        aria-label={t('addTo', { table: label })}
+        maxLength={120}
+        onChange={(event) => setName(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') submit()
+          if (event.key === 'Escape') setName('')
+        }}
+        onBlur={submit}
+      />
+    </label>
   )
 }
 
@@ -207,7 +273,7 @@ const AutoSeat: FC = () => {
   const t = useTranslations('Editor.guests')
   const tSamples = useTranslations('Samples')
   const autoSeat = useListEditorStore.use.autoSeat()
-  const [seats, setSeats] = useState(10)
+  const [seats, setSeats] = useState(DEFAULT_SEATS_PER_TABLE)
   return (
     <div className='flex flex-wrap items-center gap-x-2 gap-y-1.5 rounded-xl bg-canvas px-3 py-2.5 text-xs leading-snug'>
       <ThunderboltOutlined className='text-accent-strong' />
@@ -236,32 +302,25 @@ type GroupProps = {
   selection: ReadonlySet<string>
   noTableLabel: string
   showNote: boolean
-  onDropGuest: (draggedId: string, before: Guest) => void
+  /** The dragged row is in this group right now. */
+  highlighted: boolean
 }
 
-/** A table and the guests at it — or the guests at none — taking dropped rows. */
-const TableGroup: FC<GroupProps> = ({ table, guests, tableOptions, selection, noTableLabel, showNote, onDropGuest }) => {
+/** A table and the guests at it — or the guests at none — taking dragged rows. */
+const TableGroup: FC<GroupProps> = ({ table, guests, tableOptions, selection, noTableLabel, showNote, highlighted }) => {
   const t = useTranslations('Editor.guests')
-  const { renameTable, removeTable, updateGuest } = useListEditorStoreBase.getState()
-  const [over, setOver] = useState(false)
+  const { renameTable, removeTable } = useListEditorStoreBase.getState()
+  const { setNodeRef } = useDroppable({ id: groupId(table) })
+  const ids = useMemo(() => guests.map((guest) => guest.id), [guests])
   return (
     <section
+      ref={setNodeRef}
       role='group'
       aria-label={table?.name || noTableLabel}
-      className={cn('rounded-xl border border-line p-1.5 sm:p-2', over && 'border-accent bg-accent-soft/40')}
-      onDragOver={(event) => {
-        if (!event.dataTransfer.types.includes(DRAG_TYPE)) return
-        event.preventDefault()
-        setOver(true)
-      }}
-      onDragLeave={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget as Node)) setOver(false)
-      }}
-      onDrop={(event) => {
-        setOver(false)
-        const dragged = draggedGuest(event)
-        if (dragged) updateGuest(dragged, { tableId: table?.id ?? '' })
-      }}
+      className={cn(
+        'rounded-xl border border-line p-1.5 transition-colors sm:p-2',
+        highlighted && 'border-accent bg-accent-soft/40'
+      )}
     >
       <header className='mb-1 flex items-center gap-1.5'>
         {table ? (
@@ -287,27 +346,32 @@ const TableGroup: FC<GroupProps> = ({ table, guests, tableOptions, selection, no
           </Popconfirm>
         )}
       </header>
-      {guests.length > 0 ? (
-        <ul className='m-0 list-none p-0'>
-          {guests.map((guest, index) => (
-            <GuestRow
-              key={guest.id}
-              guest={guest}
-              index={index}
-              tableOptions={tableOptions}
-              showTable='touch'
-              showNote={showNote}
-              selected={selection.has(guest.id)}
-              onDropGuest={onDropGuest}
-            />
-          ))}
-        </ul>
-      ) : (
-        <p className='m-0 px-1.5 py-1 text-xs text-muted'>{t('dropHere')}</p>
-      )}
+      <SortableContext items={ids} strategy={verticalListSortingStrategy}>
+        {guests.length > 0 ? (
+          <ul className='m-0 list-none p-0'>
+            {guests.map((guest, index) => (
+              <GuestRow
+                key={guest.id}
+                guest={guest}
+                index={index}
+                tableOptions={tableOptions}
+                showTable='touch'
+                showNote={showNote}
+                selected={selection.has(guest.id)}
+              />
+            ))}
+          </ul>
+        ) : (
+          <p className='m-0 px-1.5 py-1 text-xs text-muted'>{t('dropHere')}</p>
+        )}
+      </SortableContext>
+      <TableAdd tableId={table?.id ?? ''} label={table?.name || noTableLabel} />
     </section>
   )
 }
+
+/** A drag under way: the dragged row, where it started, and every group as it now stands. */
+type DragState = { id: string; from: { group: string; index: number }; groups: Groups }
 
 type View = 'all' | 'tables'
 
@@ -325,6 +389,9 @@ export const GuestsPanel: FC = () => {
   const openImport = useEditorUiStore.use.openImport()
   const [query, setQuery] = useState('')
   const [view, setView] = useState<View>(kind === 'seating' ? 'tables' : 'all')
+  const [drag, setDragState] = useState<DragState | null>(null)
+  /** The drag as last set: a drop can arrive before the render of the last move. */
+  const dragRef = useRef<DragState | null>(null)
   const listRef = useRef<HTMLDivElement>(null)
   const selection = useMemo(() => new Set(selectionList), [selectionList])
   const tables = useMemo<TableOption[]>(
@@ -333,17 +400,22 @@ export const GuestsPanel: FC = () => {
   )
   const noTable = t('noTable')
   const tableOptions = useMemo(() => tableSelectOptions(tables, noTable), [tables, noTable])
+  const sensors = useSensors(
+    // A press that moves less than this is a click on the handle, not a drag.
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  )
 
   if (!content) return null
-  const { addTable, sortGuests, dedupeGuests, clearGuests, seatGuest } = useListEditorStoreBase.getState()
+  const { addTable, sortGuests, dedupeGuests, clearGuests, moveGuest, seatGuest } = useListEditorStoreBase.getState()
   const showNote = kind === 'cards'
   const needle = query.trim().toLocaleLowerCase()
   const matches = (guest: Guest) => !needle || guest.name.toLocaleLowerCase().includes(needle)
   const filtered = content.guests.filter(matches)
   const noTableLabel = noTable
-
-  /** A row dropped on another row: it takes that row's place and its table. */
-  const onDropGuest = (draggedId: string, before: Guest) => seatGuest(draggedId, before.tableId, before.id)
+  const byId = new Map(content.guests.map((guest) => [guest.id, guest]))
+  const tableIds = new Set(tables.map((table) => table.id))
+  const seatingView = view === 'tables'
 
   const menu = {
     items: [
@@ -370,8 +442,110 @@ export const GuestsPanel: FC = () => {
     },
   }
 
-  const seatingView = view === 'tables'
-  const unseated = filtered.filter((guest) => !tables.some((table) => table.id === guest.tableId))
+  /** The rows of every group as the store has them (the guests at no table only when shown). */
+  const storedGroups = (): Groups => {
+    if (!seatingView) return { [ALL_GUESTS]: filtered.map((guest) => guest.id) }
+    const groups: Groups = {}
+    for (const table of content.tables) groups[groupId(table)] = []
+    for (const guest of filtered) {
+      const key = tableIds.has(guest.tableId) ? `${GROUP}${guest.tableId}` : groupId(null)
+      ;(groups[key] ??= []).push(guest.id)
+    }
+    if (!content.tables.length) groups[groupId(null)] ??= []
+    return groups
+  }
+
+  // While a row is dragged the panel shows the groups as the drag has rearranged them.
+  const groups = drag?.groups ?? storedGroups()
+  const rowsOf = (key: string): Guest[] =>
+    (groups[key] ?? []).flatMap((id) => {
+      const guest = byId.get(id)
+      return guest ? [guest] : []
+    })
+  const activeGroup = drag ? groupOf(drag.groups, drag.id) : undefined
+  const dragged = drag ? byId.get(drag.id) : undefined
+  const nameOf = (id: UniqueIdentifier): string => byId.get(String(id))?.name || t('namePlaceholder')
+
+  const setDrag = (next: DragState | null) => {
+    dragRef.current = next
+    setDragState(next)
+  }
+
+  /**
+   * Over a table, the nearest of its rows (or the table itself when it has none); between
+   * tables, the nearest table. Rows of other tables never compete, so a row crossing into a
+   * table lands among its guests rather than flickering between neighbours.
+   */
+  const collision: CollisionDetection = (args) => {
+    if (!seatingView) return closestCenter(args)
+    const under = pointerWithin(args)
+    const hits = under.length ? under : closestCorners(args)
+    const group = hits.find((hit) => String(hit.id).startsWith(GROUP))
+    if (!group) return hits
+    const rows = groups[String(group.id)] ?? []
+    if (!rows.length) return [group]
+    return closestCenter({
+      ...args,
+      droppableContainers: args.droppableContainers.filter((container) => rows.includes(String(container.id))),
+    })
+  }
+
+  const onDragStart = ({ active }: DragStartEvent) => {
+    const start = storedGroups()
+    const id = String(active.id)
+    const group = groupOf(start, id)
+    if (group) setDrag({ id, from: { group, index: start[group].indexOf(id) }, groups: start })
+  }
+
+  /** A row crossing into another table moves there at once; its neighbours make room. */
+  const onDragOver = ({ active, over }: DragOverEvent) => {
+    const current = dragRef.current
+    if (!current || !over) return
+    const from = groupOf(current.groups, active.id)
+    const to = groupOf(current.groups, over.id)
+    if (!from || !to || from === to) return
+    const target = current.groups[to]
+    const overIndex = target.indexOf(String(over.id))
+    const rect = active.rect.current.translated
+    const below = overIndex >= 0 && rect ? rect.top > over.rect.top + over.rect.height / 2 : false
+    const index = overIndex < 0 ? target.length : overIndex + (below ? 1 : 0)
+    setDrag({
+      ...current,
+      groups: {
+        ...current.groups,
+        [from]: current.groups[from].filter((row) => row !== current.id),
+        [to]: [...target.slice(0, index), current.id, ...target.slice(index)],
+      },
+    })
+  }
+
+  /** Where in the whole list a row lands: before the row now after it in its group, else after the one before it. */
+  const placeBefore = (rows: string[], id: string): string | null => {
+    const at = rows.indexOf(id)
+    if (at + 1 < rows.length) return rows[at + 1]
+    const others = content.guests.filter((guest) => guest.id !== id)
+    const previous = at > 0 ? others.findIndex((guest) => guest.id === rows[at - 1]) : -1
+    if (previous >= 0) return others[previous + 1]?.id ?? null
+    // Alone in its group: it keeps its place in the whole list.
+    const own = content.guests.findIndex((guest) => guest.id === id)
+    return content.guests[own + 1]?.id ?? null
+  }
+
+  const onDragEnd = ({ active, over }: DragEndEvent) => {
+    const current = dragRef.current
+    setDrag(null)
+    if (!current || !over) return
+    const group = groupOf(current.groups, active.id)
+    if (!group) return
+    let rows = current.groups[group]
+    const from = rows.indexOf(current.id)
+    const to = rows.indexOf(String(over.id))
+    if (to >= 0 && to !== from) rows = arrayMove(rows, from, to)
+    if (group === current.from.group && rows.indexOf(current.id) === current.from.index) return
+    const beforeId = placeBefore(rows, current.id)
+    if (group === ALL_GUESTS) moveGuest(current.id, beforeId)
+    else seatGuest(current.id, group.slice(GROUP.length), beforeId)
+  }
 
   return (
     <div className='flex flex-col gap-3'>
@@ -387,7 +561,7 @@ export const GuestsPanel: FC = () => {
         </TileButton>
       </div>
 
-      <QuickAdd tables={tables} tableOptions={tableOptions} showTable={kind !== 'list' || tables.length > 0} />
+      <QuickAdd />
 
       <div className='flex items-center gap-1.5'>
         <Input
@@ -430,56 +604,84 @@ export const GuestsPanel: FC = () => {
               {t('addTable')}
             </Button>
           </div>
-          {unseated.length > 0 && <AutoSeat />}
+          {(groups[groupId(null)]?.length ?? 0) > 0 && <AutoSeat />}
         </div>
       )}
 
-      <div ref={listRef} className='flex flex-col gap-2'>
-        {seatingView ? (
-          <>
-            {content.tables.map((table) => (
-              <TableGroup
-                key={table.id}
-                table={table}
-                guests={filtered.filter((guest) => guest.tableId === table.id)}
-                tableOptions={tableOptions}
-                selection={selection}
-                noTableLabel={noTableLabel}
-                showNote={showNote}
-                onDropGuest={onDropGuest}
-              />
-            ))}
-            {(unseated.length > 0 || !content.tables.length) && (
-              <TableGroup
-                table={null}
-                guests={unseated}
-                tableOptions={tableOptions}
-                selection={selection}
-                noTableLabel={noTableLabel}
-                showNote={showNote}
-                onDropGuest={onDropGuest}
-              />
-            )}
-          </>
-        ) : filtered.length ? (
-          <ul className='m-0 list-none p-0'>
-            {filtered.map((guest, index) => (
-              <GuestRow
-                key={guest.id}
-                guest={guest}
-                index={index}
-                tableOptions={tableOptions}
-                showTable={tables.length > 0 ? 'always' : 'never'}
-                showNote={showNote}
-                selected={selection.has(guest.id)}
-                onDropGuest={onDropGuest}
-              />
-            ))}
-          </ul>
-        ) : (
-          <p className='m-0 py-6 text-center text-sm text-muted'>{needle ? t('noMatches') : t('empty')}</p>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={collision}
+        // Rows change tables mid-drag; every table is re-measured as they do.
+        measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
+        onDragStart={onDragStart}
+        onDragOver={onDragOver}
+        onDragEnd={onDragEnd}
+        onDragCancel={() => setDrag(null)}
+        accessibility={{
+          screenReaderInstructions: { draggable: t('dragInstructions') },
+          announcements: {
+            onDragStart: ({ active }) => t('dragMoving', { name: nameOf(active.id) }),
+            onDragOver: () => undefined,
+            onDragEnd: ({ active }) => t('dragDropped', { name: nameOf(active.id) }),
+            onDragCancel: ({ active }) => t('dragCancelled', { name: nameOf(active.id) }),
+          },
+        }}
+      >
+        <div ref={listRef} className='flex flex-col gap-2'>
+          {seatingView ? (
+            <>
+              {content.tables.map((table) => (
+                <TableGroup
+                  key={table.id}
+                  table={table}
+                  guests={rowsOf(groupId(table))}
+                  tableOptions={tableOptions}
+                  selection={selection}
+                  noTableLabel={noTableLabel}
+                  showNote={showNote}
+                  highlighted={activeGroup === groupId(table)}
+                />
+              ))}
+              {groups[groupId(null)] && (
+                <TableGroup
+                  table={null}
+                  guests={rowsOf(groupId(null))}
+                  tableOptions={tableOptions}
+                  selection={selection}
+                  noTableLabel={noTableLabel}
+                  showNote={showNote}
+                  highlighted={activeGroup === groupId(null)}
+                />
+              )}
+            </>
+          ) : filtered.length ? (
+            <SortableContext items={groups[ALL_GUESTS] ?? []} strategy={verticalListSortingStrategy}>
+              <ul className='m-0 list-none p-0'>
+                {rowsOf(ALL_GUESTS).map((guest, index) => (
+                  <GuestRow
+                    key={guest.id}
+                    guest={guest}
+                    index={index}
+                    tableOptions={tableOptions}
+                    showTable={tables.length > 0 ? 'always' : 'never'}
+                    showNote={showNote}
+                    selected={selection.has(guest.id)}
+                  />
+                ))}
+              </ul>
+            </SortableContext>
+          ) : (
+            <p className='m-0 py-6 text-center text-sm text-muted'>{needle ? t('noMatches') : t('empty')}</p>
+          )}
+        </div>
+        {/* On the body: a panel that slides in is transformed, which would offset a fixed overlay. */}
+        {createPortal(
+          <DragOverlay modifiers={[vertical]} dropAnimation={SETTLE} zIndex={1100}>
+            {dragged ? <DraggedRow name={dragged.name} /> : null}
+          </DragOverlay>,
+          document.body
         )}
-      </div>
+      </DndContext>
     </div>
   )
 }

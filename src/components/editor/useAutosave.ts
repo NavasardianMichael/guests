@@ -4,6 +4,7 @@ import { type FC, useEffect } from 'react'
 import { updateListAPI } from '@api/lists/main'
 import { useListEditorStore, useListEditorStoreBase } from '@store/lists/single/store'
 import { DRAFT_ID } from '@store/lists/single/types'
+import { useLeaveGuard } from '@hooks/useLeaveGuard'
 import { writeLocalDraft } from '@helpers/localDraft'
 import { reportError } from '@helpers/reportError'
 
@@ -64,14 +65,8 @@ export const useAutosave = (): void => {
     return () => clearTimeout(timer)
   }, [saveStatus, setSaveStatus])
 
-  useEffect(() => {
-    if (saveStatus === 'saved') return
-    const warn = (event: BeforeUnloadEvent) => {
-      event.preventDefault()
-    }
-    window.addEventListener('beforeunload', warn)
-    return () => window.removeEventListener('beforeunload', warn)
-  }, [saveStatus])
+  // Closing, reloading, a link or Back while an edit is not saved yet asks first (`LeaveGuard`).
+  useLeaveGuard(saveStatus !== 'saved' && 'unsaved')
 }
 
 /**

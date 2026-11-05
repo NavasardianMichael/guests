@@ -5,6 +5,7 @@ import { APP_NAME } from '@constants/app'
 import { FONTS_SOURCE_URL } from '@constants/fonts'
 import { ROUTES } from '@constants/routes'
 import { BrandLogo } from './BrandLogo'
+import { LanguageSwitcher } from './LanguageSwitcher'
 
 export const Footer: FC = async () => {
   const t = await getTranslations('Footer')
@@ -38,7 +39,12 @@ export const Footer: FC = async () => {
           <p className='mt-3 text-xs text-muted'>
             {t.rich('fonts', {
               link: (chunks) => (
-                <a href={FONTS_SOURCE_URL} target='_blank' rel='noopener noreferrer' className='text-muted underline hover:text-ink'>
+                <a
+                  href={FONTS_SOURCE_URL}
+                  target='_blank'
+                  rel='noopener noreferrer'
+                  className='text-muted underline hover:text-ink'
+                >
                   {chunks}
                 </a>
               ),
@@ -60,8 +66,12 @@ export const Footer: FC = async () => {
           </nav>
         ))}
       </div>
-      <div className='border-t border-line py-5 text-center text-xs text-muted'>
-        {t('rights', { year: new Date().getFullYear(), name: APP_NAME })}
+      <div className='border-t border-line'>
+        <div className='mx-auto flex max-w-7xl flex-col-reverse items-center justify-between gap-3 px-4 py-4 sm:flex-row md:px-6'>
+          <p className='m-0 text-xs text-muted'>{t('rights', { year: new Date().getFullYear(), name: APP_NAME })}</p>
+          {/* The only language switch on the site: the interface language is a cookie, set rarely. */}
+          <LanguageSwitcher size='small' />
+        </div>
       </div>
     </footer>
   )

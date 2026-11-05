@@ -15,7 +15,12 @@ import { flushSave } from './useAutosave'
  * what comes out of the venue's printer is exactly the file a user would download — sized to
  * the chosen paper, fonts embedded. A saved list is saved first: the server prints its copy.
  */
-export const PdfActions: FC = () => {
+type Props = {
+  /** Print with its word beside the icon; the editor's top bar shows the icon alone. */
+  printLabel?: boolean
+}
+
+export const PdfActions: FC<Props> = ({ printLabel = false }) => {
   const t = useTranslations('Editor.download')
   const tErrors = useTranslations('Errors')
   const { message } = App.useApp()
@@ -36,7 +41,7 @@ export const PdfActions: FC = () => {
     <div className='flex items-center gap-1'>
       <HintTooltip title={t('printHint')}>
         <Button icon={<PrinterOutlined />} loading={isWorking} onClick={() => void go('print')} aria-label={t('print')}>
-          <span className='hidden md:inline'>{t('print')}</span>
+          {printLabel && t('print')}
         </Button>
       </HintTooltip>
       <Button type='primary' icon={<DownloadOutlined />} loading={isWorking} onClick={() => void go('download')} aria-label={t('button')}>

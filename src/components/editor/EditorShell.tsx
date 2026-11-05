@@ -1,6 +1,6 @@
 'use client'
 
-import { type FC, useCallback, useEffect, useState } from 'react'
+import { type FC, useCallback, useEffect, useMemo, useState } from 'react'
 import { Button, Drawer, Spin } from 'antd'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -9,19 +9,22 @@ import { createListAPI, getListAPI } from '@api/lists/main'
 import { useAuthStore } from '@store/auth/store'
 import { useEditorUiStore } from '@store/editorUi/store'
 import { useListEditorStore, useListEditorStoreBase } from '@store/lists/single/store'
-import { DRAFT_ID } from '@store/lists/single/types'
+import { DRAFT_ID, type ListDocument } from '@store/lists/single/types'
 import { COMPACT_QUERY, useMediaQuery } from '@hooks/useMediaQuery'
 import { editorPath, newListPath, RETURN_TO_QUERY, ROUTES } from '@constants/routes'
 import { dedupe } from '@helpers/dedupe'
 import { classifyError } from '@helpers/error'
+import { sampleContent } from '@helpers/listFactory'
 import { clearLocalDraft, readLocalDraft } from '@helpers/localDraft'
 import { ErrorState } from '@components/ui/ErrorState'
 import { CanvasZoomControl } from './canvas/CanvasZoomControl'
 import { EditorCanvas } from './canvas/EditorCanvas'
 import { EditorBottomBar } from './EditorBottomBar'
+import { EditorSteps } from './EditorSteps'
 import { EditorTopBar } from './EditorTopBar'
 import { ImportModal } from './import/ImportModal'
-import { EditorPanel, PanelBody } from './panels/EditorPanel'
+import { EditorPanel, PanelBody, TabResetButton } from './panels/EditorPanel'
+import { PreviewModal } from './PreviewModal'
 import { Autosave } from './useAutosave'
 
 type Props = { listId: string }
@@ -29,7 +32,10 @@ type Props = { listId: string }
 type LoadState = { phase: 'loading' } | { phase: 'importing' } | { phase: 'ready' } | { phase: 'error'; error: unknown }
 
 /** The guests panel takes most of the screen; the others leave the sheet in view above them. */
-const SHEET_SIZES = { guests: '88dvh', layout: '62dvh', design: '70dvh', paper: '55dvh' } as const
+const SHEET_SIZES = { kind: '62dvh', guests: '88dvh', layout: '62dvh', design: '70dvh', paper: '55dvh' } as const
+
+/** A list with guests opens at them; an empty one at the first step, what is being made. */
+const startStep = (doc: ListDocument) => (doc.content.guests.length > 0 ? 'guests' : 'kind')
 
 /**
  * Opens one guest list for editing.
@@ -59,6 +65,34 @@ export const EditorShell: FC<Props> = ({ listId }) => {
   const [previewing, setPreviewing] = useState(false)
   const compact = useMediaQuery(COMPACT_QUERY)
   const tTabs = useTranslations('Editor.tabs')
+  const tSamples = useTranslations('Samples')
+
+  // Until the list has guests, every step but Guests draws the sheet on sample names, so a
+  // design is chosen on something that looks like the result. Never saved, never printed.
+  const kind = doc?.design.kind
+  const sample = useMemo(
+    () =>
+      kind
+        ? sampleContent(
+            {
+              heading: tSamples('heading'),
+              subheading: tSamples('subheading'),
+              footer: tSamples('footer'),
+              table: (number) => tSamples('table', { number }),
+            },
+            kind === 'cards' ? 2 : undefined
+          )
+        : null,
+    [kind, tSamples]
+  )
+  const showSample = Boolean(doc && sample && doc.content.guests.length === 0 && tab !== 'guests')
+  const canvasDoc = useMemo(
+    () =>
+      doc && sample && showSample
+        ? { ...doc, content: { ...doc.content, guests: sample.guests, tables: sample.tables } }
+        : doc,
+    [doc, sample, showSample]
+  )
 
   const load = useCallback(async () => {
     if (listId === DRAFT_ID) {
@@ -66,6 +100,7 @@ export const EditorShell: FC<Props> = ({ listId }) => {
       if (!draft) return router.replace(newListPath())
       if (!user) {
         loadDocument({ listId: DRAFT_ID, doc: draft, paidAt: null })
+        useEditorUiStore.getState().startAt(startStep(draft))
         return setState({ phase: 'ready' })
       }
       setState({ phase: 'importing' })
@@ -86,7 +121,9 @@ export const EditorShell: FC<Props> = ({ listId }) => {
       if (user || (kind !== 'unauthorized' && kind !== 'notFound')) throw error
       return router.replace(`${ROUTES.signIn}?${RETURN_TO_QUERY}=${encodeURIComponent(editorPath(listId))}`)
     }
-    loadDocument({ listId: list.id, doc: { title: list.title, content: list.content, design: list.design }, paidAt: list.paidAt })
+    const loaded: ListDocument = { title: list.title, content: list.content, design: list.design }
+    loadDocument({ listId: list.id, doc: loaded, paidAt: list.paidAt })
+    useEditorUiStore.getState().startAt(startStep(loaded))
     setState({ phase: 'ready' })
   }, [listId, loadDocument, router, user])
 
@@ -127,7 +164,7 @@ export const EditorShell: FC<Props> = ({ listId }) => {
     )
   }
 
-  if (state.phase !== 'ready' || !doc) {
+  if (state.phase !== 'ready' || !doc || !canvasDoc) {
     return (
       <div className='grid min-h-dvh place-items-center bg-canvas'>
         <Spin size='large' description={state.phase === 'importing' ? t('importing') : tCommon('loading')} />
@@ -135,22 +172,16 @@ export const EditorShell: FC<Props> = ({ listId }) => {
     )
   }
 
-  const onPreviewChange = (next: boolean) => {
-    if (next) select([])
-    setPreviewing(next)
+  const openPreview = () => {
+    select([])
+    setPreviewing(true)
   }
 
   return (
     <div className='flex h-dvh flex-col bg-canvas'>
       <Autosave />
-      <EditorTopBar
-        zoom={zoom}
-        fitZoom={fitZoom}
-        pages={pages}
-        onZoomChange={setZoom}
-        previewing={previewing}
-        onPreviewChange={onPreviewChange}
-      />
+      <EditorTopBar zoom={zoom} fitZoom={fitZoom} pages={pages} onZoomChange={setZoom} onPreview={openPreview} />
+      <EditorSteps />
       {!user && openListId === DRAFT_ID && (
         <div className='flex shrink-0 items-center justify-center gap-3 bg-accent-soft px-3 py-1 text-center text-[11px] leading-snug sm:px-4 sm:py-1.5 sm:text-xs'>
           <span>{t('guestBanner')}</span>
@@ -163,12 +194,16 @@ export const EditorShell: FC<Props> = ({ listId }) => {
         </div>
       )}
       <div className='flex min-h-0 flex-1'>
-        <aside className='hidden w-96 shrink-0 overflow-y-auto border-r border-line bg-surface lg:block' aria-label={t('panelOpen')}>
+        <aside
+          className='hidden w-96 shrink-0 border-r border-line bg-surface lg:flex lg:flex-col'
+          aria-label={t('panelOpen')}
+        >
           <EditorPanel />
         </aside>
         <div className='relative flex min-w-0 flex-1'>
           <EditorCanvas
-            doc={doc}
+            doc={canvasDoc}
+            sample={showSample}
             zoom={zoom}
             onZoomChange={setZoom}
             previewing={previewing}
@@ -178,7 +213,8 @@ export const EditorShell: FC<Props> = ({ listId }) => {
           {compact && <CanvasZoomControl zoom={zoom} fitZoom={fitZoom} onZoomChange={setZoom} />}
         </div>
       </div>
-      <EditorBottomBar previewing={previewing} onPreviewChange={onPreviewChange} />
+      <EditorBottomBar onPreview={openPreview} />
+      <PreviewModal open={previewing} onClose={() => setPreviewing(false)} doc={doc} />
       {compact && (
         <Drawer
           open={sheetOpen}
@@ -186,6 +222,7 @@ export const EditorShell: FC<Props> = ({ listId }) => {
           placement='bottom'
           size={SHEET_SIZES[tab]}
           title={tTabs(tab)}
+          extra={<TabResetButton tab={tab} />}
           destroyOnHidden
           styles={{
             wrapper: { borderRadius: '16px 16px 0 0', overflow: 'hidden' },

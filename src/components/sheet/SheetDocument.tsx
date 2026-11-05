@@ -311,6 +311,13 @@ const BlockView: FC<{ block: SheetBlock; design: ListDesign; interaction: SheetI
       {block.type === 'guest' && <GuestView block={block} design={design} interaction={interaction} />}
       {block.type === 'table' && <TableView block={block} design={design} interaction={interaction} />}
       {block.type === 'card' && <CardView block={block} design={design} interaction={interaction} />}
+      {interaction && (
+        <span
+          className='sh-resize'
+          aria-hidden='true'
+          onPointerDown={(event: PointerEvent) => interaction.onResizePointerDown(event, block)}
+        />
+      )}
     </div>
   )
 }

@@ -13,7 +13,11 @@
     "or": "or",
     "loading": "Loading…",
     "skipToContent": "Skip to content",
-    "amount": "{amount} AMD"
+    "amount": "{amount} AMD",
+    "unsavedTitle": "Leave this page?",
+    "unsavedBody": "Some changes haven’t been saved yet and will be lost.",
+    "stay": "Stay",
+    "leave": "Leave"
   },
   "Nav": {
     "templates": "Templates",
@@ -69,7 +73,7 @@
       },
       "templates": {
         "title": "Classic and creative",
-        "text": "Gilded frames, the Armenian eternity sign, pomegranates, botanicals, art deco — every colour and font can be changed."
+        "text": "Gilded frames, the Armenian eternity sign, pomegranates and apricots, carpet borders, khachkars, art deco, neon — every colour and font can be changed."
       },
       "paper": {
         "title": "Paper of any size",
@@ -125,7 +129,7 @@
     },
     "paper": {
       "q": "What paper sizes can I print on?",
-      "a": "A5, A4, A3, A2, Letter, Legal or your own size (from 5 cm up to 1.19 m). On a larger sheet the text grows automatically."
+      "a": "A5, A4, A3, A2, Letter or your own size (from 5 cm up to 1.19 m). On a larger sheet the text grows automatically."
     },
     "languages": {
       "q": "Can I write in Russian or English?",
@@ -161,7 +165,37 @@
       "chalk": "Chalkboard",
       "pastel": "Pastel",
       "confetti": "Confetti",
-      "vintage": "Vintage"
+      "vintage": "Vintage",
+      "mono": "Mono",
+      "corporate": "Corporate",
+      "scandi": "Scandi",
+      "spring": "Spring",
+      "christening": "Christening",
+      "apricot": "Apricot",
+      "manuscript": "Manuscript",
+      "carpet": "Carpet",
+      "khachkar": "Khachkar",
+      "ararat": "Ararat",
+      "emerald": "Emerald",
+      "blacktie": "Black Tie",
+      "velvet": "Velvet",
+      "jubilee": "Jubilee",
+      "romance": "Romance",
+      "wildflower": "Wildflowers",
+      "vineyard": "Vineyard",
+      "terracotta": "Terracotta",
+      "linen": "Linen & Lace",
+      "tiles": "Tiles",
+      "nautical": "Nautical",
+      "citrus": "Citrus",
+      "autumn": "Autumn",
+      "winter": "Winter",
+      "zen": "Zen",
+      "bauhaus": "Bauhaus",
+      "retro": "Retro",
+      "neon": "Neon",
+      "balloons": "Balloons",
+      "memorial": "Memorial"
     },
     "taglines": {
       "classic": "Black and white, a double rule, GHEA Grapalat",
@@ -171,7 +205,7 @@
       "pomegranate": "Pomegranates in the corners and warm tones",
       "botanical": "Green sprigs and a fine serif",
       "blush": "Blush tones and a floral mood",
-      "midnight": "Navy and gold",
+      "midnight": "Navy, gold and a starry sky",
       "deco": "Black, gold and 1920s geometry",
       "bold": "Big titles and a bright colour",
       "kraft": "Kraft paper and a stitched frame",
@@ -179,7 +213,37 @@
       "chalk": "A chalkboard in a wooden frame",
       "pastel": "Pastel dots for christenings and children’s parties",
       "confetti": "Colourful confetti for a birthday",
-      "vintage": "Sepia and an ornate frame"
+      "vintage": "Sepia and an ornate frame",
+      "mono": "Black on white: a heavy frame and bold lettering",
+      "corporate": "A clean layout in company blue for business dinners",
+      "scandi": "Warm white, sage sprigs and a soft frame",
+      "spring": "Blossoms in pink, lilac and butter yellow",
+      "christening": "Soft blue, clouds and the Armenian cross",
+      "apricot": "Armenian apricots and warm orange tones",
+      "manuscript": "A Matenadaran-style headpiece and red initials",
+      "carpet": "A woven border in madder red, ochre and indigo",
+      "khachkar": "Rose tuff and interlaced stone lace",
+      "ararat": "The two peaks of Ararat along the foot of the page",
+      "emerald": "Deep green and gold art-deco steps",
+      "blacktie": "A formal black frame and a bow tie",
+      "velvet": "Burgundy damask and a gilt frame",
+      "jubilee": "Burnished gold and a laurel wreath for anniversaries",
+      "romance": "Rose tones, a soft double line and hearts",
+      "wildflower": "Watercolour blooms in peach, rose and lilac",
+      "vineyard": "Grapes, vines and deep wine red",
+      "terracotta": "Boho rainbows, eucalyptus and earthy tones",
+      "linen": "Woven linen, lace edging and a twine frame",
+      "tiles": "Cobalt Mediterranean tiles at the top and the foot",
+      "nautical": "Navy, a rope frame and anchors",
+      "citrus": "Lemons, leaves and summer sunshine",
+      "autumn": "Falling leaves in rust, ochre and wine",
+      "winter": "Frost, snowflakes and icy blue",
+      "zen": "Rice paper, an ink ensō and a red seal",
+      "bauhaus": "Primary colours and pure geometry",
+      "retro": "Seventies rainbows in mustard, orange and brown",
+      "neon": "Glowing pink and cyan on a night-violet sheet",
+      "balloons": "Balloons, bunting and dots for a children’s party",
+      "memorial": "Quiet grey, a fine rule and an olive sprig"
     },
     "categories": {
       "classic": "Classic",
@@ -204,7 +268,7 @@
   },
   "Pricing": {
     "metaTitle": "Pricing",
-    "metaDescription": "Making a list and printing in the classic templates is free. Printing in the other templates is {price} per list, once.",
+    "metaDescription": "Making a list and printing in the templates marked “Free” costs nothing. Printing in the other templates is {price} per list, once.",
     "title": "One price, once",
     "subtitle": "No subscription. Making a list is always free; printing in the template you chose is paid once per list.",
     "beta": "Until payments launch, printing in every template is free",
@@ -213,13 +277,13 @@
     "freeItems": [
       "Unlimited lists and guests",
       "Import from Excel, CSV and photos",
-      "The “Classic” and “Minimal” templates",
+      "Every template marked “Free”",
       "Any paper size, PDF and printing"
     ],
     "paid": "All templates",
     "perList": "per list",
     "paidItems": [
-      "Any of the 16 templates",
+      "Any of the 46 templates",
       "Any colour, ornament and font",
       "Seating chart, list and place cards",
       "Unlimited editing and printing"
@@ -351,12 +415,26 @@
     "zoomOut": "Zoom out",
     "fit": "Fit width",
     "pages": "{count, plural, one {# page} other {# pages}}",
+    "mm": "mm",
     "panelOpen": "Settings",
     "tabs": {
+      "kind": "Type",
+      "design": "Design",
       "guests": "Guests",
       "layout": "Layout",
-      "design": "Design",
       "paper": "Paper"
+    },
+    "steps": {
+      "label": "Steps",
+      "step": "Step {number} of {count}",
+      "next": "Next: {step}",
+      "hints": {
+        "kind": "Choose what you are making. You can change it at any step.",
+        "design": "Pick a template, fonts and colours. Until you add guests, sample names show the look.",
+        "guests": "Add the names and seat everyone at a table.",
+        "layout": "Arrange the names on the sheet: columns, spacing and order.",
+        "paper": "Set the paper size and margins, then print."
+      }
     },
     "guestBanner": "You are working without an account — the list is kept only in this browser.",
     "guestBannerCta": "Sign in",
@@ -367,9 +445,7 @@
     "replaceDraft": "Start a new one",
     "keepDraft": "Open the draft",
     "preview": "Preview",
-    "previewExit": "Edit",
     "previewHint": "See the pages exactly as they will print",
-    "previewExitHint": "Back to editing",
     "previewShort": "Preview",
     "editorTools": "Editor tools",
     "canvas": {
@@ -379,6 +455,9 @@
       "emptyPaste": "Paste text",
       "emptyFile": "Excel / CSV",
       "emptyPhoto": "From a photo",
+      "sampleTitle": "Sample guests",
+      "sampleText": "These names only show the look — they are not saved or printed. Add your own guests in step {number}.",
+      "sampleAction": "Add guests",
       "unseated": "{count, plural, one {# guest has} other {# guests have}} no table and won’t appear on the chart.",
       "unseatedAction": "Seat them",
       "edit": {
@@ -404,6 +483,7 @@
       "distributeX": "Space evenly across",
       "distributeY": "Space evenly down",
       "resetPosition": "Back to its grid place",
+      "resetSize": "Original size",
       "remove": "Delete"
     },
     "guests": {
@@ -414,6 +494,8 @@
       "table": "Table",
       "remove": "Remove guest",
       "quickAdd": "Type a name and press Enter",
+      "addHere": "Add a guest",
+      "addTo": "Add a guest to {table}",
       "full": "You have reached the limit of {max} guests",
       "add": "Add",
       "noTable": "No table",
@@ -424,6 +506,12 @@
       "removeTableConfirm": "Delete the table? Its guests stay on the list without a table.",
       "removeTable": "Delete table",
       "dropHere": "Drag guests here",
+      "dragHandle": "Drag to move",
+      "dragRole": "movable guest",
+      "dragInstructions": "Press Space or Enter to pick up a guest, the arrow keys to move them, Space or Enter again to drop, Escape to cancel.",
+      "dragMoving": "Moving {name}.",
+      "dragDropped": "{name} moved.",
+      "dragCancelled": "Moving {name} was cancelled.",
       "sortAz": "Sort A→Z",
       "sortZa": "Sort Z→A",
       "dedupe": "Remove repeated names",
@@ -443,8 +531,7 @@
       "addTable": "Add table",
       "noMatches": "Nothing found",
       "empty": "The list is empty so far",
-      "autoSeatPer": "people",
-      "quickAddTable": "At table:"
+      "autoSeatPer": "people"
     },
     "layout": {
       "kind": "What we print",
@@ -464,6 +551,7 @@
       "gridHint": "Blocks line up automatically. Drag a block onto another to swap their places, or a guest’s name to move them to another table.",
       "freeHint": "Drag any block anywhere, even onto another page. Select several with Shift or by drawing a box, and move them together.",
       "resetPositions": "Back to the grid ({count})",
+      "resetSizes": "Original sizes ({count})",
       "columns": "Columns",
       "flow": "Fill",
       "flowRows": "By rows",
@@ -600,10 +688,21 @@
       "printing": "Opening the print dialog…"
     },
     "tabsShort": {
+      "kind": "Type",
+      "design": "Design",
       "guests": "Guests",
       "layout": "Layout",
-      "design": "Design",
       "paper": "Paper"
+    },
+    "reset": {
+      "button": "Reset",
+      "all": "Reset all settings",
+      "confirmTitle": "Reset the “{name}” settings?",
+      "confirmText": "They go back to the template’s defaults. Guests, tables and texts stay as they are, and Undo brings the settings back.",
+      "confirmAllTitle": "Reset all settings?",
+      "confirmAllText": "Layout, design and paper go back to the template’s defaults. Guests, tables and texts stay as they are, and Undo brings the settings back.",
+      "ok": "Reset",
+      "done": "Settings reset"
     }
   },
   "Errors": {

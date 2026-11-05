@@ -6,6 +6,7 @@ import {
   type ListDocument,
   type Paper,
   type Position,
+  type Size,
   type TextStyle,
 } from '@store/lists/single/types'
 import { PAPER_SIZES } from '@constants/paper'
@@ -82,6 +83,8 @@ export type SheetLayout = {
   blocks: SheetBlock[]
   /** Seating: guests without a table, which a board cannot show. */
   unseated: number
+  /** A grid column's width, mm: the widest a block resized in a grid can be. */
+  column: number
 }
 
 /** The sheet's size as printed, orientation applied. A custom size is used as typed. */
@@ -240,19 +243,35 @@ export const layoutSheet = (doc: ListDocument, measure: Measure): SheetLayout =>
   const tablesById = new Map(content.tables.map((table) => [table.id, table]))
   const free = layout.mode === 'free'
   const pinned = (id: string): Position | undefined => (free ? layout.positions[id] : undefined)
+  /**
+   * A block resized by hand: its width kept within `natural` (its column, or the printable
+   * width) in a grid, within the sheet when free; its height never less than its text needs.
+   */
+  const widthOf = (id: string, natural: number): number => {
+    const size: Size | undefined = layout.sizes[id]
+    return size ? Math.min(free ? width : natural, size.w) : natural
+  }
+  const heightOf = (id: string, needed: number): number => {
+    const size: Size | undefined = layout.sizes[id]
+    return size ? Math.max(needed, size.h) : needed
+  }
 
   // Header and footer: not on place cards, which are cut apart.
   const isCards = design.kind === 'cards'
-  const heading = isCards ? [] : wrapText(content.heading, area.w, type.heading, scale, measure)
-  const subheading = isCards ? [] : wrapText(content.subheading, area.w, type.subheading, scale, measure)
+  const headerW = widthOf(HEADER_ID, area.w)
+  const heading = isCards ? [] : wrapText(content.heading, headerW, type.heading, scale, measure)
+  const subheading = isCards ? [] : wrapText(content.subheading, headerW, type.subheading, scale, measure)
   const headingH = heading.length * lineHeight(type.heading, scale)
   const subH = subheading.length * lineHeight(type.subheading, scale)
   const hasHeader = heading.length + subheading.length > 0
-  const headerH = hasHeader ? headingH + (heading.length && subheading.length ? HEADER_TEXT_GAP * scale : 0) + subH : 0
+  const headerH = hasHeader
+    ? heightOf(HEADER_ID, headingH + (heading.length && subheading.length ? HEADER_TEXT_GAP * scale : 0) + subH)
+    : 0
   const headerSpace = hasHeader ? headerH + HEADER_AFTER * scale : 0
 
-  const footerLines = isCards ? [] : wrapText(content.footer, area.w, type.footer, scale, measure)
-  const footerH = footerLines.length * lineHeight(type.footer, scale)
+  const footerW = widthOf(FOOTER_ID, area.w)
+  const footerLines = isCards ? [] : wrapText(content.footer, footerW, type.footer, scale, measure)
+  const footerH = footerLines.length ? heightOf(FOOTER_ID, footerLines.length * lineHeight(type.footer, scale)) : 0
   const footerSpace = footerLines.length ? footerH + FOOTER_BEFORE * scale : 0
 
   const bodyTop = (page: number): number =>
@@ -299,7 +318,8 @@ export const layoutSheet = (doc: ListDocument, measure: Measure): SheetLayout =>
       const tableName = layout.showTable ? (tablesById.get(guest.tableId)?.name ?? '') : ''
       const tableW = tableName ? measure(tableName, type.name, scale) : 0
       const text = layout.numbering ? `${index + 1}. ${guest.name}` : guest.name
-      const nameW = colW - (tableW ? tableW + LIST_TABLE_GAP * scale : 0)
+      const w = widthOf(guest.id, colW)
+      const nameW = w - (tableW ? tableW + LIST_TABLE_GAP * scale : 0)
       const lines = wrapText(text, nameW, type.name, scale, measure)
       const block: GuestBlock = {
         type: 'guest',
@@ -307,21 +327,20 @@ export const layoutSheet = (doc: ListDocument, measure: Measure): SheetLayout =>
         page: 0,
         x: 0,
         y: 0,
-        w: colW,
-        h: Math.max(1, lines.length) * nameLH,
+        w,
+        h: heightOf(guest.id, Math.max(1, lines.length) * nameLH),
         guest,
         lines,
         tableName,
         tableW,
       }
-      sized.push({ id: guest.id, w: colW, h: block.h, block })
+      sized.push({ id: guest.id, w, h: block.h, block })
     })
   } else {
     const metrics = TABLE_STYLE_METRICS[design.tableStyle]
     const pad = metrics.pad * scale
     const headPad = metrics.headPad * scale
     const headGap = metrics.headGap * scale
-    const inner = colW - pad * 2
     const groupLH = lineHeight(type.group, scale)
     const nameLH = lineHeight(type.name, scale)
     const byTable = new Map<string, Guest[]>()
@@ -335,6 +354,8 @@ export const layoutSheet = (doc: ListDocument, measure: Measure): SheetLayout =>
       byTable.set(guest.tableId, list)
     }
     for (const table of content.tables) {
+      const w = widthOf(table.id, colW)
+      const inner = w - pad * 2
       const head = wrapText(table.name, inner - headPad * 4, type.group, scale, measure)
       const headH = Math.max(1, head.length) * groupLH + headPad * 2
       const guests = sortGuests(byTable.get(table.id) ?? [], layout.sort).map((guest) => ({
@@ -342,14 +363,14 @@ export const layoutSheet = (doc: ListDocument, measure: Measure): SheetLayout =>
         lines: wrapText(guest.name, inner, type.name, scale, measure),
       }))
       const bodyH = guests.reduce((sum, item) => sum + Math.max(1, item.lines.length) * nameLH, 0)
-      const h = pad * 2 + headH + (guests.length ? headGap + bodyH : 0)
+      const h = heightOf(table.id, pad * 2 + headH + (guests.length ? headGap + bodyH : 0))
       const block: TableBlock = {
         type: 'table',
         id: table.id,
         page: 0,
         x: 0,
         y: 0,
-        w: colW,
+        w,
         h,
         table,
         head,
@@ -359,7 +380,7 @@ export const layoutSheet = (doc: ListDocument, measure: Measure): SheetLayout =>
         headGap,
         guests,
       }
-      sized.push({ id: table.id, w: colW, h, block })
+      sized.push({ id: table.id, w, h, block })
     }
   }
 
@@ -391,7 +412,7 @@ export const layoutSheet = (doc: ListDocument, measure: Measure): SheetLayout =>
         page,
         x: at?.x ?? area.x,
         y: at?.y ?? area.y,
-        w: area.w,
+        w: headerW,
         h: headerH,
         heading,
         subheading,
@@ -409,14 +430,14 @@ export const layoutSheet = (doc: ListDocument, measure: Measure): SheetLayout =>
         page,
         x: at?.x ?? area.x,
         y: at?.y ?? area.y + area.h - footerH,
-        w: area.w,
+        w: footerW,
         h: footerH,
         lines: footerLines,
       })
     }
   }
 
-  return { width, height, pages, area, blocks, unseated }
+  return { width, height, pages, area, blocks, unseated, column: colW }
 }
 
 export const round = (value: number, step = 0.1): number => Math.round(value / step) * step

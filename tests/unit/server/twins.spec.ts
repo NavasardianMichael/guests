@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { MAX_GUESTS, MAX_TABLES } from '@store/lists/single/store'
+import { MAX_GUESTS, MAX_TABLES, MIN_BLOCK_SIZE } from '@store/lists/single/store'
 import { PRINT_KINDS, TEXT_ROLES } from '@store/lists/single/types'
 import { GUEST_COOKIE, RESET_TOKEN_QUERY, VERIFY_TOKEN_QUERY } from '@constants/auth'
 import { ERROR_CODES } from '@constants/errors'
@@ -45,6 +45,7 @@ describe('server/web twins', () => {
   it('agree on how many guests and tables a list holds', () => {
     expect(LIST_LIMITS.guests).toBe(MAX_GUESTS)
     expect(LIST_LIMITS.tables).toBe(MAX_TABLES)
+    expect({ w: LIST_LIMITS.minBlockW, h: LIST_LIMITS.minBlockH }).toEqual(MIN_BLOCK_SIZE)
   })
 
   it('keep every template design exactly as the web makes it', () => {

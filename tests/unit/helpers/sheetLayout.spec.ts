@@ -128,6 +128,51 @@ describe('layoutSheet', () => {
     expect(sheet.blocks.some((block) => block.id === HEADER_ID || block.id === FOOTER_ID)).toBe(false)
   })
 
+  it('re-wraps a resized table to its width, within its column in a grid', () => {
+    const doc = docWith(4, 2)
+    const id = doc.content.tables[0].id
+    const natural = layoutSheet(doc, measure)
+    const column = natural.column
+    doc.design.layout.sizes = { [id]: { w: 30, h: 4 } }
+    const narrow = layoutSheet(doc, measure).blocks.find((block): block is TableBlock => block.id === id)
+    expect(narrow?.w).toBe(30)
+    // "Guest 1" is 14mm at 2mm a character: narrower than 30mm minus the padding, so one line…
+    expect(narrow?.guests[0].lines).toEqual(['Guest 1'])
+    doc.design.layout.sizes = { [id]: { w: 500, h: 4 } }
+    expect(layoutSheet(doc, measure).blocks.find((block) => block.id === id)?.w).toBe(column)
+    doc.design.layout.mode = 'free'
+    expect(layoutSheet(doc, measure).blocks.find((block) => block.id === id)?.w).toBe(natural.width)
+  })
+
+  it('takes a resized height as a least height, never shorter than the text', () => {
+    const doc = docWith(4, 2)
+    const id = doc.content.tables[0].id
+    const needed = layoutSheet(doc, measure).blocks.find((block) => block.id === id)?.h ?? 0
+    doc.design.layout.sizes = { [id]: { w: 60, h: 4 } }
+    expect(layoutSheet(doc, measure).blocks.find((block) => block.id === id)?.h).toBe(needed)
+    doc.design.layout.sizes = { [id]: { w: 60, h: needed + 40 } }
+    const sheet = layoutSheet(doc, measure)
+    const tall = sheet.blocks.find((block) => block.id === id)
+    expect(tall?.h).toBe(needed + 40)
+    // The next row of the grid makes room for it.
+    const below = sheet.blocks.filter((block) => block.type === 'table' && block.y > (tall?.y ?? 0))
+    for (const block of below) expect(block.y).toBeGreaterThanOrEqual((tall?.y ?? 0) + needed + 40)
+  })
+
+  it('re-wraps a resized header and pushes the body below it', () => {
+    const doc = docWith(3, 0, (target) => {
+      target.content.heading = 'Welcome to the party'
+    })
+    const before = layoutSheet(doc, measure)
+    doc.design.layout.sizes = { [HEADER_ID]: { w: 30, h: 4 } }
+    const after = layoutSheet(doc, measure)
+    const header = after.blocks.find((block) => block.id === HEADER_ID)
+    expect(header?.w).toBe(30)
+    expect(header?.h).toBeGreaterThan(before.blocks.find((block) => block.id === HEADER_ID)?.h ?? 0)
+    const firstGuest = (sheet: typeof after) => sheet.blocks.find((block) => block.type === 'guest')?.y ?? 0
+    expect(firstGuest(after)).toBeGreaterThan(firstGuest(before))
+  })
+
   it('doubles a tent card over its fold', () => {
     const doc = docWith(1, 0, (target) => {
       target.design.kind = 'cards'

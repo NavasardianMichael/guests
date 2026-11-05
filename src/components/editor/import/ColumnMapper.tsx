@@ -26,7 +26,7 @@ export const ColumnMapper: FC<Props> = ({ rows, mapping, onChange }) => {
 
   return (
     <div className='flex flex-col gap-3'>
-      <div className='overflow-x-auto rounded-lg border border-line'>
+      <div className='scrollbar-thin overflow-x-auto rounded-lg border border-line'>
         <table className='w-full border-collapse text-xs'>
           <tbody>
             {rows.slice(0, PREVIEW_ROWS).map((row, index) => (

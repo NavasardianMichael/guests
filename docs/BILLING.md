@@ -1,7 +1,9 @@
 # Billing — the plan (not built)
 
 The business model is cv-builder's: building is free and needs no account; the **free
-templates** (`classic`, `minimal`) always print free; printing a list in any **premium
+templates** (`free: true` in `src/constants/templates.ts` — `classic`, `minimal`, `mono`,
+`corporate`, `scandi`, `spring`, `christening`, `apricot`, `memorial`) always print free;
+printing a list in any **premium
 template** is a **one-time payment per list** (`LIST_PRICE_AMD`, 2,000 ֏ — a placeholder to
 confirm). A paid list stays printable and editable forever; a duplicate is a new, unpaid list.
 

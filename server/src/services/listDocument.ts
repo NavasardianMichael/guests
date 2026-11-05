@@ -36,6 +36,9 @@ export const LIST_LIMITS = {
   text: 200,
   positions: 2500,
   pages: 200,
+  /** The smallest a block can be resized to, mm. Twin: `MIN_BLOCK_SIZE` in the web's editor store. */
+  minBlockW: 10,
+  minBlockH: 4,
 } as const
 
 type Align = 'left' | 'center' | 'right'
@@ -51,6 +54,7 @@ type TextStyle = {
 }
 type TextRole = (typeof TEXT_ROLES)[number]
 type Position = { page: number; x: number; y: number }
+type Size = { w: number; h: number }
 
 export type ListContent = {
   heading: string
@@ -86,6 +90,7 @@ export type ListDesign = {
     cardFold: boolean
     cutMarks: boolean
     positions: Record<string, Position>
+    sizes: Record<string, Size>
   }
 }
 
@@ -192,10 +197,24 @@ const coercePositions = (value: unknown): Record<string, Position> => {
   return positions
 }
 
+const coerceSizes = (value: unknown): Record<string, Size> => {
+  if (!isObject(value)) return {}
+  const sizes: Record<string, Size> = {}
+  for (const [id, raw] of Object.entries(value).slice(0, LIST_LIMITS.positions)) {
+    if (!ID_PATTERN.test(id) || !isObject(raw)) continue
+    sizes[id] = {
+      w: num(raw.w, LIST_LIMITS.minBlockW, PAPER_LIMITS.maxSide, LIST_LIMITS.minBlockW),
+      h: num(raw.h, LIST_LIMITS.minBlockH, PAPER_LIMITS.maxSide, LIST_LIMITS.minBlockH),
+    }
+  }
+  return sizes
+}
+
 export const coerceDesign = (value: unknown): ListDesign => {
   const source = isObject(value) ? value : {}
   const paperSource = isObject(source.paper) ? source.paper : {}
-  const format = oneOf(paperSource.format, PAPER_FORMATS, 'A4')
+  // Legal was dropped from the formats: a list saved on it keeps its size as a custom one.
+  const format = paperSource.format === 'legal' ? 'custom' : oneOf(paperSource.format, PAPER_FORMATS, 'A4')
   const named = format === 'custom' ? null : PAPER_SIZES[format]
   const paletteSource = isObject(source.palette) ? source.palette : {}
   const typeSource = isObject(source.type) ? source.type : {}
@@ -237,6 +256,7 @@ export const coerceDesign = (value: unknown): ListDesign => {
       cardFold: bool(layoutSource.cardFold, false),
       cutMarks: bool(layoutSource.cutMarks, true),
       positions: coercePositions(layoutSource.positions),
+      sizes: coerceSizes(layoutSource.sizes),
     },
   }
 }

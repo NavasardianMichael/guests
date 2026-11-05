@@ -2,14 +2,14 @@
 
 Guest lists for Armenian events, printed. Users build a list (typed, pasted, Excel/CSV, or a
 photo read by Gemini), arrange it on a sheet and print one of three **kinds**: a seating board
-(guests under their tables), a plain guest list, or place cards. Any paper size, 16 templates,
+(guests under their tables), a plain guest list, or place cards. Any paper size, 46 templates,
 40 Armenian fonts, interface in hy (default) / ru / en. No account needed. Billing is planned,
 not built (`docs/BILLING.md`). Built from `../cv-builder` — same stack, conventions, auth,
 guest mode, PDF printing and deploy.
 
 **Stack:** Next.js 16 · React 19 · TypeScript · Ant Design 6 · Tailwind 4 · Zustand (immer) ·
 next-intl (hy/ru/en, cookie) · pnpm · Express 5 + Prisma 6 + PostgreSQL · Puppeteer (PDF) ·
-`@google/genai` (photo import) · papaparse + read-excel-file (file import)
+`@google/genai` (photo import) · papaparse + read-excel-file (file import) · @dnd-kit (panel row sorting)
 
 ## Commands
 
@@ -47,7 +47,10 @@ cv-builder's notes: under `concurrently` on Windows `tsx watch` never starts the
 | The renderer (editor, previews, PDF) | `src/components/sheet/SheetDocument.tsx` + `sheet.css`; scaled previews `SheetPreview.tsx` |
 | Editor interactions (drag, drop, snap, marquee, inline edit) | `src/components/editor/canvas/useCanvasInteraction.tsx`, given to the sheet through `SheetInteraction.tsx`; selection actions `SelectionBar.tsx`; keys `useCanvasShortcuts.ts` |
 | Editor state, undo/redo | `src/store/lists/single/store.ts` · autosave `src/components/editor/useAutosave.ts` · chrome state `src/store/editorUi/store.ts` |
-| Panels | `src/components/editor/panels/` — Guests (quick add, by-table view, drag rows), Layout, Design, Paper |
+| Panels = the editor's steps, in order (`EDITOR_TABS`) | `src/components/editor/panels/` — Kind, Design, Guests (quick add, by-table view, rows sorted with @dnd-kit across tables), Layout, Paper. Until a list has guests, every step but Guests draws the canvas read-only on sample names (`EditorShell`) |
+| Reset buttons (top bar: all; tab header; section header) | what each scope puts back `src/helpers/designReset.ts` · button + confirm `src/components/editor/controls/ResetButton.tsx` · paper change maths `src/helpers/paperChange.ts` |
+| "Leave this page?" while unsaved | `src/components/LeaveGuard.tsx` (tab close/reload, links, Back) · register with `useLeaveGuard` (`src/hooks/`) — the editor's autosave does |
+| Print preview (fullscreen modal) | `src/components/editor/PreviewModal.tsx` |
 | Import | `src/components/editor/import/` · parsing `src/helpers/guestImport.ts` · photo → `server/src/routes/ai.ts` → `services/guestReader.ts` (Gemini) |
 | Guest drafts (localStorage) | `src/helpers/localDraft.ts` — imported on sign-in by `EditorShell` |
 | PDF and printing | `server/src/services/pdf.ts` prints the web's `/render` page (`src/app/render/`); Print in the editor prints that PDF through a hidden frame (`src/hooks/usePdfDownload.ts`) |
@@ -76,6 +79,11 @@ cv-builder's notes: under `concurrently` on Windows `tsx watch` never starts the
   another table re-seats the guest. In free mode `layout.positions` pins blocks; a block never
   dragged keeps its grid place. Changing the grid (columns, gaps, cards) clears positions in
   grid mode; changing the paper scales them.
+- **Resizing** (the handle at a block's bottom-right corner) writes `layout.sizes[id]` in any
+  mode: `w` re-wraps the text (capped at the column in a grid, at the sheet when free), `h` is
+  a *least* height — `layoutSheet` never makes a block shorter than its text. Place cards have
+  no per-card size: resizing one sets `cardWidth`/`cardHeight` for all. Sizes are cleaned up
+  wherever positions are, and scaled with the paper.
 - **Sheet colours and typography are document data**, so hex values live in `templates.ts`,
   not `tokens.ts`. App-chrome colours live only in `tokens.ts`.
 - **The API coerces, it does not reject**, every list write (`coerceContent`/`coerceDesign`):

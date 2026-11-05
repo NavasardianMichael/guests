@@ -124,6 +124,12 @@
   font-size: 0.8125rem;
 }
 
+/* A scroll container's scrollbar, a step thinner than the platform default. Not inherited:
+   goes on each element that scrolls. */
+@utility scrollbar-thin {
+  scrollbar-width: thin;
+}
+
 /* A soft mesh behind the hero and auth cards. */
 @utility mesh-bg {
   background:

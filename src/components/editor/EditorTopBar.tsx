@@ -5,7 +5,6 @@ import {
   ArrowLeftOutlined,
   CheckCircleFilled,
   CloudSyncOutlined,
-  EditOutlined,
   ExclamationCircleFilled,
   EyeOutlined,
   LaptopOutlined,
@@ -22,9 +21,9 @@ import { useListEditorStore, useListEditorStoreBase } from '@store/lists/single/
 import { DRAFT_ID } from '@store/lists/single/types'
 import { ROUTES } from '@constants/routes'
 import { stepZoom } from '@helpers/canvasZoom'
-import { BrandMark } from '@components/layout/BrandLogo'
-import { LanguageSwitcher } from '@components/layout/LanguageSwitcher'
+import { BrandMark } from '@components/layout/BrandMark'
 import { HintTooltip } from '@components/ui/HintTooltip'
+import { ResetButton } from './controls/ResetButton'
 import { PdfActions } from './PdfActions'
 
 type Props = {
@@ -32,8 +31,8 @@ type Props = {
   fitZoom: number
   pages: number
   onZoomChange: (zoom: number | null) => void
-  previewing: boolean
-  onPreviewChange: (previewing: boolean) => void
+  /** Opens the print preview, over the whole screen. */
+  onPreview: () => void
 }
 
 /** The save state; under `md` the icon alone, its words left to screen readers. */
@@ -64,7 +63,7 @@ const SaveIndicator: FC = () => {
   )
 }
 
-export const EditorTopBar: FC<Props> = ({ zoom, fitZoom, pages, onZoomChange, previewing, onPreviewChange }) => {
+export const EditorTopBar: FC<Props> = ({ zoom, fitZoom, pages, onZoomChange, onPreview }) => {
   const t = useTranslations('Editor')
   const tCommon = useTranslations('Common')
   // Narrow selectors: this bar must not re-render on every keystroke in the list.
@@ -97,6 +96,7 @@ export const EditorTopBar: FC<Props> = ({ zoom, fitZoom, pages, onZoomChange, pr
       <SaveIndicator />
 
       <div className='ml-auto flex shrink-0 items-center gap-0.5 sm:gap-1'>
+        <ResetButton scope='all' variant='icon' />
         <HintTooltip title={t('undo')}>
           <Button type='text' icon={<UndoOutlined />} disabled={!canUndo} onClick={undo} aria-label={t('undo')} />
         </HintTooltip>
@@ -116,17 +116,10 @@ export const EditorTopBar: FC<Props> = ({ zoom, fitZoom, pages, onZoomChange, pr
           <Button type='text' size='small' icon={<ZoomInOutlined />} onClick={() => step(1)} aria-label={t('zoomIn')} />
         </div>
         <span className='mr-1 hidden text-xs text-muted xl:inline'>{t('pages', { count: pages })}</span>
-        <LanguageSwitcher size='small' className='hidden xl:flex' />
-        {/* Phones and tablets switch preview from the bottom bar. */}
+        {/* Phones and tablets open the preview from the bottom bar. */}
         <span className='hidden lg:flex'>
-          <HintTooltip title={previewing ? t('previewExitHint') : t('previewHint')}>
-            <Button
-              type={previewing ? 'primary' : 'default'}
-              icon={previewing ? <EditOutlined /> : <EyeOutlined />}
-              aria-pressed={previewing}
-              aria-label={previewing ? t('previewExit') : t('preview')}
-              onClick={() => onPreviewChange(!previewing)}
-            />
+          <HintTooltip title={t('previewHint')}>
+            <Button icon={<EyeOutlined />} aria-label={t('preview')} onClick={onPreview} />
           </HintTooltip>
         </span>
         <PdfActions />

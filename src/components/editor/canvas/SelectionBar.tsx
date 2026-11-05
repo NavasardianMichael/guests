@@ -9,6 +9,7 @@ import {
   BorderVerticleOutlined,
   ColumnHeightOutlined,
   ColumnWidthOutlined,
+  CompressOutlined,
   DeleteOutlined,
   EditOutlined,
   RollbackOutlined,
@@ -46,7 +47,8 @@ export const SelectionBar: FC<Props> = ({ layout, onEdit }) => {
   const doc = useListEditorStore.use.doc()
   if (!doc || !selection.length) return null
 
-  const { select, removeGuests, removeTable, updateGuest, setPositions, resetPositions } = useListEditorStoreBase.getState()
+  const { select, removeGuests, removeTable, updateGuest, setPositions, resetPositions, resetSizes } =
+    useListEditorStoreBase.getState()
   const free = doc.design.layout.mode === 'free'
   const blocks = new Map<string, SheetBlock>()
   for (const block of layout.blocks) if (!blocks.has(block.id)) blocks.set(block.id, block)
@@ -159,6 +161,9 @@ export const SelectionBar: FC<Props> = ({ layout, onEdit }) => {
       )}
       {free && selected.some((block) => doc.design.layout.positions[block.id]) && (
         <Tool title={t('resetPosition')} icon={<RollbackOutlined />} onClick={() => resetPositions(selected.map((block) => block.id))} />
+      )}
+      {selected.some((block) => doc.design.layout.sizes[block.id]) && (
+        <Tool title={t('resetSize')} icon={<CompressOutlined />} onClick={() => resetSizes(selected.map((block) => block.id))} />
       )}
       {(guestIds.length > 0 || tableIds.length > 0) && (
         <>

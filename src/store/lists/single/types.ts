@@ -2,6 +2,7 @@ import type { StateCommonProps } from '@interfaces/store'
 import type { FontSlug } from '@constants/fonts'
 import type { Orientation, PaperFormat } from '@constants/paper'
 import type { TableStyle, TemplateId } from '@constants/templates'
+import type { ResetScope } from '@helpers/designReset'
 
 /**
  * A guest list and how it prints. Twin of `server/src/services/listDocument.ts`, which
@@ -123,7 +124,18 @@ export type Layout = {
   cutMarks: boolean
   /** `free` mode. Keyed by block id: a guest, a table, or `HEADER_ID` / `FOOTER_ID`. */
   positions: Record<string, Position>
+  /**
+   * Blocks resized by hand, in any mode, keyed like `positions` (place cards share one size,
+   * `cardWidth` × `cardHeight`, instead). See `Size`.
+   */
+  sizes: Record<string, Size>
 }
+
+/**
+ * A resized block, mm. `w` is its width (its text re-wraps to it; a grid keeps it within its
+ * column). `h` is a least height: a block is never shorter than its text needs.
+ */
+export type Size = { w: number; h: number }
 
 export type ListDesign = {
   kind: PrintKind
@@ -218,14 +230,20 @@ export type ListEditorActions = {
   setPaper: (patch: Partial<Paper>) => void
   setPalette: (patch: Partial<Palette>) => void
   setTextStyle: (role: TextRole, patch: Partial<TextStyle>) => void
-  setLayout: (patch: Partial<Omit<Layout, 'positions'>>) => void
+  setLayout: (patch: Partial<Omit<Layout, 'positions' | 'sizes'>>) => void
   /** The template's look replaces the current one; the guests, tables and layout stay. */
   applyTemplate: (templateId: TemplateId) => void
+  /** Puts `scope`'s settings back at the template's defaults, one undo step (`helpers/designReset`). */
+  resetDesign: (scope: ResetScope) => void
 
   /** Free mode: blocks placed where they were dropped. One undo step per drag. */
   setPositions: (positions: Record<string, Position>) => void
   /** Every block back to its grid place. */
   resetPositions: (blockIds?: string[]) => void
+  /** A block resized from its corner; one undo step per resize. */
+  setSize: (blockId: string, size: Size) => void
+  /** Blocks back to the size their column and text give them (all of them when no ids). */
+  resetSizes: (blockIds?: string[]) => void
 
   select: (blockIds: string[]) => void
   toggleSelect: (blockId: string) => void

@@ -1,25 +1,21 @@
 'use client'
 
 import type { FC, ReactNode } from 'react'
-import {
-  AppstoreOutlined,
-  BarsOutlined,
-  ColumnHeightOutlined,
-  DragOutlined,
-  IdcardOutlined,
-  RollbackOutlined,
-  TableOutlined,
-  UnorderedListOutlined,
-} from '@ant-design/icons'
+import { AppstoreOutlined, BarsOutlined, ColumnHeightOutlined, CompressOutlined, DragOutlined, RollbackOutlined } from '@ant-design/icons'
 import { Alert, Button, InputNumber, Segmented, Slider, Switch } from 'antd'
 import { useTranslations } from 'next-intl'
 import { useListEditorStore, useListEditorStoreBase } from '@store/lists/single/store'
-import type { Flow, LayoutMode, PrintKind, SortOrder } from '@store/lists/single/types'
-import { TileButton } from '@components/ui/TileButton'
+import type { Flow, LayoutMode, SortOrder } from '@store/lists/single/types'
+import type { ResetScope } from '@helpers/designReset'
+import { ResetButton } from '../controls/ResetButton'
 
-export const PanelSection: FC<{ title: string; children: ReactNode; hint?: string }> = ({ title, children, hint }) => (
+/** A panel's section; `reset` puts a reset button for that part of the design in its header. */
+export const PanelSection: FC<{ title: string; children: ReactNode; hint?: string; reset?: ResetScope }> = ({ title, children, hint, reset }) => (
   <section className='border-b border-line py-4 first:pt-1 last:border-b-0'>
-    <h3 className='m-0 mb-3 text-xs font-semibold tracking-wide text-muted uppercase'>{title}</h3>
+    <div className='mb-3 flex min-h-6 items-center justify-between gap-2'>
+      <h3 className='m-0 text-xs font-semibold tracking-wide text-muted uppercase'>{title}</h3>
+      {reset && <ResetButton scope={reset} name={title} variant='section' />}
+    </div>
     <div className='flex flex-col gap-3'>{children}</div>
     {hint && <p className='m-0 mt-2 text-xs leading-relaxed text-muted'>{hint}</p>}
   </section>
@@ -32,12 +28,6 @@ export const Row: FC<{ label: string; children: ReactNode }> = ({ label, childre
   </div>
 )
 
-const KIND_ICONS: Record<PrintKind, ReactNode> = {
-  seating: <TableOutlined />,
-  list: <UnorderedListOutlined />,
-  cards: <IdcardOutlined />,
-}
-
 /** Common place-card faces, mm. */
 const CARD_PRESETS: { width: number; height: number }[] = [
   { width: 90, height: 50 },
@@ -46,37 +36,22 @@ const CARD_PRESETS: { width: number; height: number }[] = [
   { width: 120, height: 60 },
 ]
 
-/** What the sheet is, and how its blocks are arranged. */
+/** How the sheet's blocks are arranged (what the sheet is, is the first step: `KindPanel`). */
 export const LayoutPanel: FC = () => {
   const t = useTranslations('Editor.layout')
+  const tEditor = useTranslations('Editor')
   const design = useListEditorStoreBase((state) => state.doc?.design)
-  const setDesign = useListEditorStore.use.setDesign()
   const setLayout = useListEditorStore.use.setLayout()
   const resetPositions = useListEditorStore.use.resetPositions()
+  const resetSizes = useListEditorStore.use.resetSizes()
   if (!design) return null
   const { layout, kind } = design
   const pinned = Object.keys(layout.positions).length
+  const resized = Object.keys(layout.sizes).length
 
   return (
     <div>
-      <PanelSection title={t('kind')} hint={t(`kindHint.${kind}`)}>
-        <div className='grid grid-cols-3 gap-2' role='radiogroup' aria-label={t('kind')}>
-          {(['seating', 'list', 'cards'] as const).map((value) => (
-            <TileButton
-              key={value}
-              role='radio'
-              aria-checked={kind === value}
-              active={kind === value}
-              icon={KIND_ICONS[value]}
-              onClick={() => setDesign({ kind: value })}
-            >
-              {t(`kinds.${value}`)}
-            </TileButton>
-          ))}
-        </div>
-      </PanelSection>
-
-      <PanelSection title={t('arrangement')} hint={t(layout.mode === 'free' ? 'freeHint' : 'gridHint')}>
+      <PanelSection title={t('arrangement')} reset='layout.arrangement' hint={t(layout.mode === 'free' ? 'freeHint' : 'gridHint')}>
         <Segmented<LayoutMode>
           block
           value={layout.mode}
@@ -91,10 +66,15 @@ export const LayoutPanel: FC = () => {
             {t('resetPositions', { count: pinned })}
           </Button>
         )}
+        {resized > 0 && (
+          <Button icon={<CompressOutlined />} onClick={() => resetSizes()}>
+            {t('resetSizes', { count: resized })}
+          </Button>
+        )}
       </PanelSection>
 
       {kind !== 'cards' && (
-        <PanelSection title={t('grid')}>
+        <PanelSection title={t('grid')} reset='layout.grid'>
           <Row label={t('columns')}>
             <InputNumber
               size='small'
@@ -124,16 +104,16 @@ export const LayoutPanel: FC = () => {
             </Row>
           )}
           <Row label={t('gapX')}>
-            <InputNumber size='small' className='w-24' min={0} max={60} step={0.5} value={layout.gapX} suffix='mm' onChange={(gapX) => gapX !== null && setLayout({ gapX })} />
+            <InputNumber size='small' className='w-36' min={0} max={60} step={0.5} value={layout.gapX} suffix={tEditor('mm')} onChange={(gapX) => gapX !== null && setLayout({ gapX })} />
           </Row>
           <Row label={t('gapY')}>
-            <InputNumber size='small' className='w-24' min={0} max={60} step={0.5} value={layout.gapY} suffix='mm' onChange={(gapY) => gapY !== null && setLayout({ gapY })} />
+            <InputNumber size='small' className='w-36' min={0} max={60} step={0.5} value={layout.gapY} suffix={tEditor('mm')} onChange={(gapY) => gapY !== null && setLayout({ gapY })} />
           </Row>
         </PanelSection>
       )}
 
       {kind === 'cards' && (
-        <PanelSection title={t('cards')} hint={t('cardsHint')}>
+        <PanelSection title={t('cards')} hint={t('cardsHint')} reset='layout.cards'>
           <div className='flex flex-wrap gap-1.5'>
             {CARD_PRESETS.map((preset) => (
               <Button
@@ -147,10 +127,10 @@ export const LayoutPanel: FC = () => {
             ))}
           </div>
           <Row label={t('cardWidth')}>
-            <InputNumber size='small' className='w-24' min={30} max={300} value={layout.cardWidth} suffix='mm' onChange={(cardWidth) => cardWidth && setLayout({ cardWidth })} />
+            <InputNumber size='small' className='w-36' min={30} max={300} value={layout.cardWidth} suffix={tEditor('mm')} onChange={(cardWidth) => cardWidth && setLayout({ cardWidth })} />
           </Row>
           <Row label={t('cardHeight')}>
-            <InputNumber size='small' className='w-24' min={20} max={300} value={layout.cardHeight} suffix='mm' onChange={(cardHeight) => cardHeight && setLayout({ cardHeight })} />
+            <InputNumber size='small' className='w-36' min={20} max={300} value={layout.cardHeight} suffix={tEditor('mm')} onChange={(cardHeight) => cardHeight && setLayout({ cardHeight })} />
           </Row>
           <Row label={t('cardFold')}>
             <Switch size='small' checked={layout.cardFold} onChange={(cardFold) => setLayout({ cardFold })} />
@@ -159,15 +139,15 @@ export const LayoutPanel: FC = () => {
             <Switch size='small' checked={layout.cutMarks} onChange={(cutMarks) => setLayout({ cutMarks })} />
           </Row>
           <Row label={t('gapX')}>
-            <InputNumber size='small' className='w-24' min={0} max={30} step={0.5} value={layout.gapX} suffix='mm' onChange={(gapX) => gapX !== null && setLayout({ gapX })} />
+            <InputNumber size='small' className='w-36' min={0} max={30} step={0.5} value={layout.gapX} suffix={tEditor('mm')} onChange={(gapX) => gapX !== null && setLayout({ gapX })} />
           </Row>
           <Row label={t('gapY')}>
-            <InputNumber size='small' className='w-24' min={0} max={30} step={0.5} value={layout.gapY} suffix='mm' onChange={(gapY) => gapY !== null && setLayout({ gapY })} />
+            <InputNumber size='small' className='w-36' min={0} max={30} step={0.5} value={layout.gapY} suffix={tEditor('mm')} onChange={(gapY) => gapY !== null && setLayout({ gapY })} />
           </Row>
         </PanelSection>
       )}
 
-      <PanelSection title={t('content')}>
+      <PanelSection title={t('content')} reset='layout.content'>
         <Row label={t('sort')}>
           <Segmented<SortOrder>
             size='small'

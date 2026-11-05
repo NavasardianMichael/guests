@@ -1,15 +1,15 @@
 'use client'
 
 import type { FC, ReactNode } from 'react'
-import { EditOutlined, EyeOutlined } from '@ant-design/icons'
+import { EyeOutlined } from '@ant-design/icons'
 import { useTranslations } from 'next-intl'
 import { useEditorUiStore } from '@store/editorUi/store'
 import { cn } from '@helpers/cn'
 import { EDITOR_TABS, TAB_ICONS } from './panels/EditorPanel'
 
 type Props = {
-  previewing: boolean
-  onPreviewChange: (previewing: boolean) => void
+  /** Opens the print preview, over the whole screen. */
+  onPreview: () => void
 }
 
 const BarButton: FC<{ icon: ReactNode; label: string; active: boolean; onClick: () => void; pressed?: boolean }> = ({
@@ -35,7 +35,7 @@ const BarButton: FC<{ icon: ReactNode; label: string; active: boolean; onClick: 
 )
 
 /** Phones and tablets: the panels at the thumb, each opening as a bottom sheet. */
-export const EditorBottomBar: FC<Props> = ({ previewing, onPreviewChange }) => {
+export const EditorBottomBar: FC<Props> = ({ onPreview }) => {
   const t = useTranslations('Editor')
   const tab = useEditorUiStore.use.tab()
   const sheetOpen = useEditorUiStore.use.sheetOpen()
@@ -45,13 +45,7 @@ export const EditorBottomBar: FC<Props> = ({ previewing, onPreviewChange }) => {
       {EDITOR_TABS.map((key) => (
         <BarButton key={key} icon={TAB_ICONS[key]} label={t(`tabsShort.${key}`)} active={sheetOpen && tab === key} onClick={() => openTab(key)} />
       ))}
-      <BarButton
-        icon={previewing ? <EditOutlined /> : <EyeOutlined />}
-        label={previewing ? t('previewExit') : t('previewShort')}
-        active={previewing}
-        pressed={previewing}
-        onClick={() => onPreviewChange(!previewing)}
-      />
+      <BarButton icon={<EyeOutlined />} label={t('previewShort')} active={false} onClick={onPreview} />
     </nav>
   )
 }

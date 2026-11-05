@@ -3,7 +3,7 @@
 For Armenian weddings, christenings and celebrations: make the guest list (type it, paste it,
 import Excel/CSV, or photograph a handwritten list and let Gemini read it), arrange it on paper
 — by dragging, in columns or rows, or freely — and print a **seating chart**, a **guest list**
-or **place cards** on any paper size, in 16 classic and creative templates with 40 Armenian
+or **place cards** on any paper size, in 46 classic and creative templates with 40 Armenian
 fonts. Interface in Armenian (default), Russian and English. Building and printing are free
 today; the paid model is planned (`docs/BILLING.md`).
 

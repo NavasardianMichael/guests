@@ -18,7 +18,6 @@ import { newListPath, ROUTES } from '@constants/routes'
 import { cn } from '@helpers/cn'
 import { AccountMenu } from './AccountMenu'
 import { BrandLogo } from './BrandLogo'
-import { LanguageSwitcher } from './LanguageSwitcher'
 
 /** `icon` shows only in the mobile drawer; the desktop bar stays text. */
 type NavItem = { href: string; label: string; icon: ReactNode }
@@ -57,7 +56,6 @@ export const Header: FC = () => {
           ))}
         </nav>
         <div className='ml-auto flex shrink-0 items-center gap-2'>
-          <LanguageSwitcher className='hidden lg:flex' />
           <Link href={newListPath()} className='hidden sm:block'>
             <Button type='primary' shape='round'>
               {t('create')}
@@ -95,7 +93,6 @@ export const Header: FC = () => {
               {t('create')}
             </Button>
           </Link>
-          <LanguageSwitcher className='mt-4' />
         </nav>
       </Drawer>
     </header>

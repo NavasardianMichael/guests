@@ -2,7 +2,7 @@
 
 import { type FC, memo, useMemo } from 'react'
 import { CheckCircleFilled } from '@ant-design/icons'
-import { Collapse, Input, Segmented, Slider, Switch } from 'antd'
+import { Collapse, Input, Slider, Switch } from 'antd'
 import { useTranslations } from 'next-intl'
 import { useListEditorStore, useListEditorStoreBase } from '@store/lists/single/store'
 import { TEXT_ROLES, type TextRole } from '@store/lists/single/types'
@@ -10,6 +10,7 @@ import { TABLE_STYLES, type TableStyle, TEMPLATE_LIST, type TemplateId } from '@
 import { cn } from '@helpers/cn'
 import { sampleContent, templateDesign } from '@helpers/listFactory'
 import { SheetPreview } from '@components/sheet/SheetPreview'
+import { TileButton } from '@components/ui/TileButton'
 import { PanelSection, Row } from './LayoutPanel'
 import { ColorField } from '../controls/ColorField'
 import { TextStyleEditor } from '../controls/TextStyleEditor'
@@ -103,7 +104,7 @@ export const DesignPanel: FC = () => {
         </PanelSection>
       )}
 
-      <PanelSection title={t('colors')}>
+      <PanelSection title={t('colors')} reset='design.colors'>
         <ColorField label={t('background')} value={design.palette.background} onChange={(background) => setPalette({ background })} />
         <ColorField label={t('accent')} value={design.palette.accent} onChange={(accent) => setPalette({ accent })} />
         <ColorField label={t('panel')} value={design.palette.panel} onChange={(panel) => setPalette({ panel })} />
@@ -113,19 +114,26 @@ export const DesignPanel: FC = () => {
       </PanelSection>
 
       {design.kind === 'seating' && (
-        <PanelSection title={t('tableStyle')}>
-          <Segmented<TableStyle>
-            block
-            size='small'
-            className='flex-wrap'
-            value={design.tableStyle}
-            onChange={(tableStyle) => setDesign({ tableStyle })}
-            options={TABLE_STYLES.map((value) => ({ value, label: t(`tableStyles.${value}`) }))}
-          />
+        <PanelSection title={t('tableStyle')} reset='design.tableStyle'>
+          {/* Tiles, not antd's Segmented: its items never wrap, so long names were cut to "Ընդ…". */}
+          <div role='radiogroup' aria-label={t('tableStyle')} className='grid grid-cols-[repeat(auto-fill,minmax(5.5rem,1fr))] gap-1.5'>
+            {TABLE_STYLES.map((value: TableStyle) => (
+              <TileButton
+                key={value}
+                role='radio'
+                aria-checked={design.tableStyle === value}
+                active={design.tableStyle === value}
+                className='min-h-9 py-1.5 font-medium'
+                onClick={() => setDesign({ tableStyle: value })}
+              >
+                {t(`tableStyles.${value}`)}
+              </TileButton>
+            ))}
+          </div>
         </PanelSection>
       )}
 
-      <PanelSection title={t('typography')}>
+      <PanelSection title={t('typography')} reset='design.typography'>
         <Row label={t('textScale')}>
           <span className='text-xs text-muted tabular-nums'>{Math.round(design.textScale * 100)}%</span>
         </Row>

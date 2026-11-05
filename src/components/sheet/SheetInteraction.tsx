@@ -32,6 +32,8 @@ export type SheetInteraction = {
   onBlockPointerDown: (event: PointerEvent, block: SheetBlock) => void
   /** A guest's name inside a table block: dragged on its own, to another table. */
   onNamePointerDown: (event: PointerEvent, guestId: string) => void
+  /** The handle at a block's bottom-right corner: resizes it. */
+  onResizePointerDown: (event: PointerEvent, block: SheetBlock) => void
   /** Opens a text, the caret at `caret` (a character offset) or at its end. */
   onEdit: (target: EditTarget, caret?: number) => void
   /**

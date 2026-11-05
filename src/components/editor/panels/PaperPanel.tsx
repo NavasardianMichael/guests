@@ -10,11 +10,12 @@ import { TileButton } from '@components/ui/TileButton'
 import { PanelSection, Row } from './LayoutPanel'
 
 const formatLabel = (format: PaperFormat): string =>
-  format === 'letter' ? 'Letter' : format === 'legal' ? 'Legal' : format === 'custom' ? '' : format
+  format === 'letter' ? 'Letter' : format === 'custom' ? '' : format
 
 /** The paper: a named size or any size, its orientation, its margins. */
 export const PaperPanel: FC = () => {
   const t = useTranslations('Editor.paper')
+  const tEditor = useTranslations('Editor')
   const paper = useListEditorStoreBase((state) => state.doc?.design.paper)
   const setPaper = useListEditorStore.use.setPaper()
   if (!paper) return null
@@ -22,7 +23,7 @@ export const PaperPanel: FC = () => {
 
   return (
     <div>
-      <PanelSection title={t('format')} hint={t('formatHint')}>
+      <PanelSection title={t('format')} hint={t('formatHint')} reset='paper.format'>
         <div className='grid grid-cols-3 gap-2' role='radiogroup' aria-label={t('format')}>
           {PAPER_FORMATS.map((format) => (
             <TileButton
@@ -38,30 +39,32 @@ export const PaperPanel: FC = () => {
           ))}
         </div>
         {paper.format === 'custom' && (
-          <div className='flex items-center gap-2'>
-            <InputNumber
-              className='flex-1'
-              size='small'
-              min={PAPER_LIMITS.minSide}
-              max={PAPER_LIMITS.maxSide}
-              value={paper.width}
-              suffix='mm'
-              aria-label={t('width')}
-              prefix={<span className='text-xs text-muted'>{t('widthShort')}</span>}
-              onChange={(width) => width && setPaper({ width })}
-            />
-            <span className='text-muted'>×</span>
-            <InputNumber
-              className='flex-1'
-              size='small'
-              min={PAPER_LIMITS.minSide}
-              max={PAPER_LIMITS.maxSide}
-              value={paper.height}
-              suffix='mm'
-              aria-label={t('height')}
-              prefix={<span className='text-xs text-muted'>{t('heightShort')}</span>}
-              onChange={(height) => height && setPaper({ height })}
-            />
+          <div className='flex items-end gap-2'>
+            <label className='flex min-w-0 flex-1 flex-col gap-1'>
+              <span className='text-xs text-muted'>{t('width')}</span>
+              <InputNumber
+                style={{ width: '100%' }}
+                size='small'
+                min={PAPER_LIMITS.minSide}
+                max={PAPER_LIMITS.maxSide}
+                value={paper.width}
+                suffix={tEditor('mm')}
+                onChange={(width) => width && setPaper({ width })}
+              />
+            </label>
+            <span className='pb-0.5 text-muted'>×</span>
+            <label className='flex min-w-0 flex-1 flex-col gap-1'>
+              <span className='text-xs text-muted'>{t('height')}</span>
+              <InputNumber
+                style={{ width: '100%' }}
+                size='small'
+                min={PAPER_LIMITS.minSide}
+                max={PAPER_LIMITS.maxSide}
+                value={paper.height}
+                suffix={tEditor('mm')}
+                onChange={(height) => height && setPaper({ height })}
+              />
+            </label>
           </div>
         )}
         <Row label={t('orientation')}>
@@ -78,15 +81,15 @@ export const PaperPanel: FC = () => {
         <p className='m-0 text-xs text-muted'>{t('size', { width: Math.round(size.width * 10) / 10, height: Math.round(size.height * 10) / 10 })}</p>
       </PanelSection>
 
-      <PanelSection title={t('margin')} hint={t('marginHint')}>
+      <PanelSection title={t('margin')} hint={t('marginHint')} reset='paper.margin'>
         <Row label={t('margin')}>
           <InputNumber
             size='small'
-            className='w-24'
+            className='w-36'
             min={PAPER_LIMITS.minMargin}
             max={PAPER_LIMITS.maxMargin}
             value={paper.margin}
-            suffix='mm'
+            suffix={tEditor('mm')}
             onChange={(margin) => margin !== null && setPaper({ margin })}
           />
         </Row>

@@ -1,11 +1,11 @@
 import type { MetadataRoute } from 'next'
-import { APP_DESCRIPTION, APP_NAME, LOCALE } from '@constants/app'
+import { APP_DESCRIPTION, APP_NAME, APP_TAGLINE, LOCALE } from '@constants/app'
 import { ROUTES } from '@constants/routes'
 import { CANVAS, INK } from '@styles/tokens'
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: `${APP_NAME} — Հայերեն ինքնակենսագրականի կառուցիչ`,
+    name: `${APP_NAME} — ${APP_TAGLINE}`,
     short_name: APP_NAME,
     description: APP_DESCRIPTION,
     lang: LOCALE,

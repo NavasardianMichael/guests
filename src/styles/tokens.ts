@@ -49,6 +49,9 @@ export const STATUS = {
   info: '#2f6fdb',
 } as const
 
+/** The two side guests of the brand mark, painted like two of the templates (blush, botanical). */
+export const MARK_GUEST = { rose: '#e8a0a8', sage: '#8fc0a0' } as const
+
 export const RADIUS = { sm: 8, md: 12, lg: 18 } as const
 
 export const FONT_SIZE = { base: 15 } as const

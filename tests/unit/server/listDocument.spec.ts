@@ -59,8 +59,21 @@ describe('coerceDesign', () => {
     expect(design.layout.positions).toEqual({ ok: { page: 1, x: 10, y: 20 } })
   })
 
+  it('keeps resized blocks within the size limits, and lists saved before resizing get none', () => {
+    const design = coerceDesign({
+      layout: { sizes: { ok: { w: 60, h: 25 }, tiny: { w: 1, h: -5 }, 'bad id!': { w: 50, h: 50 }, junk: 'x' } },
+    })
+    expect(design.layout.sizes).toEqual({ ok: { w: 60, h: 25 }, tiny: { w: 10, h: 4 } })
+    expect(coerceDesign({ layout: {} }).layout.sizes).toEqual({})
+  })
+
   it('takes a named paper size from the catalogue, whatever was sent', () => {
     expect(coerceDesign({ paper: { format: 'A3', width: 1, height: 1 } }).paper).toMatchObject({ width: 297, height: 420 })
+  })
+
+  it('keeps a list saved on the dropped Legal format at its size, as a custom one', () => {
+    const paper = coerceDesign({ paper: { format: 'legal', width: 215.9, height: 355.6, orientation: 'landscape' } }).paper
+    expect(paper).toMatchObject({ format: 'custom', width: 215.9, height: 355.6, orientation: 'landscape' })
   })
 })
 

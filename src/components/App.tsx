@@ -9,6 +9,7 @@ import { useLocale } from 'next-intl'
 import { useAuthStoreBase } from '@store/auth/store'
 import { isLocale, type Locale } from '@constants/app'
 import { antdTheme } from '@styles/theme'
+import { LeaveGuard } from './LeaveGuard'
 
 const ANTD_LOCALES: Record<Locale, typeof hyAM> = { hy: hyAM, ru: ruRU, en: enUS }
 
@@ -29,6 +30,7 @@ export const App: FC<PropsWithChildren> = ({ children }) => {
       <AntApp component={false}>
         <AuthBootstrap />
         {children}
+        <LeaveGuard />
       </AntApp>
     </ConfigProvider>
   )
