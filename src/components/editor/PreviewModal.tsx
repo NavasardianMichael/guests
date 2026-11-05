@@ -50,7 +50,7 @@ type Props = {
 }
 
 /**
- * The sheet exactly as it prints, over the whole screen: nothing selectable, nothing of the
+ * The sheet exactly as it prints, over nearly the whole screen: nothing selectable, nothing of the
  * editor's. Closed with its × or Escape; the editor underneath stays as it was.
  */
 export const PreviewModal: FC<Props> = ({ open, onClose, doc }) => {
@@ -61,24 +61,40 @@ export const PreviewModal: FC<Props> = ({ open, onClose, doc }) => {
       onCancel={onClose}
       footer={null}
       destroyOnHidden
-      width='100vw'
+      centered
+      width='98vw'
       title={
         <span className='flex flex-col'>
           <span>{t('preview')}</span>
           <span className='text-xs font-normal text-muted'>{t('previewHint')}</span>
         </span>
       }
-      style={{ maxWidth: '100vw', margin: 0 }}
+      // A rim of the editor shows around it (1% a side); antd's bottom padding would push it off-centre.
+      style={{ maxWidth: '98vw', paddingBottom: 0 }}
       styles={{
-        container: { display: 'flex', flexDirection: 'column', height: '100dvh', padding: 0, borderRadius: 0 },
-        header: { margin: 0, padding: '12px 56px 12px 16px', borderBottom: '1px solid var(--color-line)' },
+        // Transparent, so the editor shows (blurred) through the desk around the pages.
+        container: {
+          display: 'flex',
+          flexDirection: 'column',
+          height: '98dvh',
+          padding: 0,
+          overflow: 'hidden',
+          background: 'transparent',
+        },
+        header: {
+          margin: 0,
+          padding: '12px 56px 12px 16px',
+          borderBottom: '1px solid var(--color-line)',
+          background: 'var(--brand-surface)',
+        },
         body: {
           flex: 1,
           minHeight: 0,
           overflow: 'auto',
           scrollbarWidth: 'thin',
           overscrollBehavior: 'contain',
-          background: 'color-mix(in srgb, var(--brand-ink) 7%, var(--brand-canvas))',
+          background: 'color-mix(in srgb, var(--brand-desk-dark) 85%, transparent)',
+          backdropFilter: 'blur(6px)',
         },
       }}
     >

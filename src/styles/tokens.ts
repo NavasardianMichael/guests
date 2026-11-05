@@ -63,6 +63,8 @@ export const BRAND_CSS_VARS = {
   '--brand-accent-soft': APRICOT[100],
   '--brand-ink-soft': INK[100],
   '--brand-ink-deep': INK[950],
+  /** The print preview's desk around the pages: a neutral dark gray, laid translucent over the editor. */
+  '--brand-desk-dark': '#2b2c30',
 } as const
 
 /** The class antd scopes its `--ant-*` block to; put on <html> so it lands on :root. */
