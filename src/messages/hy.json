@@ -470,6 +470,7 @@
     "preview": "Նախադիտում",
     "previewHint": "Տեսնել էջերն այնպես, ինչպես կտպվեն",
     "previewShort": "Դիտել",
+    "previewFit": "Տեղավորել էկրանին",
     "editorTools": "Խմբագրիչի գործիքներ",
     "canvas": {
       "page": "Էջ {number} / {count}",

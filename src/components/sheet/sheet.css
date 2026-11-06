@@ -268,12 +268,21 @@
 /* ---------------------------------------------------------------- editor states */
 
 /* The editor's canvas: pages stacked with a gap the drag maths knows (`PAGE_GAP_MM`). */
-.sh-stacked .sh-page {
+.sh-stacked .sh-page,
+.sh-grid .sh-page {
   box-shadow: 0 18px 50px -12px rgba(20, 24, 45, 0.35);
 }
 
 .sh-stacked .sh-page + .sh-page {
   margin-top: 12mm;
+}
+
+/* The print preview: pages in `--sh-grid-columns` columns, the count that shows them largest
+   (`helpers/previewView` `bestColumns`), with the canvas's gap. */
+.sh-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--sh-grid-columns, 1), max-content);
+  gap: 12mm;
 }
 
 /* A block dragged across pages stays visible; the page label sits above its page. */
@@ -859,12 +868,36 @@ html[data-canvas-dragging] * {
   content: '';
   inset: 0;
   background:
-    radial-gradient(ellipse 46cqmin 30cqmin at 96% 4%, color-mix(in srgb, var(--sh-accent) 36%, transparent), transparent 70%),
-    radial-gradient(ellipse 30cqmin 22cqmin at 82% 14%, color-mix(in srgb, var(--sh-accent) 22%, transparent), transparent 70%),
-    radial-gradient(ellipse 50cqmin 32cqmin at 4% 97%, color-mix(in srgb, var(--sh-accent) 34%, transparent), transparent 70%),
-    radial-gradient(ellipse 26cqmin 18cqmin at 20% 88%, color-mix(in srgb, var(--sh-accent) 20%, transparent), transparent 70%),
-    radial-gradient(ellipse 16cqmin 11cqmin at 70% 3%, color-mix(in srgb, var(--sh-accent) 14%, transparent), transparent 70%),
-    radial-gradient(ellipse 14cqmin 10cqmin at 3% 76%, color-mix(in srgb, var(--sh-accent) 12%, transparent), transparent 70%);
+    radial-gradient(
+      ellipse 46cqmin 30cqmin at 96% 4%,
+      color-mix(in srgb, var(--sh-accent) 36%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 30cqmin 22cqmin at 82% 14%,
+      color-mix(in srgb, var(--sh-accent) 22%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 50cqmin 32cqmin at 4% 97%,
+      color-mix(in srgb, var(--sh-accent) 34%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 26cqmin 18cqmin at 20% 88%,
+      color-mix(in srgb, var(--sh-accent) 20%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 16cqmin 11cqmin at 70% 3%,
+      color-mix(in srgb, var(--sh-accent) 14%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 14cqmin 10cqmin at 3% 76%,
+      color-mix(in srgb, var(--sh-accent) 12%, transparent),
+      transparent 70%
+    );
 }
 
 .sht-watercolor {
@@ -1193,10 +1226,26 @@ html[data-canvas-dragging] * {
   content: '';
   inset: 0;
   background:
-    radial-gradient(ellipse 40cqmin 24cqmin at 4% 2%, color-mix(in srgb, var(--sh-accent) 24%, transparent), transparent 70%),
-    radial-gradient(ellipse 26cqmin 16cqmin at 26% 0%, color-mix(in srgb, var(--sh-accent) 14%, transparent), transparent 70%),
-    radial-gradient(ellipse 40cqmin 24cqmin at 96% 98%, color-mix(in srgb, var(--sh-accent) 24%, transparent), transparent 70%),
-    radial-gradient(ellipse 26cqmin 16cqmin at 74% 100%, color-mix(in srgb, var(--sh-accent) 14%, transparent), transparent 70%);
+    radial-gradient(
+      ellipse 40cqmin 24cqmin at 4% 2%,
+      color-mix(in srgb, var(--sh-accent) 24%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 26cqmin 16cqmin at 26% 0%,
+      color-mix(in srgb, var(--sh-accent) 14%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 40cqmin 24cqmin at 96% 98%,
+      color-mix(in srgb, var(--sh-accent) 24%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 26cqmin 16cqmin at 74% 100%,
+      color-mix(in srgb, var(--sh-accent) 14%, transparent),
+      transparent 70%
+    );
 }
 
 .sht-christening .sh-decor::after {
@@ -1338,7 +1387,9 @@ html[data-canvas-dragging] * {
   padding: 3.6mm;
   background: color-mix(in srgb, var(--sh-accent) 85%, transparent);
   mask-image: var(--tile-rings), linear-gradient(#000 0 0);
-  mask-size: 3.6mm 3.6mm, auto;
+  mask-size:
+    3.6mm 3.6mm,
+    auto;
   mask-repeat: round, no-repeat;
   mask-clip: border-box, content-box;
   mask-composite: subtract;
@@ -1635,7 +1686,11 @@ html[data-canvas-dragging] * {
     radial-gradient(ellipse 18cqmin 14cqmin at 2% 20%, rgba(247, 220, 138, 0.4), transparent 70%),
     radial-gradient(ellipse 34cqmin 24cqmin at 96% 96%, rgba(242, 166, 192, 0.4), transparent 70%),
     radial-gradient(ellipse 22cqmin 16cqmin at 80% 99%, rgba(247, 220, 138, 0.38), transparent 70%),
-    radial-gradient(ellipse 18cqmin 14cqmin at 99% 80%, color-mix(in srgb, var(--sh-accent) 30%, transparent), transparent 70%);
+    radial-gradient(
+      ellipse 18cqmin 14cqmin at 99% 80%,
+      color-mix(in srgb, var(--sh-accent) 30%, transparent),
+      transparent 70%
+    );
 }
 
 .sht-wildflower .sh-decor i {
@@ -1754,7 +1809,8 @@ html[data-canvas-dragging] * {
   right: 0;
   height: 4.2mm;
   background:
-    radial-gradient(circle, color-mix(in srgb, var(--sh-accent) 30%, transparent) 0.35mm, transparent 0.45mm) 0 0.9mm / 5mm 3mm repeat-x,
+    radial-gradient(circle, color-mix(in srgb, var(--sh-accent) 30%, transparent) 0.35mm, transparent 0.45mm) 0 0.9mm /
+      5mm 3mm repeat-x,
     radial-gradient(circle at 50% 0, #fbf7ee 2.5mm, transparent 2.6mm) 0 1.4mm / 5mm 5mm repeat-x,
     linear-gradient(#fbf7ee, #fbf7ee) 0 0 / 100% 1.5mm no-repeat;
 }
@@ -1829,7 +1885,11 @@ html[data-canvas-dragging] * {
   inset: 6mm;
   padding: 1.4mm;
   border-radius: 3mm;
-  background: repeating-linear-gradient(-50deg, var(--sh-accent) 0 0.7mm, color-mix(in srgb, var(--sh-accent) 30%, transparent) 0.7mm 1.3mm);
+  background: repeating-linear-gradient(
+    -50deg,
+    var(--sh-accent) 0 0.7mm,
+    color-mix(in srgb, var(--sh-accent) 30%, transparent) 0.7mm 1.3mm
+  );
   mask:
     linear-gradient(#000 0 0) content-box exclude,
     linear-gradient(#000 0 0);
@@ -1855,7 +1915,11 @@ html[data-canvas-dragging] * {
   border: 0;
   padding: 0.9mm;
   border-radius: 2mm;
-  background: repeating-linear-gradient(-50deg, var(--sh-accent) 0 0.5mm, color-mix(in srgb, var(--sh-accent) 30%, transparent) 0.5mm 0.9mm);
+  background: repeating-linear-gradient(
+    -50deg,
+    var(--sh-accent) 0 0.5mm,
+    color-mix(in srgb, var(--sh-accent) 30%, transparent) 0.5mm 0.9mm
+  );
   mask:
     linear-gradient(#000 0 0) content-box exclude,
     linear-gradient(#000 0 0);

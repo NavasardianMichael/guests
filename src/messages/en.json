@@ -470,6 +470,7 @@
     "preview": "Preview",
     "previewHint": "See the pages exactly as they will print",
     "previewShort": "Preview",
+    "previewFit": "Fit to the screen",
     "editorTools": "Editor tools",
     "canvas": {
       "page": "Page {number} of {count}",
