@@ -3,6 +3,7 @@ import { getTranslations } from 'next-intl/server'
 import { ROUTES } from '@constants/routes'
 import { pageMetadata } from '@helpers/metadata'
 import { breadcrumbSchema } from '@linkedDataSchema/site'
+import { ContactDetails } from '@components/contact/ContactDetails'
 import { ContactForm } from '@components/contact/ContactForm'
 import { JsonLd } from '@components/seo/JsonLd'
 
@@ -16,7 +17,7 @@ export default async function ContactPage() {
   const tNav = await getTranslations('Nav')
 
   return (
-    <div className='mesh-bg flex min-h-[calc(100dvh-4rem)] items-center justify-center px-4 py-10 sm:py-14'>
+    <div className='mesh-bg flex min-h-[calc(100dvh-4rem)] flex-col items-center justify-center gap-10 px-4 py-10 sm:gap-12 sm:py-14'>
       <JsonLd
         data={breadcrumbSchema([
           { name: tNav('home'), path: ROUTES.home },
@@ -30,6 +31,7 @@ export default async function ContactPage() {
           <ContactForm />
         </div>
       </div>
+      <ContactDetails />
     </div>
   )
 }

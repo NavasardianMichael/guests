@@ -91,10 +91,12 @@ export const useListEditorStoreBase = create<ListEditorState & ListEditorActions
       initialState,
       (set, get): ListEditorActions => ({
         loadDocument: ({ listId, doc, paidAt }) => {
-          // A draft saved in this browser before blocks could be resized has no `sizes`.
+          // A draft saved in this browser before blocks could be resized has no `sizes`, and
+          // one saved before sheets had shapes no `shape`.
           const stored: Partial<Pick<ListDocument['design']['layout'], 'sizes'>> = doc.design.layout
+          const storedDesign: Partial<Pick<ListDocument['design'], 'shape'>> = doc.design
           const layout = { ...doc.design.layout, sizes: stored.sizes ?? {} }
-          const loaded = { ...doc, design: { ...doc.design, layout } }
+          const loaded = { ...doc, design: { ...doc.design, shape: storedDesign.shape ?? 'rectangle', layout } }
           set((state) => ({ ...state, ...initialState, listId, doc: loaded, paidAt }))
         },
         reset: () => {
@@ -233,28 +235,19 @@ export const useListEditorStoreBase = create<ListEditorState & ListEditorActions
           })
           return duplicates.length
         },
-        editSheet: ({ guests, tables = [], remove = [] }) => {
-          const removed = new Set(remove)
+        applySheet: ({ guests, tables }) => {
           set((state) => {
+            if (!state.doc) return
+            const kept = new Set([...guests, ...tables].map((item) => item.id))
+            const { content } = state.doc
+            const removed = new Set([...content.guests, ...content.tables].map((item) => item.id).filter((id) => !kept.has(id)))
             edit(state, null, (doc) => {
-              for (const change of tables) {
-                const table = doc.content.tables.find((item) => item.id === change.id)
-                if (table) table.name = change.name
-              }
-              for (const change of guests) {
-                if ('id' in change) {
-                  const guest = doc.content.guests.find((item) => item.id === change.id)
-                  if (guest) guest.name = change.name
-                } else if (doc.content.guests.length < MAX_GUESTS) {
-                  doc.content.guests.push(newGuest(change.name, change.tableId))
-                }
-              }
-              if (removed.size) {
-                doc.content.guests = doc.content.guests.filter((guest) => !removed.has(guest.id))
-                for (const id of removed) {
-                  delete doc.design.layout.positions[id]
-                  delete doc.design.layout.sizes[id]
-                }
+              doc.content.guests = guests
+              doc.content.tables = tables
+              // Dragged or resized blocks that are gone.
+              for (const id of removed) {
+                delete doc.design.layout.positions[id]
+                delete doc.design.layout.sizes[id]
               }
             })
             if (state.selection.some((id) => removed.has(id))) state.selection = state.selection.filter((id) => !removed.has(id))

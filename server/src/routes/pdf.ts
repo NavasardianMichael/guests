@@ -8,7 +8,7 @@ import { printTerms } from '../services/entitlement.js'
 import { coerceContent, coerceDesign, coerceTitle, DEFAULT_LIST_TITLE } from '../services/listDocument.js'
 
 /** The "made with" line a free print carries once billing is on. */
-export const WATERMARK_TEXT = 'guests.eapps.site'
+export const WATERMARK_TEXT = 'guests-seating-board.eapps.site'
 
 /**
  * The PDF of a document the server does not hold: a guest's local draft. No account and no

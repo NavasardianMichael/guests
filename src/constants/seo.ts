@@ -1,7 +1,7 @@
 /**
  * What people type to find this. Pages are indexed in Armenian; the Russian and English
- * phrasings live in metadata: the `keywords` meta (a weak signal for Yandex and Bing, ignored
- * by Google), the JSON-LD `keywords` / `alternateName`, and `/llms.txt`, which answer engines
+ * phrasings live in metadata: the `keywords` meta (a weak signal for some search engines,
+ * ignored by Google), the JSON-LD `keywords` / `alternateName`, and `/llms.txt`, which answer engines
  * read.
  */
 export const KEYWORDS_HY = [
@@ -42,11 +42,9 @@ export const SEARCH_KEYWORDS = [...KEYWORDS_HY, ...KEYWORDS_EN, ...KEYWORDS_RU]
 export const ALTERNATE_NAMES = ['Guests', 'Guest list & seating chart', 'Список гостей и рассадка']
 
 /**
- * Search-console ownership tags, each inlined at build time and left out when empty. A DNS
- * TXT record verifies the same ownership without them (docs/PRODUCTION_SETUP.md).
+ * Google Search Console ownership tag, inlined at build time and left out when empty. A DNS
+ * TXT record verifies the same ownership without it (docs/PRODUCTION_SETUP.md).
  */
 export const SITE_VERIFICATION = {
   google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION ?? '',
-  yandex: process.env.NEXT_PUBLIC_YANDEX_VERIFICATION ?? '',
-  bing: process.env.NEXT_PUBLIC_BING_VERIFICATION ?? '',
 }

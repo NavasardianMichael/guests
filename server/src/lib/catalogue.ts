@@ -63,6 +63,8 @@ export const TABLE_STYLES = ['plain', 'underline', 'boxed', 'filled', 'ribbon', 
 
 export const PRINT_KINDS = ['seating', 'list', 'cards'] as const
 
+export const SHEET_SHAPES = ['rectangle', 'rounded', 'ticket', 'arch', 'pointed', 'oval', 'circle', 'hexagon', 'octagon', 'wavy', 'scalloped'] as const
+
 export const TEXT_ROLES = ['heading', 'subheading', 'group', 'name', 'footer'] as const
 
 export const PAPER_FORMATS = ['A5', 'A4', 'A3', 'A2', 'letter', 'custom'] as const

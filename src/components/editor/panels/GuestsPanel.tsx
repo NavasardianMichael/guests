@@ -45,7 +45,6 @@ import { useTranslations } from 'next-intl'
 import { useEditorUiStore } from '@store/editorUi/store'
 import { DEFAULT_SEATS_PER_TABLE, MAX_GUESTS, useListEditorStore, useListEditorStoreBase } from '@store/lists/single/store'
 import type { Guest, GuestTable } from '@store/lists/single/types'
-import { useBehindSpreadsheet } from '@hooks/useBehindSpreadsheet'
 import { cn } from '@helpers/cn'
 import { HintTooltip } from '@components/ui/HintTooltip'
 import { TileButton } from '@components/ui/TileButton'
@@ -418,9 +417,8 @@ export const GuestsPanel: FC = () => {
   const t = useTranslations('Editor.guests')
   const tSamples = useTranslations('Samples')
   const { message, modal } = App.useApp()
-  // Held while the spreadsheet covers the panel: its edits do not re-render hundreds of rows behind it.
-  const content = useBehindSpreadsheet((doc) => doc?.content)
-  const kind = useBehindSpreadsheet((doc) => doc?.design.kind ?? 'seating')
+  const content = useListEditorStoreBase((state) => state.doc?.content)
+  const kind = useListEditorStoreBase((state) => state.doc?.design.kind ?? 'seating')
   const selectionList = useListEditorStore.use.selection()
   const openImport = useEditorUiStore.use.openImport()
   /** The quick-add field's text; the list is filtered by it only while `searching`. */

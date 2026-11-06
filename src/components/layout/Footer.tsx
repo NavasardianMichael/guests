@@ -54,7 +54,7 @@ export const Footer: FC = async () => {
         {columns.map((column) => (
           <nav key={column.title} aria-label={column.title}>
             <h2 className='mb-3 text-sm font-semibold text-ink'>{column.title}</h2>
-            <ul className='m-0 flex list-none flex-col gap-2 p-0'>
+            <ul className='m-0 flex list-none flex-col p-0'>
               {column.links.map((link) => (
                 <li key={link.href}>
                   <Link href={link.href} className='text-sm text-muted no-underline hover:text-ink'>

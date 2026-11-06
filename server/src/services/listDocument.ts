@@ -7,6 +7,7 @@ import {
   PAPER_LIMITS,
   PAPER_SIZES,
   PRINT_KINDS,
+  SHEET_SHAPES,
   TABLE_STYLES,
   TEMPLATE_IDS,
   type TemplateId,
@@ -67,6 +68,7 @@ export type ListContent = {
 export type ListDesign = {
   kind: (typeof PRINT_KINDS)[number]
   templateId: TemplateId
+  shape: (typeof SHEET_SHAPES)[number]
   paper: { format: (typeof PAPER_FORMATS)[number]; width: number; height: number; orientation: 'portrait' | 'landscape'; margin: number }
   palette: { background: string; accent: string; panel: string }
   type: Record<TextRole, TextStyle>
@@ -223,6 +225,7 @@ export const coerceDesign = (value: unknown): ListDesign => {
   return {
     kind: oneOf(source.kind, PRINT_KINDS, 'seating'),
     templateId: oneOf(source.templateId, TEMPLATE_IDS, DEFAULT_TEMPLATE_ID),
+    shape: oneOf(source.shape, SHEET_SHAPES, 'rectangle'),
     paper: {
       format,
       width: named ? named.width : num(paperSource.width, PAPER_LIMITS.minSide, PAPER_LIMITS.maxSide, 210),

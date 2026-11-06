@@ -73,10 +73,11 @@ export const fitSheet = (doc: ListDocument, measure: Measure): Fit | null => {
 
   /**
    * Every block on its pages and inside the printable area (a table taller than a page is
-   * not), every name within its room, and none wrapped but those that wrap anyway.
+   * not, nor one too big for anywhere inside a shaped sheet's outline), every name within its room, and none wrapped but those that wrap anyway.
    */
   const fitsIn = (sheet: SheetLayout, scale: number, pages: number): boolean =>
     sheet.pages <= pages &&
+    !sheet.overflow &&
     sheet.blocks.every(
       (block) =>
         block.y + block.h <= sheet.area.y + sheet.area.h + 0.01 &&

@@ -10,7 +10,6 @@ import { useAuthStore } from '@store/auth/store'
 import { useEditorUiStore } from '@store/editorUi/store'
 import { useListEditorStore, useListEditorStoreBase } from '@store/lists/single/store'
 import { DRAFT_ID, type ListDocument } from '@store/lists/single/types'
-import { useBehindSpreadsheet } from '@hooks/useBehindSpreadsheet'
 import { COMPACT_QUERY, useMediaQuery } from '@hooks/useMediaQuery'
 import { editorPath, newListPath, RETURN_TO_QUERY, ROUTES } from '@constants/routes'
 import { dedupe } from '@helpers/dedupe'
@@ -33,7 +32,7 @@ type Props = { listId: string }
 type LoadState = { phase: 'loading' } | { phase: 'importing' } | { phase: 'ready' } | { phase: 'error'; error: unknown }
 
 /** The guests panel takes most of the screen; the others leave the sheet in view above them. */
-const SHEET_SIZES = { kind: '62dvh', guests: '88dvh', layout: '62dvh', design: '70dvh', paper: '55dvh' } as const
+const SHEET_SIZES = { kind: '62dvh', template: '70dvh', guests: '88dvh', layout: '62dvh', design: '70dvh', paper: '55dvh' } as const
 
 /**
  * A list with guests opens at them; an empty one at the first step, what is being made. A list
@@ -56,8 +55,7 @@ export const EditorShell: FC<Props> = ({ listId }) => {
   const user = useAuthStore.use.user()
   const isResolved = useAuthStore.use.isResolved()
   const loadDocument = useListEditorStore.use.loadDocument()
-  // Held while the spreadsheet covers the editor: its edits do not re-lay out the sheet behind it.
-  const doc = useBehindSpreadsheet((current) => current)
+  const doc = useListEditorStore.use.doc()
   const openListId = useListEditorStore.use.listId()
   const select = useListEditorStore.use.select()
   const tab = useEditorUiStore.use.tab()

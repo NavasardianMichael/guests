@@ -1,4 +1,4 @@
-import { GoogleGenAI, Type } from '@google/genai'
+import { GoogleGenAI, MediaResolution, ThinkingLevel, Type } from '@google/genai'
 import { config } from '../config.js'
 
 /**
@@ -13,6 +13,12 @@ export type ReadGuest = { name: string; table?: string }
 
 /** The image is not a list, or nothing could be read from it. */
 export class UnreadableImageError extends Error {}
+
+/**
+ * Gemini's newest GA Flash: reading handwritten Armenian needs Flash, not Flash-Lite, and a
+ * photo costs a cent or two. Change it here when Google retires it (aistudio.google.com/docs/deprecations).
+ */
+const MODEL = 'gemini-3.8-flash'
 
 const MAX_GUESTS_PER_IMAGE = 600
 
@@ -54,9 +60,16 @@ const clean = (value: unknown, max: number): string => (typeof value === 'string
 
 export const readGuestList = async (image: { mimeType: string; base64: string }): Promise<ReadGuest[]> => {
   const response = await getClient().models.generateContent({
-    model: config.gemini.model,
+    model: MODEL,
     contents: [{ role: 'user', parts: [{ inlineData: { mimeType: image.mimeType, data: image.base64 } }, { text: PROMPT }] }],
-    config: { responseMimeType: 'application/json', responseSchema: SCHEMA, temperature: 0 },
+    // Gemini 3: temperature stays at its default (1.0; lower can loop), the schema keeps the
+    // answer exact. Copying names needs little thinking, and fine handwriting a sharp image.
+    config: {
+      responseMimeType: 'application/json',
+      responseSchema: SCHEMA,
+      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+      mediaResolution: MediaResolution.MEDIA_RESOLUTION_HIGH,
+    },
   })
 
   let parsed: unknown

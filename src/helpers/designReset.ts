@@ -3,7 +3,8 @@ import { defaultPaper, templateDesign } from '@helpers/listFactory'
 import { applyPaperPatch, defaultTextScale } from '@helpers/paperChange'
 
 /**
- * What a reset button puts back: everything (`all`), one editor tab, or one section of a tab.
+ * What a reset button puts back: everything (`all`), one editor tab, one section of a tab, or
+ * the sizes "fit to the page" changes (`sizing`, the canvas button beside it).
  * Guests, tables, the texts and the chosen kind and template are never reset — they are the
  * user's content and choices, not settings.
  */
@@ -14,6 +15,7 @@ export const RESET_SCOPES = [
   'layout.grid',
   'layout.cards',
   'layout.content',
+  'sizing',
   'design',
   'design.colors',
   'design.tableStyle',
@@ -56,6 +58,14 @@ const resetPart = (design: ListDesign, scope: ResetScope): void => {
       return
     case 'layout.content':
       Object.assign(layout, pick(defaults.layout, CONTENT_KEYS))
+      return
+    case 'sizing':
+      // What "fit to the page" sets, and resized tables: the template's columns and letter
+      // size for this paper, every block at its own size again.
+      design.textScale = defaultTextScale(design.paper)
+      layout.columns = defaults.layout.columns
+      layout.sizes = {}
+      if (layout.mode === 'grid') layout.positions = {}
       return
     case 'design':
       resetPart(design, 'design.colors')

@@ -2,7 +2,6 @@
 
 import { createContext, type FC, memo, type PointerEvent, useContext, useEffect, useRef, useState } from 'react'
 import { HolderOutlined } from '@ant-design/icons'
-import { useListEditorStoreBase } from '@store/lists/single/store'
 import { cn } from '@helpers/cn'
 import { isBlock, parseClipboard } from '@helpers/guestSheet'
 import type { DragSource } from './useSheetDrag'
@@ -73,8 +72,8 @@ type Props = {
 
 /**
  * One cell: a borderless input filling its grid square. Typing stays in the cell — nothing else
- * on the page re-renders — until the cell is left, when the list takes the text in one edit, as
- * a spreadsheet does. Escape puts the text back; Enter / Shift+Enter go down / up, the arrows
+ * on the page re-renders — until the cell is left, when the spreadsheet's draft takes the text in
+ * one edit, as a spreadsheet does. Escape puts the text back; Enter / Shift+Enter go down / up, the arrows
  * move between cells (left and right once the caret is at the text's edge), Tab is the
  * browser's own. Pasting a block copied from Excel fills the cells from this one on.
  */
@@ -154,16 +153,8 @@ export const SpreadsheetCell: FC<Props> = memo(function SpreadsheetCell({
             commit()
             handlers.move(row, col, rows, cols)
           }
-          const key = event.key.toLowerCase()
           const editing = draftRef.current !== null && draftRef.current !== value
-          if ((event.ctrlKey || event.metaKey) && (key === 'z' || key === 'y')) {
-            // While typing, undo drops the typing; otherwise it is the list's own undo.
-            event.preventDefault()
-            if (editing) return edit(null)
-            const { undo, redo } = useListEditorStoreBase.getState()
-            if (key === 'z' && !event.shiftKey) undo()
-            else redo()
-          } else if (event.key === 'Escape' && editing) {
+          if (event.key === 'Escape' && editing) {
             // Puts the text back, not close the window.
             event.stopPropagation()
             edit(null)

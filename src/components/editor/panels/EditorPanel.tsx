@@ -1,7 +1,7 @@
 'use client'
 
 import type { FC, ReactNode } from 'react'
-import { AppstoreAddOutlined, ArrowLeftOutlined, ArrowRightOutlined, BgColorsOutlined, FileOutlined, LayoutOutlined, TeamOutlined } from '@ant-design/icons'
+import { AppstoreAddOutlined, ArrowLeftOutlined, ArrowRightOutlined, BgColorsOutlined, FileOutlined, LayoutOutlined, SkinOutlined, TeamOutlined } from '@ant-design/icons'
 import { Button } from 'antd'
 import { useTranslations } from 'next-intl'
 import { type EditorTab, useEditorUiStore } from '@store/editorUi/store'
@@ -10,17 +10,19 @@ import { GuestsPanel } from './GuestsPanel'
 import { KindPanel } from './KindPanel'
 import { LayoutPanel } from './LayoutPanel'
 import { PaperPanel } from './PaperPanel'
+import { TemplatePanel } from './TemplatePanel'
 import { ResetButton } from '../controls/ResetButton'
 import { PdfActions } from '../PdfActions'
 
 /**
- * The steps, in order: what is being made, how it looks (a new list's sample guests give it
- * names to show), the guests, how they are arranged, and the paper.
+ * The steps, in order: what is being made, its template, how it looks (a new list's sample
+ * guests give it names to show), the guests, how they are arranged, and the paper.
  */
-export const EDITOR_TABS: EditorTab[] = ['kind', 'design', 'guests', 'layout', 'paper']
+export const EDITOR_TABS: EditorTab[] = ['kind', 'template', 'design', 'guests', 'layout', 'paper']
 
 export const TAB_ICONS: Record<EditorTab, ReactNode> = {
   kind: <AppstoreAddOutlined />,
+  template: <SkinOutlined />,
   guests: <TeamOutlined />,
   layout: <LayoutOutlined />,
   design: <BgColorsOutlined />,
@@ -29,23 +31,24 @@ export const TAB_ICONS: Record<EditorTab, ReactNode> = {
 
 export const PanelBody: FC<{ tab: EditorTab }> = ({ tab }) => {
   if (tab === 'kind') return <KindPanel />
+  if (tab === 'template') return <TemplatePanel />
   if (tab === 'guests') return <GuestsPanel />
   if (tab === 'layout') return <LayoutPanel />
   if (tab === 'design') return <DesignPanel />
   return <PaperPanel />
 }
 
-/** A tab's reset: every settings tab has one; the guests and the kind are content and a choice, not settings. */
+/** A tab's reset: every settings tab has one; the guests are content, the kind and the template choices, not settings. */
 export const TabResetButton: FC<{ tab: EditorTab }> = ({ tab }) => {
   const t = useTranslations('Editor.tabs')
-  if (tab === 'guests' || tab === 'kind') return null
+  if (tab === 'guests' || tab === 'kind' || tab === 'template') return null
   return <ResetButton scope={tab} name={t(tab)} variant='tab' />
 }
 
 /**
  * The desktop settings column: the current step only (the steps themselves run across the top,
  * `EditorSteps`), with Back / Next at its foot and printing after the last step. Only the open
- * step is mounted — the design step draws sixteen previews.
+ * step is mounted — the template step draws a preview per template.
  */
 export const EditorPanel: FC = () => {
   const t = useTranslations('Editor')

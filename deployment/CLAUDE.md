@@ -6,16 +6,16 @@ Host-side configuration templates. How the pipeline works and the secrets live i
 
 ```
 deployment/
-  guests.eapps.site.conf      nginx, web host -> 127.0.0.1:7010
-  api.guests.eapps.site.conf  nginx, API host -> 127.0.0.1:9010
-  guests-web.service          systemd, Next standalone
-  guests-api.service          systemd, Express + headless Chrome
-  docker-compose.prod.yml         production Postgres, loopback-bound on 5010
-  db.env.example                  shape of $APP_DIR/db/.env — the first deploy writes it from DATABASE_URL
+  guests-seating-board.eapps.site.conf      nginx, web host -> 127.0.0.1:7010
+  api.guests-seating-board.eapps.site.conf  nginx, API host -> 127.0.0.1:9010
+  guests-seating-board-web.service          systemd, Next standalone
+  guests-seating-board-api.service          systemd, Express + headless Chrome
+  docker-compose.prod.yml                   production Postgres, loopback-bound on 5010
+  db.env.example                            shape of $APP_DIR/db/.env — the first deploy writes it from DATABASE_URL
 ```
 
 **These are templates, not live config.** Nothing deploys them — they are copied to the
-server by hand. Paths assume `APP_DIR=/home/michael/apps/guests`. When you change one
+server by hand. Paths assume `APP_DIR=/home/michael/apps/guests-seating-board`. When you change one
 here, say so in the PR: someone has to re-copy it.
 
 ## Rules
@@ -53,10 +53,9 @@ here, say so in the PR: someone has to re-copy it.
 - **`shared/.env.api` lives outside the releases** — rotation deletes everything under
   `releases/`.
 - **Chrome is launched per print and is `chrome-headless-shell`** (`services/pdf.ts`). The
-  deploy's `ensure_chrome` and the AppArmor profile (PRODUCTION_SETUP.md step 2) must name
-  that binary, and the API unit's `MemoryMax` covers it: same cgroup.
+  deploy's `ensure_chrome` must name that binary, and the API unit's `MemoryMax` covers it: same cgroup.
 - **One API process.** Rate limits and the PDF print queue are in-memory
   and per-process; `trust proxy` = 1 assumes exactly one hop.
-- **Ports 7010 / 9010 / 5010** sit beside bookie (7004/9004/5004) and crossword
-  (7007/9007/5007) on the same host. Changing one means editing every file listed in
+- **Ports 7010 / 9010 / 5010** sit beside bookie (7004/9004/5004), crossword
+  (7007/9007/5007) and cv-builder (7009/9009/5009) on the same host. Changing one means editing every file listed in
   docs/DEPLOYMENT.md "Ports".

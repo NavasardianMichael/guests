@@ -8,7 +8,7 @@ import { PRINT_KINDS } from '@store/lists/single/types'
 import { sampleTexts } from '@i18n/sampleTexts'
 import { APP_NAME } from '@constants/app'
 import { FONTS, fontSourceUrl } from '@constants/fonts'
-import { newListPath, ROUTES, templatePath } from '@constants/routes'
+import { ROUTES, templatePath } from '@constants/routes'
 import { isTemplateId, TEMPLATE_IDS, TEMPLATE_LIST, TEMPLATES } from '@constants/templates'
 import { sampleContent, templateDesign } from '@helpers/listFactory'
 import { pageMetadata } from '@helpers/metadata'
@@ -16,8 +16,8 @@ import { absoluteUrl } from '@helpers/url'
 import { breadcrumbSchema, ORGANIZATION_ID } from '@linkedDataSchema/site'
 import { JsonLd } from '@components/seo/JsonLd'
 import { SheetFontsLink } from '@components/sheet/SheetFontsLink'
-import { SheetPreview } from '@components/sheet/SheetPreview'
 import { TemplateCard } from '@components/templates/TemplateCard'
+import { ShapedSheetPreview, TemplateShapePicker, TemplateShapeProvider, UseTemplateLink } from '@components/templates/TemplateShape'
 
 type Props = { params: Promise<{ templateId: string }> }
 
@@ -47,6 +47,7 @@ export default async function TemplatePage({ params }: Props) {
   const t = await getTranslations('Templates')
   const tKinds = await getTranslations('Editor.layout.kinds')
   const tNav = await getTranslations('Nav')
+  const tShapes = await getTranslations('Shapes')
   const locale = await getLocale()
   const texts = await sampleTexts()
   const template = TEMPLATES[templateId]
@@ -70,6 +71,7 @@ export default async function TemplatePage({ params }: Props) {
   }
 
   return (
+    <TemplateShapeProvider>
     <div className='mesh-bg'>
       <SheetFontsLink />
       <JsonLd
@@ -116,13 +118,23 @@ export default async function TemplatePage({ params }: Props) {
             </div>
           </dl>
 
+          <section className='mt-8' aria-labelledby='template-shape'>
+            <h2 id='template-shape' className='m-0 text-xs font-semibold tracking-wider text-muted uppercase'>
+              {tShapes('label')}
+            </h2>
+            <p className='m-0 mt-1.5 text-sm text-muted'>{tShapes('pageHint')}</p>
+            <div className='mt-3'>
+              <TemplateShapePicker />
+            </div>
+          </section>
+
           <div className='mt-9 flex flex-wrap gap-3'>
-            <Link
-              href={newListPath({ template: templateId })}
+            <UseTemplateLink
+              templateId={templateId}
               className='inline-flex items-center rounded-full bg-ink px-5 py-3 sm:px-6 sm:py-3.5 font-semibold text-white no-underline shadow-lg shadow-ink/20 transition hover:-translate-y-0.5'
             >
               {t('useThis')}
-            </Link>
+            </UseTemplateLink>
           </div>
         </div>
 
@@ -130,7 +142,7 @@ export default async function TemplatePage({ params }: Props) {
           {PRINT_KINDS.map((kind, index) => (
             <figure key={kind} className={index === 0 ? 'col-span-2 m-0' : 'm-0'}>
               <div className='overflow-hidden rounded-xl shadow-[0_30px_70px_-25px_rgba(20,24,45,0.45)] ring-1 ring-black/5'>
-                <SheetPreview doc={{ title: '', content: sampleContent(texts, kind === 'cards' ? 3 : 6), design: templateDesign(templateId, kind) }} />
+                <ShapedSheetPreview doc={{ title: '', content: sampleContent(texts, kind === 'cards' ? 3 : 6), design: templateDesign(templateId, kind) }} />
               </div>
               <figcaption className='mt-2 text-center text-sm text-muted'>{tKinds(kind)}</figcaption>
             </figure>
@@ -149,5 +161,6 @@ export default async function TemplatePage({ params }: Props) {
         </div>
       </section>
     </div>
+    </TemplateShapeProvider>
   )
 }

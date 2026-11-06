@@ -8,6 +8,7 @@ import { useSheetLayout } from '@hooks/useSheetLayout'
 import { SheetDocument } from '@components/sheet/SheetDocument'
 import { MM_TO_PX } from '@components/sheet/SheetPreview'
 import { PAGE_GAP_MM } from './canvas/useCanvasInteraction'
+import { PdfActions } from './PdfActions'
 
 /** The space beside the pages, both sides together: less on a phone, where width is scarce. */
 const gutterFor = (width: number): number => (width < 576 ? 24 : 64)
@@ -51,7 +52,7 @@ type Props = {
 
 /**
  * The sheet exactly as it prints, over nearly the whole screen: nothing selectable, nothing of the
- * editor's. Closed with its × or Escape; the editor underneath stays as it was.
+ * editor's, except the PDF download in its header. Closed with its × or Escape; the editor underneath stays as it was.
  */
 export const PreviewModal: FC<Props> = ({ open, onClose, doc }) => {
   const t = useTranslations('Editor')
@@ -64,9 +65,13 @@ export const PreviewModal: FC<Props> = ({ open, onClose, doc }) => {
       centered
       width='98vw'
       title={
-        <span className='flex flex-col'>
-          <span>{t('preview')}</span>
-          <span className='text-xs font-normal text-muted'>{t('previewHint')}</span>
+        // The download beside the title, as in the editor's top bar: what is seen is what downloads.
+        <span className='flex items-center gap-3'>
+          <span className='flex min-w-0 flex-1 flex-col'>
+            <span>{t('preview')}</span>
+            <span className='text-xs font-normal text-muted'>{t('previewHint')}</span>
+          </span>
+          <PdfActions />
         </span>
       }
       // A rim of the editor shows around it (1% a side); antd's bottom padding would push it off-centre.

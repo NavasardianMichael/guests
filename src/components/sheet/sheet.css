@@ -3,8 +3,10 @@
  * by `helpers/sheetLayout.ts`. This file only paints: colours come from `--sh-*` (the
  * document's palette), text styles are inline (the document's typography).
  *
- * Template decor lives under `.sht-<id>`: frames on `.sh-decor::before/::after`, ornaments on
- * its four `<i>` (corners `.sh-d1`–`.sh-d4`), the header's divider on `.sh-header::after`.
+ * Template decor lives under `.sht-<id>`: the sheet's texture on `.sh-face` (the layer under
+ * the blocks that carries the background), frames on `.sh-decor::before/::after`, ornaments
+ * on its four `<i>` (corners `.sh-d1`–`.sh-d4`), the header's divider on `.sh-header::after`.
+ * A shaped sheet (`.sh-shaped`, end of this file) clips the face to its outline.
  * Ornaments are SVG masks painted with `--sh-accent`, so a palette change recolours them.
  * Sizes use `cqmin` (the page is a size container), so ornaments scale with the paper.
  */
@@ -62,6 +64,17 @@
 
 .sh-line {
   white-space: pre;
+}
+
+/* The template's background and decor; the page itself is the paper. */
+.sh-face {
+  position: absolute;
+  inset: 0;
+  background-color: var(--sh-bg);
+  container-type: size;
+  pointer-events: none;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
 }
 
 .sh-decor {
@@ -727,7 +740,7 @@ html[data-canvas-dragging] * {
 }
 
 /* A night sky: a few gold specks, sparse enough to stay behind the names. */
-.sht-midnight.sh-decorated:not(.sh-kind-cards) .sh-page {
+.sht-midnight.sh-decorated:not(.sh-kind-cards) .sh-face {
   background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><g fill='%23e0bd4c'><circle cx='12' cy='18' r='.7' opacity='.55'/><circle cx='47' cy='9' r='.45' opacity='.4'/><circle cx='81' cy='27' r='.8' opacity='.5'/><circle cx='28' cy='61' r='.5' opacity='.35'/><circle cx='66' cy='72' r='.65' opacity='.45'/><circle cx='91' cy='88' r='.45' opacity='.35'/><circle cx='6' cy='92' r='.55' opacity='.4'/></g></svg>");
   background-size: 42mm 42mm;
 }
@@ -804,7 +817,7 @@ html[data-canvas-dragging] * {
 }
 
 /* Kraft: paper grain, a stitched frame, twigs. */
-.sht-kraft .sh-page {
+.sht-kraft .sh-face {
   background-image:
     radial-gradient(rgba(60, 35, 15, 0.07) 0.25mm, transparent 0.3mm),
     radial-gradient(rgba(255, 255, 255, 0.1) 0.25mm, transparent 0.3mm);
@@ -861,7 +874,7 @@ html[data-canvas-dragging] * {
 }
 
 /* Chalk: a slate in a wooden frame. */
-.sht-chalk .sh-page {
+.sht-chalk .sh-face {
   background-image:
     radial-gradient(ellipse at 30% 20%, rgba(255, 255, 255, 0.06), transparent 50%),
     radial-gradient(ellipse at 75% 80%, rgba(255, 255, 255, 0.05), transparent 45%);
@@ -943,7 +956,7 @@ html[data-canvas-dragging] * {
 }
 
 /* Vintage: sepia vignette, an ornate frame. */
-.sht-vintage .sh-page {
+.sht-vintage .sh-face {
   background-image: radial-gradient(ellipse at center, transparent 55%, rgba(90, 65, 40, 0.18) 100%);
 }
 
@@ -1249,7 +1262,7 @@ html[data-canvas-dragging] * {
 }
 
 /* Manuscript: a Matenadaran headpiece band, vermilion initials, parchment. */
-.sht-manuscript.sh-decorated:not(.sh-kind-cards) .sh-page {
+.sht-manuscript.sh-decorated:not(.sh-kind-cards) .sh-face {
   background-image: radial-gradient(ellipse at center, transparent 60%, rgba(120, 80, 30, 0.13) 100%);
 }
 
@@ -1727,7 +1740,7 @@ html[data-canvas-dragging] * {
 }
 
 /* Linen: woven cloth, lace edging top and bottom, a twine frame. */
-.sht-linen.sh-decorated .sh-page,
+.sht-linen.sh-decorated .sh-face,
 .sht-linen.sh-decorated .sh-card {
   background-image:
     repeating-linear-gradient(0deg, rgba(110, 85, 55, 0.05) 0 0.25mm, transparent 0.25mm 0.8mm),
@@ -2116,7 +2129,7 @@ html[data-canvas-dragging] * {
 }
 
 /* Neon: glowing tubes in pink and cyan on a night-violet sheet. */
-.sht-neon.sh-decorated:not(.sh-kind-cards) .sh-page {
+.sht-neon.sh-decorated:not(.sh-kind-cards) .sh-face {
   background-image:
     radial-gradient(ellipse 70% 40% at 50% 0%, color-mix(in srgb, var(--sh-accent) 16%, transparent), transparent 70%),
     radial-gradient(ellipse 60% 35% at 50% 100%, rgba(63, 245, 255, 0.08), transparent 70%);
@@ -2226,4 +2239,47 @@ html[data-canvas-dragging] * {
   --divider-content: '';
   --divider: var(--div-leaf);
   --divider-width: 34%;
+}
+
+/* ================================================================ shapes */
+
+/*
+ * A shaped sheet (`helpers/sheetShape.ts`): the page is plain paper, the face sits in the
+ * outline's box clipped to it (inline `clip-path`), a dashed cut line runs along the edge.
+ * The template's rectangular frame gives way to `.sh-frame` (the same frame along the outline,
+ * `constants/templateFrames.ts`) and ornaments on curved corners are left out. Last in the
+ * file, so these win over every template's own rules.
+ */
+.sh-page.sh-shaped {
+  background: #ffffff;
+}
+
+.sh-frame,
+.sh-cutline {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.sh-frame path {
+  fill: none;
+}
+
+.sh-cutline path {
+  fill: none;
+  stroke: color-mix(in srgb, var(--sh-accent) 55%, transparent);
+  stroke-width: 0.25;
+  stroke-dasharray: 2 1.2;
+}
+
+.sh-page .sh-face.sh-hide-before .sh-decor::before,
+.sh-page .sh-face.sh-hide-after .sh-decor::after,
+.sh-page .sh-face.sh-hide-d1 .sh-decor .sh-d1,
+.sh-page .sh-face.sh-hide-d2 .sh-decor .sh-d2,
+.sh-page .sh-face.sh-hide-d3 .sh-decor .sh-d3,
+.sh-page .sh-face.sh-hide-d4 .sh-decor .sh-d4 {
+  display: none;
 }

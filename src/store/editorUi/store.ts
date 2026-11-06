@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { appendSelectors } from '@store/appendSelectors'
 
 /** The editor's panels, which are also the steps of making a list (`EDITOR_TABS` orders them). */
-export type EditorTab = 'kind' | 'design' | 'guests' | 'layout' | 'paper'
+export type EditorTab = 'kind' | 'template' | 'design' | 'guests' | 'layout' | 'paper'
 
 export type ImportSource = 'paste' | 'file' | 'photo'
 

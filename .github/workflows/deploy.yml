@@ -6,18 +6,17 @@
 #
 # REQUIRED GITHUB SECRETS:
 #   SSH_HOST, SSH_USER, SSH_KEY, SSH_PORT (optional, default 22)
-#   APP_DIR          deployment root, e.g. /home/michael/apps/guests
+#   APP_DIR          deployment root, e.g. /home/michael/apps/guests-seating-board
 #   ENV_API_BASE64   base64 of the API env file (`pnpm env:base64 production`) — DATABASE_URL,
 #                    JWT_SECRET, CORS_ORIGIN, API_PUBLIC_URL, the mail engine, Google OAuth,
 #                    GEMINI_API_KEY (photo import). NODE_ENV/PORT/HOST/RENDER_ORIGIN are appended
 #                    below, so do not put them in the secret.
-#   NEXT_PUBLIC_API_URL    https://api.guests.eapps.site
-#   NEXT_PUBLIC_SITE_URL   https://guests.eapps.site
+#   NEXT_PUBLIC_API_URL    https://api.guests-seating-board.eapps.site
+#   NEXT_PUBLIC_SITE_URL   https://guests-seating-board.eapps.site
 #
 # OPTIONAL (empty = that feature off): NEXT_PUBLIC_SENTRY_DSN, NEXT_PUBLIC_GA_ID,
-#   NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION, NEXT_PUBLIC_YANDEX_VERIFICATION,
-#   NEXT_PUBLIC_BING_VERIFICATION; SENTRY_AUTH_TOKEN + SENTRY_ORG + SENTRY_PROJECT upload
-#   source maps to Sentry. All build-time: change one, redeploy the web.
+#   NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION; SENTRY_AUTH_TOKEN + SENTRY_ORG + SENTRY_PROJECT
+#   upload source maps to Sentry. All build-time: change one, redeploy the web.
 #
 # The NEXT_PUBLIC_* values are inlined into the browser bundle, so they are public by
 # construction. They are kept as Secrets, but this workflow also accepts Variables: it
@@ -149,8 +148,6 @@ jobs:
       NEXT_PUBLIC_SENTRY_DSN: ${{ secrets.NEXT_PUBLIC_SENTRY_DSN || vars.NEXT_PUBLIC_SENTRY_DSN }}
       NEXT_PUBLIC_GA_ID: ${{ secrets.NEXT_PUBLIC_GA_ID || vars.NEXT_PUBLIC_GA_ID }}
       NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION: ${{ secrets.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || vars.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION }}
-      NEXT_PUBLIC_YANDEX_VERIFICATION: ${{ secrets.NEXT_PUBLIC_YANDEX_VERIFICATION || vars.NEXT_PUBLIC_YANDEX_VERIFICATION }}
-      NEXT_PUBLIC_BING_VERIFICATION: ${{ secrets.NEXT_PUBLIC_BING_VERIFICATION || vars.NEXT_PUBLIC_BING_VERIFICATION }}
       # Source maps to Sentry (next.config.ts): uploaded only when the token is set.
       SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
       SENTRY_ORG: ${{ secrets.SENTRY_ORG || vars.SENTRY_ORG }}
@@ -393,7 +390,7 @@ jobs:
           # volume, so DATABASE_URL must still carry the password the volume was created with.
           ensure_database() {
             local compose_src="$1" db_dir="$APP_DIR/db"
-            local name=guests-postgres-prod volume=guests-prod_guests-pg-prod
+            local name=guests-seating-board-postgres-prod volume=guests-seating-board-prod_guests-seating-board-pg-prod
 
             # Only the container on this host is ours to create; any other DATABASE_URL is left alone.
             local target
@@ -480,7 +477,7 @@ jobs:
           # the live web's /render page. Printing an empty draft runs the whole path, needs no
           # account, and is the same code every list's PDF uses.
           check_pdf() {
-            local origin out=/tmp/guests-pdf-check.pdf result
+            local origin out=/tmp/guests-seating-board-pdf-check.pdf result
             origin=$(sed -n 's/^CORS_ORIGIN=//p' "$APP_DIR/shared/.env.api" | tail -n 1 | tr -d "\"'" | sed 's:/*$::')
             result=$(curl -s -o "$out" -w '%{http_code} %{content_type}' --max-time 90 \
               -X POST "http://127.0.0.1:$API_PORT/pdf" \
@@ -496,7 +493,7 @@ jobs:
             echo "::error::the PDF check failed (status, type: ${result:-no answer})"
             head -c 300 "$out" 2>/dev/null && echo || true
             rm -f "$out"
-            journalctl -u guests-api -n 60 --no-pager || true
+            journalctl -u guests-seating-board-api -n 60 --no-pager || true
             echo "'No usable sandbox' in the log above: docs/PRODUCTION_SETUP.md, PUPPETEER_NO_SANDBOX"
             return 1
           }
@@ -557,7 +554,7 @@ jobs:
             resolve_pnpm
             echo "pnpm $(pnpm --version) at $(command -v pnpm)"
 
-            # The same directory guests-api.service names. Spelled out rather than left to
+            # The same directory guests-seating-board-api.service names. Spelled out rather than left to
             # puppeteer's default, so the install and the service cannot look in different places.
             # A Chrome version already there is reused; an upgrade adds the new one beside it.
             export PUPPETEER_CACHE_DIR="$HOME/.cache/puppeteer"
@@ -577,8 +574,8 @@ jobs:
             # No seed: prisma/seed.ts creates the dev test accounts and is not in the release.
 
             ln -sfn "$NEW" "$APP_DIR/api/current"
-            sudo systemctl restart guests-api
-            wait_for "API" "http://127.0.0.1:$API_PORT/health" guests-api
+            sudo systemctl restart guests-seating-board-api
+            wait_for "API" "http://127.0.0.1:$API_PORT/health" guests-seating-board-api
           fi
 
           if [ "$DEPLOY_WEB" = "true" ]; then
@@ -587,8 +584,8 @@ jobs:
             rm -rf "$NEW"; mkdir -p "$NEW"
             tar -xzf /tmp/web-build.tar.gz -C "$NEW"
             ln -sfn "$NEW" "$APP_DIR/web/current"
-            sudo systemctl restart guests-web
-            wait_for "web" "http://127.0.0.1:$WEB_PORT/" guests-web
+            sudo systemctl restart guests-seating-board-web
+            wait_for "web" "http://127.0.0.1:$WEB_PORT/" guests-seating-board-web
           fi
 
           check_pdf
@@ -611,6 +608,6 @@ jobs:
             echo "## Deployment"
             echo "**Release:** \`${{ needs.changes.outputs.release_name }}\`"
             echo ""
-            if [ "${{ needs.changes.outputs.deploy_web }}" = "true" ]; then echo "- web (\`web/current\`, systemd \`guests-web\`)"; fi
-            if [ "${{ needs.changes.outputs.deploy_api }}" = "true" ]; then echo "- api (\`api/current\`, systemd \`guests-api\`) + \`prisma migrate deploy\`"; fi
+            if [ "${{ needs.changes.outputs.deploy_web }}" = "true" ]; then echo "- web (\`web/current\`, systemd \`guests-seating-board-web\`)"; fi
+            if [ "${{ needs.changes.outputs.deploy_api }}" = "true" ]; then echo "- api (\`api/current\`, systemd \`guests-seating-board-api\`) + \`prisma migrate deploy\`"; fi
           } >> "$GITHUB_STEP_SUMMARY"

@@ -8,6 +8,7 @@ import type {
   ListDocument,
   Paper,
   PrintKind,
+  SheetShape,
   TextRole,
   TextStyle,
   Typography,
@@ -88,9 +89,10 @@ export const templateTypography = (templateId: TemplateId, kind: PrintKind): Typ
   }
 }
 
-export const templateDesign = (templateId: TemplateId, kind: PrintKind = 'seating'): ListDesign => ({
+export const templateDesign = (templateId: TemplateId, kind: PrintKind = 'seating', shape: SheetShape = 'rectangle'): ListDesign => ({
   kind,
   templateId,
+  shape,
   paper: defaultPaper(),
   palette: { ...TEMPLATES[templateId].palette },
   type: templateTypography(templateId, kind),
@@ -139,9 +141,9 @@ export const sampleContent = (texts: SampleTexts, tableCount = SAMPLE_GUESTS.len
 export const newListDocument = (
   templateId: TemplateId,
   kind: PrintKind,
-  options: { title: string; texts: SampleTexts }
+  options: { title: string; texts: SampleTexts; shape?: SheetShape }
 ): ListDocument => ({
   title: options.title.trim() || DEFAULT_LIST_TITLE,
   content: sampleContent(options.texts, kind === 'cards' ? 2 : undefined),
-  design: templateDesign(templateId, kind),
+  design: templateDesign(templateId, kind, options.shape),
 })

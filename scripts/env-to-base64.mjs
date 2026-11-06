@@ -87,7 +87,7 @@ for (const key of ['CORS_ORIGIN', 'API_PUBLIC_URL', 'GOOGLE_REDIRECT_URI']) {
 
 if (!value('GEMINI_API_KEY')) warn('GEMINI_API_KEY is empty — photo import is off')
 if (!value('MAIL_API_URL') || !value('MAIL_API_KEY')) {
-  warn('MAIL_API_URL/MAIL_API_KEY empty — password reset and the contact form fail in production')
+  warn('MAIL_API_URL/MAIL_API_KEY empty — sign-up verification, password reset and the contact form fail in production')
 }
 if (!value('GOOGLE_CLIENT_ID')) warn('GOOGLE_CLIENT_ID is empty — "Sign in with Google" stays hidden')
 

@@ -24,8 +24,8 @@ as a guest. For photo import set `GEMINI_API_KEY` in `server/.env`.
 
 `pnpm verify` runs typecheck, lint, tests and the production build.
 
-Production: `guests.eapps.site` (web) and `api.guests.eapps.site` (API), deployed by
-`.github/workflows/deploy.yml` — `docs/DEPLOYMENT.md`, `docs/PRODUCTION_SETUP.md`.
+Production: `guests-seating-board.eapps.site` (web) and `api.guests-seating-board.eapps.site` (API),
+deployed by `.github/workflows/deploy.yml` — `docs/DEPLOYMENT.md`, `docs/PRODUCTION_SETUP.md`.
 
 ## Docs
 

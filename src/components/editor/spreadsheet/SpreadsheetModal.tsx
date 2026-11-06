@@ -1,12 +1,13 @@
 'use client'
 
 import { type FC, memo, type RefObject, useCallback, useMemo, useRef } from 'react'
-import { MoreOutlined, PlusOutlined, RedoOutlined, TableOutlined, UndoOutlined } from '@ant-design/icons'
-import { App, Button, Dropdown, Modal, Tooltip } from 'antd'
+import { MoreOutlined, PlusOutlined, TableOutlined } from '@ant-design/icons'
+import { App, Button, Dropdown, Modal } from 'antd'
 import { useTranslations } from 'next-intl'
 import { useEditorUiStore } from '@store/editorUi/store'
+import { useGuestSheetStore, useGuestSheetStoreBase } from '@store/guestSheet/store'
 import { MAX_GUESTS, MAX_TABLES, useListEditorStoreBase } from '@store/lists/single/store'
-import type { ListContent } from '@store/lists/single/types'
+import type { SheetContent } from '@store/lists/single/types'
 import {
   GUEST_TEXT_MAX,
   guestDrop,
@@ -28,12 +29,13 @@ const CELL = 'border-r border-b border-line p-0 align-middle'
 /** A blank cell's hint shows only where the pointer or the caret is, not in every column at once. */
 const QUIET_PLACEHOLDER = 'placeholder:opacity-0 hover:placeholder:opacity-100 focus:placeholder:opacity-100'
 
-const store = () => useListEditorStoreBase.getState()
+/** The spreadsheet's draft, not the list: the list gets it on Save. */
+const store = () => useGuestSheetStoreBase.getState()
 
-/** The columns as the list has them now (an edit lands before the grid has rendered it). */
+/** The columns as the draft has them now (an edit lands before the grid has rendered it). */
 const currentColumns = () => {
-  const doc = store().doc
-  return doc ? tableColumns(doc.content) : []
+  const draft = store().draft
+  return draft ? tableColumns(draft) : []
 }
 
 /** Focus a cell once the edit that creates it has rendered. */
@@ -61,7 +63,7 @@ const ColumnHeader: FC<HeaderProps> = memo(function ColumnHeader({ col, tableId,
       { key: 'delete', label: tGuests('removeTable'), danger: true },
     ],
     onClick: ({ key }: { key: string }) => {
-      const tables = store().doc?.content.tables ?? []
+      const tables = store().draft?.tables ?? []
       const index = tables.findIndex((table) => table.id === tableId)
       if (key === 'left') store().moveTable(tableId, tables[index - 1]?.id ?? null)
       if (key === 'right') store().moveTable(tableId, tables[index + 2]?.id ?? null)
@@ -183,29 +185,26 @@ const SheetRow: FC<RowProps> = memo(
  * that adds a guest to it. A cell emptied removes its guest; "Add table" adds a column. Guests
  * are dragged by their grip, up and down or to another table; tables by theirs, across.
  */
-const TableSheet: FC<{ content: ListContent }> = ({ content }) => {
+const TableSheet: FC<{ content: SheetContent }> = ({ content }) => {
   const t = useTranslations('Editor.spreadsheet')
-  const tEditor = useTranslations('Editor')
   const tGuests = useTranslations('Editor.guests')
   const tSamples = useTranslations('Samples')
-  const canUndo = useListEditorStoreBase((state) => state.past.length > 0)
-  const canRedo = useListEditorStoreBase((state) => state.future.length > 0)
   const gridRef = useRef<HTMLDivElement>(null)
   const columns = useMemo(() => tableColumns(content), [content])
 
   const measure = useCallback(() => {
-    const doc = store().doc
-    return { counts: currentColumns().map((column) => column.guests.length), tables: doc?.content.tables.length ?? 0 }
+    const draft = store().draft
+    return { counts: currentColumns().map((column) => column.guests.length), tables: draft?.tables.length ?? 0 }
   }, [])
   const onDrop = useCallback((source: DragSource, target: DropTarget) => {
-    const doc = store().doc
-    if (!doc) return
+    const draft = store().draft
+    if (!draft) return
     if (source.kind === 'table' && target.kind === 'table') {
-      const drop = tableDrop(doc.content.tables, source.id, target.index)
+      const drop = tableDrop(draft.tables, source.id, target.index)
       if (drop) store().moveTable(source.id, drop.beforeId)
     }
     if (source.kind === 'guest' && target.kind === 'guest') {
-      const drop = guestDrop(doc.content, source.id, target.col, target.index)
+      const drop = guestDrop(draft, source.id, target.col, target.index)
       if (drop) store().seatGuest(source.id, drop.tableId, drop.beforeId)
     }
   }, [])
@@ -224,8 +223,8 @@ const TableSheet: FC<{ content: ListContent }> = ({ content }) => {
         const guest = column.guests[row]
         if (!guest) {
           if (text) store().addGuest(text, column.tableId)
-        } else if (text) store().updateGuest(guest.id, { name: text })
-        else store().removeGuests([guest.id])
+        } else if (text) store().renameGuest(guest.id, text)
+        else store().removeGuest(guest.id)
       },
       paste: (row, col, matrix) => store().editSheet(pasteIntoColumns(currentColumns(), row, col, matrix)),
       move: (row, col, rows, cols) => focusSoon(gridRef, row + rows, col + cols, cols !== 0),
@@ -267,26 +266,6 @@ const TableSheet: FC<{ content: ListContent }> = ({ content }) => {
         <div className='flex flex-wrap items-center gap-2'>
           <span className='text-xs text-muted'>
             {tGuests('counts', { guests: content.guests.length, tables: tableCount })}
-          </span>
-          <span className='flex'>
-            <Tooltip title={tEditor('undo')}>
-              <Button
-                type='text'
-                icon={<UndoOutlined />}
-                aria-label={tEditor('undo')}
-                disabled={!canUndo}
-                onClick={() => store().undo()}
-              />
-            </Tooltip>
-            <Tooltip title={tEditor('redo')}>
-              <Button
-                type='text'
-                icon={<RedoOutlined />}
-                aria-label={tEditor('redo')}
-                disabled={!canRedo}
-                onClick={() => store().redo()}
-              />
-            </Tooltip>
           </span>
           <Button className='ml-auto' icon={<PlusOutlined />} onClick={addTable} disabled={tableCount >= MAX_TABLES}>
             {tGuests('addTable')}
@@ -332,24 +311,58 @@ const TableSheet: FC<{ content: ListContent }> = ({ content }) => {
 }
 
 const SpreadsheetBody: FC = () => {
-  const content = useListEditorStoreBase((state) => state.doc?.content)
-  return content ? <TableSheet content={content} /> : null
+  const draft = useGuestSheetStore.use.draft()
+  return draft ? <TableSheet content={draft} /> : null
 }
 
 /**
  * The guests as a spreadsheet, a column per table, every name editable in place. Opened from the
- * guests and layout steps (`SpreadsheetButton`); every edit is the list's own, with its undo, and
- * shows on the sheet.
+ * guests and layout steps (`SpreadsheetButton`). It edits a draft (`useGuestSheetStore`): the
+ * list, and so the sheet and its autosave, get it only on Save, in one undo step. Reset puts the
+ * draft back; a click outside does not close it, and closing with unsaved changes asks first.
  */
 export const SpreadsheetModal: FC = () => {
   const t = useTranslations('Editor.spreadsheet')
+  const { modal } = App.useApp()
   const open = useEditorUiStore.use.spreadsheetOpen()
   const setOpen = useEditorUiStore.use.setSpreadsheetOpen()
-  const close = () => setOpen(false)
+  const dirty = useGuestSheetStore.use.dirty()
+
+  const save = () => {
+    const { draft, dirty: changed, markSaved } = store()
+    if (draft && changed) {
+      useListEditorStoreBase.getState().applySheet(draft)
+      markSaved()
+    }
+    setOpen(false)
+  }
+  const requestClose = () => {
+    if (!store().dirty) return setOpen(false)
+    modal.confirm({
+      title: t('closeTitle'),
+      content: t('closeText'),
+      okText: t('closeOk'),
+      okButtonProps: { danger: true },
+      cancelText: t('keepEditing'),
+      onOk: () => setOpen(false),
+    })
+  }
+  const reset = () => {
+    modal.confirm({
+      title: t('resetTitle'),
+      content: t('resetText'),
+      okText: t('reset'),
+      okButtonProps: { danger: true },
+      onOk: () => store().discard(),
+    })
+  }
+
   return (
     <Modal
       open={open}
-      onCancel={close}
+      onCancel={requestClose}
+      afterClose={() => store().clear()}
+      maskClosable={false}
       destroyOnHidden
       width={1280}
       title={t('title')}
@@ -359,9 +372,14 @@ export const SpreadsheetModal: FC = () => {
         body: { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: 12 },
       }}
       footer={
-        <Button type='primary' onClick={close}>
-          {t('done')}
-        </Button>
+        <div className='flex items-center justify-between gap-2'>
+          <Button onClick={reset} disabled={!dirty}>
+            {t('reset')}
+          </Button>
+          <Button type='primary' onClick={save}>
+            {t('save')}
+          </Button>
+        </div>
       }
     >
       <SpreadsheetBody />
@@ -369,15 +387,21 @@ export const SpreadsheetModal: FC = () => {
   )
 }
 
-/** Opens the spreadsheet: in the guests step and the layout step. */
+/** Opens the spreadsheet on a draft of the list's guests: in the guests step and the layout step. */
 export const SpreadsheetButton: FC = () => {
   const t = useTranslations('Editor.spreadsheet')
   const setOpen = useEditorUiStore.use.setSpreadsheetOpen()
+  const openSheet = () => {
+    const doc = useListEditorStoreBase.getState().doc
+    if (!doc) return
+    store().start({ guests: doc.content.guests, tables: doc.content.tables })
+    setOpen(true)
+  }
   return (
     <Button
       block
       icon={<TableOutlined />}
-      onClick={() => setOpen(true)}
+      onClick={openSheet}
       // antd fixes a button's height and forbids wrapping: a long label would overflow.
       style={{ height: 'auto', minHeight: 36, whiteSpace: 'normal', paddingBlock: 6 }}
     >

@@ -1,8 +1,9 @@
 'use client'
 
-import type { CSSProperties, FC, KeyboardEvent, MouseEvent, PointerEvent, ReactNode } from 'react'
+import { type CSSProperties, type FC, type KeyboardEvent, type MouseEvent, type PointerEvent, type ReactNode, useMemo } from 'react'
 import type { ListDesign, TextStyle } from '@store/lists/single/types'
 import { sheetFontStack } from '@constants/fonts'
+import { TEMPLATE_FRAMES } from '@constants/templateFrames'
 import { cn } from '@helpers/cn'
 import {
   CARD_NAME_SCALE,
@@ -16,6 +17,7 @@ import {
   type SheetLayout,
   type TableBlock,
 } from '@helpers/sheetLayout'
+import { type ShapeArt, shapeArt, SQUARE_CORNERS } from '@helpers/sheetShape'
 import { type EditTarget, sameTarget, type SheetInteraction, useSheetInteraction } from './SheetInteraction'
 import './sheet.css'
 
@@ -323,6 +325,54 @@ const BlockView: FC<{ block: SheetBlock; design: ListDesign; interaction: SheetI
   )
 }
 
+/**
+ * What the template paints under the blocks: its background and decor. On a shaped sheet it
+ * sits in the outline's box, clipped to the outline with a little bleed; the template's
+ * rectangular frame gives way to the same frame drawn along the outline, and ornaments on
+ * curved corners are left out.
+ */
+const SheetFace: FC<{ design: ListDesign; art: ShapeArt | null; corners: readonly boolean[] }> = ({ design, art, corners }) => {
+  const decor = design.decor && design.kind !== 'cards'
+  const hide = art ? (TEMPLATE_FRAMES[design.templateId]?.hide ?? []) : []
+  const { face } = art ?? { face: null }
+  return (
+    <div
+      className={cn(
+        'sh-face',
+        hide.map((part) => `sh-hide-${part}`),
+        corners.map((square, index) => !square && `sh-hide-d${index + 1}`)
+      )}
+      style={face && art ? { left: mm(face.x), top: mm(face.y), width: mm(face.w), height: mm(face.h), clipPath: art.clipPath } : undefined}
+    >
+      {decor && (
+        <div className='sh-decor' aria-hidden='true'>
+          <i className='sh-d1' />
+          <i className='sh-d2' />
+          <i className='sh-d3' />
+          <i className='sh-d4' />
+        </div>
+      )}
+      {decor && face && art && art.frame.length > 0 && (
+        <svg className='sh-frame' viewBox={`${face.x} ${face.y} ${face.w} ${face.h}`} preserveAspectRatio='none' aria-hidden='true'>
+          {art.frame.map((stroke, index) => (
+            <path
+              key={index}
+              d={stroke.d}
+              style={{
+                stroke: stroke.color ?? 'var(--sh-accent)',
+                strokeWidth: stroke.width,
+                strokeDasharray: stroke.dash,
+                strokeLinecap: stroke.round ? 'round' : undefined,
+                strokeOpacity: stroke.opacity,
+              }}
+            />
+          ))}
+        </svg>
+      )}
+    </div>
+  )
+}
+
 type Props = {
   design: ListDesign
   layout: SheetLayout
@@ -336,10 +386,16 @@ type Props = {
 /**
  * The sheet, page by page: what the editor edits, what previews show, what the PDF prints.
  * Every block is absolutely placed where `layoutSheet` put it; the template's look is
- * `sheet.css` under `.sht-<template>` and the table style under `.sh-ts-<style>`.
+ * `sheet.css` under `.sht-<template>` and the table style under `.sh-ts-<style>`. A shaped
+ * sheet (`layout.shape`) is plain paper with the design inside its outline and a cut line along it.
  */
 export const SheetDocument: FC<Props> = ({ design, layout, className, pageOverlay, renderPageExtras }) => {
   const interaction = useSheetInteraction()
+  const { shape, width, height } = layout
+  const art = useMemo(
+    () => (shape === 'rectangle' ? null : shapeArt(shape, width, height, TEMPLATE_FRAMES[design.templateId])),
+    [shape, width, height, design.templateId]
+  )
   const vars = {
     '--sh-bg': design.palette.background,
     '--sh-accent': design.palette.accent,
@@ -360,14 +416,17 @@ export const SheetDocument: FC<Props> = ({ design, layout, className, pageOverla
       style={vars}
     >
       {Array.from({ length: layout.pages }, (_, page) => (
-        <section key={page} className='sh-page' style={{ width: mm(layout.width), height: mm(layout.height) }} data-page={page}>
-          {design.decor && design.kind !== 'cards' && (
-            <div className='sh-decor' aria-hidden='true'>
-              <i className='sh-d1' />
-              <i className='sh-d2' />
-              <i className='sh-d3' />
-              <i className='sh-d4' />
-            </div>
+        <section
+          key={page}
+          className={cn('sh-page', art && `sh-shaped sh-shape-${shape}`)}
+          style={{ width: mm(layout.width), height: mm(layout.height) }}
+          data-page={page}
+        >
+          <SheetFace design={design} art={art} corners={SQUARE_CORNERS[shape]} />
+          {art && (
+            <svg className='sh-cutline' viewBox={`0 0 ${width} ${height}`} preserveAspectRatio='none' aria-hidden='true'>
+              <path d={art.cut} />
+            </svg>
           )}
           {renderPageExtras?.(page)}
           {layout.blocks

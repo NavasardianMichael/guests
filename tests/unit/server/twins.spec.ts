@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { MAX_GUESTS, MAX_TABLES, MIN_BLOCK_SIZE } from '@store/lists/single/store'
-import { PRINT_KINDS, TEXT_ROLES } from '@store/lists/single/types'
+import { PRINT_KINDS, SHEET_SHAPES, TEXT_ROLES } from '@store/lists/single/types'
 import { GUEST_COOKIE, RESET_TOKEN_QUERY, VERIFY_TOKEN_QUERY } from '@constants/auth'
 import { ERROR_CODES } from '@constants/errors'
 import { FONT_SLUGS } from '@constants/fonts'
@@ -29,7 +29,8 @@ describe('server/web twins', () => {
     expect(SERVER_DEFAULT_TEMPLATE).toBe(DEFAULT_TEMPLATE_ID)
   })
 
-  it('agree on the fonts, table styles, kinds and text roles', () => {
+  it('agree on the fonts, table styles, kinds, shapes and text roles', () => {
+    expect([...serverCatalogue.SHEET_SHAPES]).toEqual([...SHEET_SHAPES])
     expect([...serverCatalogue.FONT_SLUGS]).toEqual([...FONT_SLUGS])
     expect([...serverCatalogue.TABLE_STYLES]).toEqual([...TABLE_STYLES])
     expect([...serverCatalogue.PRINT_KINDS].sort()).toEqual([...PRINT_KINDS].sort())
@@ -51,8 +52,10 @@ describe('server/web twins', () => {
   it('keep every template design exactly as the web makes it', () => {
     for (const id of TEMPLATE_IDS) {
       for (const kind of PRINT_KINDS) {
-        const design = templateDesign(id, kind)
-        expect(coerceDesign(design)).toEqual(design)
+        for (const shape of SHEET_SHAPES) {
+          const design = templateDesign(id, kind, shape)
+          expect(coerceDesign(design)).toEqual(design)
+        }
       }
     }
   })

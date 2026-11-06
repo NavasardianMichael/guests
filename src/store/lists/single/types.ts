@@ -18,6 +18,14 @@ import type { ResetScope } from '@helpers/designReset'
 export const PRINT_KINDS = ['seating', 'list', 'cards'] as const
 export type PrintKind = (typeof PRINT_KINDS)[number]
 
+/**
+ * The sheet's outline (`helpers/sheetShape.ts` draws each): the paper stays rectangular, the
+ * design is printed inside the shape and a cut line marks its edge. Place cards ignore it —
+ * they are always rectangles.
+ */
+export const SHEET_SHAPES = ['rectangle', 'rounded', 'ticket', 'arch', 'pointed', 'oval', 'circle', 'hexagon', 'octagon', 'wavy', 'scalloped'] as const
+export type SheetShape = (typeof SHEET_SHAPES)[number]
+
 export type Guest = {
   id: string
   name: string
@@ -140,6 +148,8 @@ export type Size = { w: number; h: number }
 export type ListDesign = {
   kind: PrintKind
   templateId: TemplateId
+  /** Kept when the template changes: the user picks a shape and every template takes it. */
+  shape: SheetShape
   paper: Paper
   palette: Palette
   type: Typography
@@ -182,7 +192,7 @@ export type ImportMode = 'append' | 'replace'
 /** A guest's cell changed in the spreadsheet: an existing guest (`id`) renamed, or a new one at a table. */
 export type GuestEdit = { id: string; name: string } | { name: string; tableId: string }
 
-/** A spreadsheet edit (a typed cell, a pasted block): one undo step. */
+/** A block pasted into the spreadsheet. */
 export type SheetEdit = {
   guests: GuestEdit[]
   /** Renamed tables. */
@@ -190,6 +200,9 @@ export type SheetEdit = {
   /** Guests whose cell was emptied. */
   remove?: string[]
 }
+
+/** What the spreadsheet edits: the guests and the tables. */
+export type SheetContent = Pick<ListContent, 'guests' | 'tables'>
 
 export type ListEditorState = {
   listId: string | null
@@ -230,7 +243,8 @@ export type ListEditorActions = {
   dedupeGuests: () => number
   clearGuests: () => void
   /** The spreadsheet's edits: guests changed, added and removed, tables renamed — one undo step. */
-  editSheet: (edit: SheetEdit) => void
+  /** The spreadsheet saved: its guests and tables replace the list's, in one undo step. */
+  applySheet: (content: SheetContent) => void
 
   addTable: (name?: string) => string
   renameTable: (tableId: string, name: string) => void
@@ -240,7 +254,7 @@ export type ListEditorActions = {
   /** Guests without a table fill tables of `seats`, the existing ones first, new ones after. */
   autoSeat: (seats: number, tableName: (number: number) => string) => void
 
-  setDesign: (patch: Partial<Pick<ListDesign, 'kind' | 'textScale' | 'tableStyle' | 'decor'>>) => void
+  setDesign: (patch: Partial<Pick<ListDesign, 'kind' | 'shape' | 'textScale' | 'tableStyle' | 'decor'>>) => void
   setPaper: (patch: Partial<Paper>) => void
   setPalette: (patch: Partial<Palette>) => void
   setTextStyle: (role: TextRole, patch: Partial<TextStyle>) => void

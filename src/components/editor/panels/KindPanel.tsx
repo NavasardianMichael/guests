@@ -4,7 +4,7 @@ import { type FC, memo, type ReactNode, useMemo } from 'react'
 import { CheckCircleFilled, IdcardOutlined, TableOutlined, UnorderedListOutlined } from '@ant-design/icons'
 import { useTranslations } from 'next-intl'
 import { useListEditorStore, useListEditorStoreBase } from '@store/lists/single/store'
-import { PRINT_KINDS, type PrintKind } from '@store/lists/single/types'
+import { PRINT_KINDS, type PrintKind, type SheetShape } from '@store/lists/single/types'
 import type { TemplateId } from '@constants/templates'
 import { cn } from '@helpers/cn'
 import { sampleContent, templateDesign } from '@helpers/listFactory'
@@ -16,9 +16,9 @@ export const KIND_ICONS: Record<PrintKind, ReactNode> = {
   cards: <IdcardOutlined />,
 }
 
-/** One kind as a choice: what it looks like in the sheet's template, its name and what it is for. */
-const KindOption: FC<{ kind: PrintKind; templateId: TemplateId; active: boolean; onPick: () => void }> = memo(
-  function KindOption({ kind, templateId, active, onPick }) {
+/** One kind as a choice: what it looks like in the sheet's template and shape, its name and what it is for. */
+const KindOption: FC<{ kind: PrintKind; templateId: TemplateId; shape: SheetShape; active: boolean; onPick: () => void }> = memo(
+  function KindOption({ kind, templateId, shape, active, onPick }) {
     const t = useTranslations('Editor.layout')
     const tSamples = useTranslations('Samples')
     const doc = useMemo(
@@ -33,9 +33,9 @@ const KindOption: FC<{ kind: PrintKind; templateId: TemplateId; active: boolean;
           },
           kind === 'cards' ? 2 : 6
         ),
-        design: templateDesign(templateId, kind),
+        design: templateDesign(templateId, kind, kind === 'cards' ? 'rectangle' : shape),
       }),
-      [kind, templateId, tSamples]
+      [kind, shape, templateId, tSamples]
     )
 
     return (
@@ -72,8 +72,9 @@ export const KindPanel: FC = () => {
   const t = useTranslations('Editor.layout')
   const kind = useListEditorStoreBase((state) => state.doc?.design.kind)
   const templateId = useListEditorStoreBase((state) => state.doc?.design.templateId)
+  const shape = useListEditorStoreBase((state) => state.doc?.design.shape)
   const setDesign = useListEditorStore.use.setDesign()
-  if (!kind || !templateId) return null
+  if (!kind || !templateId || !shape) return null
 
   return (
     <div role='radiogroup' aria-label={t('kind')} className='flex flex-col gap-2.5'>
@@ -82,6 +83,7 @@ export const KindPanel: FC = () => {
           key={value}
           kind={value}
           templateId={templateId}
+          shape={shape}
           active={kind === value}
           onPick={() => setDesign({ kind: value })}
         />

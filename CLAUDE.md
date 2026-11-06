@@ -42,13 +42,14 @@ cv-builder's notes: under `concurrently` on Windows `tsx watch` never starts the
 |---|---|
 | The document type | `src/store/lists/single/types.ts` — twin of `server/src/services/listDocument.ts` |
 | Templates (palette, typography, table style, free/premium) | `src/constants/templates.ts`; decor in `src/components/sheet/sheet.css` under `.sht-<id>` |
+| Sheet shapes (arch, oval, circle, hexagon, wavy…; place cards stay rectangles) | outlines + content region `src/helpers/sheetShape.ts` · each template's frame along an outline `src/constants/templateFrames.ts` · picker `components/templates/ShapePicker.tsx` (editor Template step; template page via `TemplateShape.tsx`) |
 | Paper formats | `src/constants/paper.ts` |
 | **Layout engine** (where every block sits, mm; text wrapping) | `src/helpers/sheetLayout.ts` · browser text metrics `src/helpers/measureText.ts` · re-layout when fonts load `src/hooks/useSheetLayout.ts` |
 | "Fit to the page" (button at the first page's top-right corner): columns + text size, fewest pages, names whole | `src/helpers/fitSheet.ts` · store `fitToPage` · button in `EditorCanvas` page extras |
 | The renderer (editor, previews, PDF) | `src/components/sheet/SheetDocument.tsx` + `sheet.css`; scaled previews `SheetPreview.tsx` |
 | Editor interactions (drag, drop, snap, marquee, inline edit) | `src/components/editor/canvas/useCanvasInteraction.tsx`, given to the sheet through `SheetInteraction.tsx`; selection actions `SelectionBar.tsx`; keys `useCanvasShortcuts.ts` |
 | Editor state, undo/redo | `src/store/lists/single/store.ts` · autosave `src/components/editor/useAutosave.ts` · chrome state `src/store/editorUi/store.ts` |
-| Panels = the editor's steps, in order (`EDITOR_TABS`) | `src/components/editor/panels/` — Kind, Design, Guests (quick add, by-table view, rows sorted with @dnd-kit across tables), Layout, Paper. A new list starts with the sample wedding as its own, editable guests and opens at Kind (`newListDocument`, `markJustCreated`) |
+| Panels = the editor's steps, in order (`EDITOR_TABS`) | `src/components/editor/panels/` — Kind, Template (shape + template), Design, Guests (quick add, by-table view, rows sorted with @dnd-kit across tables), Layout, Paper. A new list starts with the sample wedding as its own, editable guests and opens at Kind (`newListDocument`, `markJustCreated`) |
 | Reset buttons (top bar: all; tab header; section header) | what each scope puts back `src/helpers/designReset.ts` · button + confirm `src/components/editor/controls/ResetButton.tsx` · paper change maths `src/helpers/paperChange.ts` |
 | "Leave this page?" while unsaved | `src/components/LeaveGuard.tsx` (tab close/reload, links, Back) · register with `useLeaveGuard` (`src/hooks/`) — the editor's autosave does |
 | Print preview (fullscreen modal) | `src/components/editor/PreviewModal.tsx` |
@@ -76,6 +77,14 @@ cv-builder's notes: under `concurrently` on Windows `tsx watch` never starts the
   in `SheetInteractionProvider`; sheet components never import the editor. Editor-only marks
   (page labels, snap guides, marquee) come in through `renderPageExtras`, which the PDF never
   passes.
+- **Shapes print on rectangular paper.** `design.shape` outlines the sheet: the template's
+  background and decor sit on `.sh-face`, clipped to the outline with a 1.5 mm bleed, outside
+  is plain paper, and a dashed cut line runs along the edge. `layoutSheet` keeps every block
+  inside the outline drawn at the margin (`shapeRegion`): the title drops into a curve until it
+  has room, rows are centred in the room at their height, a block that cannot fit anywhere
+  sets `overflow` (which "fit to page" rejects). A template's CSS frame is rectangular, so on a
+  shaped sheet it is hidden and `TEMPLATE_FRAMES` redraws it along the outline — a new framed
+  template needs an entry there. Rectangles keep the original code path.
 - **Grid vs free.** In grid mode a drag reorders (guests or tables) and a name dropped on
   another table re-seats the guest. In free mode `layout.positions` pins blocks; a block never
   dragged keeps its grid place. Changing the grid (columns, gaps, cards) clears positions in

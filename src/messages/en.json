@@ -265,6 +265,25 @@
       "cards": "Place cards"
     }
   },
+  "Shapes": {
+    "label": "Shape",
+    "hint": "The sheet prints in this shape with a cut line along its edge, and the names follow its curve. Every template below takes it.",
+    "pageHint": "Pick a shape: every template on this page takes it, and your list starts in it.",
+    "cardsNote": "Place cards are always rectangular.",
+    "names": {
+      "rectangle": "Rectangle",
+      "rounded": "Rounded",
+      "ticket": "Ticket",
+      "arch": "Arch",
+      "pointed": "Pointed arch",
+      "oval": "Oval",
+      "circle": "Circle",
+      "hexagon": "Hexagon",
+      "octagon": "Octagon",
+      "wavy": "Wavy",
+      "scalloped": "Scalloped"
+    }
+  },
   "Pricing": {
     "metaTitle": "Pricing",
     "metaDescription": "Making a list and printing in the “Classic” template costs nothing. Printing in the other templates is {price} per list, once.",
@@ -303,7 +322,10 @@
     "submit": "Send",
     "sent": "Message sent",
     "sentText": "Thank you! We will reply to your email as soon as we can.",
-    "sendAnother": "Write another message"
+    "sendAnother": "Write another message",
+    "detailsAddress": "Address",
+    "detailsEmail": "Email",
+    "detailsPhone": "Phone"
   },
   "Auth": {
     "signInTitle": "Sign in",
@@ -418,6 +440,7 @@
     "panelOpen": "Settings",
     "tabs": {
       "kind": "Type",
+      "template": "Template",
       "design": "Design",
       "guests": "Guests",
       "layout": "Layout",
@@ -429,7 +452,8 @@
       "next": "Next: {step}",
       "hints": {
         "kind": "Choose what you are making. You can change it at any step.",
-        "design": "Pick a template, fonts and colours.",
+        "template": "Pick the sheet’s shape and a template: the template sets the colours, fonts and ornaments; guests and layout stay. Fine-tune them in the next step.",
+        "design": "Adjust the texts, colours and fonts.",
         "guests": "Add the names and seat everyone at a table. A new list starts with example guests — change them right on the sheet or replace them with your list.",
         "layout": "Arrange the names on the sheet: columns, spacing and order.",
         "paper": "Set the paper size and margins, then print."
@@ -469,7 +493,10 @@
       "fitColumns": "{count, plural, one {# column} other {# columns}}",
       "fitRows": "{count, plural, one {# row} other {# rows}}",
       "fitText": "text {percent}%",
-      "fitPages": "{count, plural, one {# page} other {# pages}}"
+      "fitPages": "{count, plural, one {# page} other {# pages}}",
+      "resetSizing": "Template sizes",
+      "resetSizingHint": "Back to the template’s sizes: the number of columns, the text size and the table sizes. Nobody changes tables.",
+      "resetSizingDone": "Back to the template’s sizes"
     },
     "selection": {
       "label": "Selection tools",
@@ -578,8 +605,6 @@
       "freeTips": "Arrow keys move the selection 1 mm (5 mm with Shift). Hold Alt while dragging to turn snapping off."
     },
     "design": {
-      "templates": "Template",
-      "templatesHint": "A template changes colours, fonts and ornaments; guests and layout stay.",
       "texts": "Texts",
       "textsHint": "You can also edit them right on the sheet with a double click.",
       "heading": "Title",
@@ -693,6 +718,7 @@
     },
     "tabsShort": {
       "kind": "Type",
+      "template": "Template",
       "design": "Design",
       "guests": "Guests",
       "layout": "Layout",
@@ -711,13 +737,20 @@
     "spreadsheet": {
       "open": "Edit as a spreadsheet",
       "title": "Guests as a spreadsheet",
-      "done": "Done",
+      "save": "Save",
+      "reset": "Reset",
+      "resetTitle": "Reset the changes?",
+      "resetText": "The table goes back to the guests and tables as they are on the list.",
+      "closeTitle": "Close without saving?",
+      "closeText": "The changes made in the table will be lost.",
+      "closeOk": "Close without saving",
+      "keepEditing": "Keep editing",
       "row": "Row",
       "tableMenu": "Table actions",
       "moveLeft": "Move left",
       "moveRight": "Move right",
-      "keys": "Enter moves down, Tab moves right, Escape puts the text back; a block copied from Excel pastes into the cells. Ctrl+Z undoes.",
-      "hint": "Each column is a table: rename it in its header, type a guest’s name in a cell, empty a cell to remove the guest. Drag a guest or a table by its grip to move it."
+      "keys": "Enter moves down, Tab moves right, Escape puts the text back; a block copied from Excel pastes into the cells.",
+      "hint": "Each column is a table: rename it in its header, type a guest’s name in a cell, empty a cell to remove the guest. Drag a guest or a table by its grip to move it. Changes reach the list when you press Save."
     }
   },
   "Errors": {

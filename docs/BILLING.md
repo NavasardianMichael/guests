@@ -16,8 +16,8 @@ adds the "made with" line to free prints. The pricing page says payments are com
 
 - `GuestList.paidAt` (schema) and `paidAt` in every list the API returns.
 - `printTerms()` — a paid list prints as designed; an unpaid list prints only in the free
-  template (with the `guests.eapps.site` line on each page once `BILLING_ENABLED`); a premium
-  template unpaid answers **402** with code `4021` (`listNotPaid`), which the web translates.
+  template (with the `guests-seating-board.eapps.site` line on each page once `BILLING_ENABLED`); a
+  premium template unpaid answers **402** with code `4021` (`listNotPaid`), which the web translates.
 - Guest-owned server lists (`guestKeyHash`, `lib/guest.ts`) and their move to the account on
   sign-in (`services/guestLists.ts`) — a payment needs a server copy to attach to, exactly as
   cv-builder's guest checkout.

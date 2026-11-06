@@ -27,8 +27,9 @@ const StepConnector: FC<{ done: boolean }> = ({ done }) => (
 )
 
 /**
- * Desktop: the editor's panels as the steps of making a list — guests, layout, design, paper —
- * across the top of the editor. Any step can be opened at any time; the ones before the
+ * Desktop: the editor's panels as the steps of making a list — kind, template, design, guests,
+ * layout, paper — across the top of the editor. Six steps fit a 1024px screen only without their
+ * icons, so those show from `xl`. Any step can be opened at any time; the ones before the
  * current step read as passed, the rest as ahead. Phones and tablets keep the bottom bar.
  */
 export const EditorSteps: FC = () => {
@@ -77,7 +78,7 @@ export const EditorSteps: FC = () => {
                     {index + 1}
                   </span>
                   <span className={cn('flex items-center gap-1.5 text-sm whitespace-nowrap', active ? 'font-semibold text-ink' : passed ? 'text-text' : 'text-muted')}>
-                    <span className={cn('text-base leading-none', active ? 'text-accent-strong' : 'opacity-70')}>{TAB_ICONS[key]}</span>
+                    <span className={cn('hidden text-base leading-none xl:inline', active ? 'text-accent-strong' : 'opacity-70')}>{TAB_ICONS[key]}</span>
                     {t(`tabs.${key}`)}
                   </span>
                 </button>

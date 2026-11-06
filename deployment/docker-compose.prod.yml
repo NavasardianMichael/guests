@@ -11,12 +11,12 @@
 # This is deliberately separate from the repo's root docker-compose.yml, which is
 # the dev database (same port, throwaway credentials, different machine).
 
-name: guests-prod
+name: guests-seating-board-prod
 
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: guests-postgres-prod
+    container_name: guests-seating-board-postgres-prod
     restart: unless-stopped
     ports:
       # host:container. 5010 beside bookie's 5004 and crossword's 5007 on the same host, and
@@ -24,13 +24,14 @@ services:
       # should ever reach it.
       - '127.0.0.1:5010:5432'
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-guests}
+      POSTGRES_USER: ${POSTGRES_USER:-guests-seating-board}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB:-guests}
+      POSTGRES_DB: ${POSTGRES_DB:-guests-seating-board}
     volumes:
-      - guests-pg-prod:/var/lib/postgresql/data
+      - guests-seating-board-pg-prod:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-guests} -d ${POSTGRES_DB:-guests}']
+      test:
+        ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-guests-seating-board} -d ${POSTGRES_DB:-guests-seating-board}']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -41,4 +42,4 @@ services:
         max-file: '3'
 
 volumes:
-  guests-pg-prod:
+  guests-seating-board-pg-prod:

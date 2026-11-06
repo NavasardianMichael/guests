@@ -1,4 +1,4 @@
-import type { PrintKind } from '@store/lists/single/types'
+import type { PrintKind, SheetShape } from '@store/lists/single/types'
 import type { TemplateId } from './templates'
 
 /**
@@ -28,10 +28,11 @@ export const templatePath = (id: TemplateId): string => `${ROUTES.templates}/${i
 
 export const editorPath = (listId: string): string => `${ROUTES.editor}/${listId}`
 
-export const newListPath = (options: { template?: TemplateId; kind?: PrintKind } = {}): string => {
+export const newListPath = (options: { template?: TemplateId; kind?: PrintKind; shape?: SheetShape } = {}): string => {
   const query = new URLSearchParams()
   if (options.template) query.set(TEMPLATE_QUERY, options.template)
   if (options.kind) query.set(KIND_QUERY, options.kind)
+  if (options.shape && options.shape !== 'rectangle') query.set(SHAPE_QUERY, options.shape)
   const search = query.toString()
   return search ? `${ROUTES.editorNew}?${search}` : ROUTES.editorNew
 }
@@ -43,3 +44,4 @@ export const PROTECTED_PREFIXES = [ROUTES.dashboard, ROUTES.account]
 export const RETURN_TO_QUERY = 'returnTo'
 export const TEMPLATE_QUERY = 'template'
 export const KIND_QUERY = 'kind'
+export const SHAPE_QUERY = 'shape'

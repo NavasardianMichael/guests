@@ -1,6 +1,6 @@
 # =============================================================================
-# systemd — web (Next.js standalone). Install to /etc/systemd/system/guests-web.service
-# Paths assume APP_DIR=/home/michael/apps/guests.
+# systemd — web (Next.js standalone). Install to /etc/systemd/system/guests-seating-board-web.service
+# Paths assume APP_DIR=/home/michael/apps/guests-seating-board.
 #
 # WorkingDirectory is the `current` symlink, resolved at start, so `systemctl restart` is
 # what promotes a release. Never point it at a concrete releases/<sha> path.
@@ -9,7 +9,7 @@
 # process is also what the API's headless Chrome prints from (RENDER_ORIGIN, port 7010).
 # =============================================================================
 [Unit]
-Description=Guests — web (Next.js)
+Description=guests-seating-board — web (Next.js)
 After=network-online.target
 Wants=network-online.target
 
@@ -17,7 +17,7 @@ Wants=network-online.target
 Type=simple
 User=michael
 Group=michael
-WorkingDirectory=/home/michael/apps/guests/web/current
+WorkingDirectory=/home/michael/apps/guests-seating-board/web/current
 Environment=NODE_ENV=production
 Environment=PORT=7010
 Environment=HOSTNAME=127.0.0.1
@@ -31,7 +31,7 @@ PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=read-only
 # Next writes its caches (prerendered pages, optimised images) into the release's .next/cache.
-ReadWritePaths=/home/michael/apps/guests/web
+ReadWritePaths=/home/michael/apps/guests-seating-board/web
 StandardOutput=journal
 StandardError=journal
 

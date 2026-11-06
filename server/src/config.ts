@@ -46,7 +46,6 @@ export const config = {
   /** Photo import (`services/guestReader.ts`). `apiKey` is read only there. Empty disables it. */
   gemini: {
     apiKey: process.env.GEMINI_API_KEY ?? '',
-    model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
   },
 }
 

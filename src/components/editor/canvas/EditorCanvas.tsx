@@ -1,7 +1,14 @@
 'use client'
 
-import { type FC, useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { CameraOutlined, ExpandOutlined, FileExcelOutlined, SnippetsOutlined, WarningOutlined } from '@ant-design/icons'
+import { type FC, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import {
+  CameraOutlined,
+  ExpandOutlined,
+  FileExcelOutlined,
+  ReloadOutlined,
+  SnippetsOutlined,
+  WarningOutlined,
+} from '@ant-design/icons'
 import { App, Button, Tooltip } from 'antd'
 import { useTranslations } from 'next-intl'
 import { useEditorUiStore } from '@store/editorUi/store'
@@ -9,6 +16,7 @@ import { DEFAULT_SEATS_PER_TABLE, useListEditorStore, useListEditorStoreBase } f
 import type { ListDocument } from '@store/lists/single/types'
 import { useSheetLayout } from '@hooks/useSheetLayout'
 import { clampZoom } from '@helpers/canvasZoom'
+import { isAtDefault } from '@helpers/designReset'
 import { fitSheet } from '@helpers/fitSheet'
 import { measureText } from '@helpers/measureText'
 import { SheetDocument } from '@components/sheet/SheetDocument'
@@ -51,7 +59,10 @@ export const EditorCanvas: FC<Props> = ({ doc, zoom, onZoomChange, onFitZoomChan
   const tSamples = useTranslations('Samples')
   const autoSeat = useListEditorStore.use.autoSeat()
   const fitToPage = useListEditorStore.use.fitToPage()
+  const resetDesign = useListEditorStore.use.resetDesign()
   const { message } = App.useApp()
+  // Nothing to put back while columns, letter size and block sizes are the template's own.
+  const sizingAtDefault = useMemo(() => isAtDefault(doc.design, 'sizing'), [doc.design])
   // Something to fit: tables on a seating board, names on a list (cards are sized by the card).
   const canFit = useListEditorStoreBase((state) => {
     const current = state.doc
@@ -65,6 +76,8 @@ export const EditorCanvas: FC<Props> = ({ doc, zoom, onZoomChange, onFitZoomChan
   const scale = zoom ?? fitZoom
   const openImport = useEditorUiStore.use.openImport()
   const openTab = useEditorUiStore.use.openTab()
+  // The spreadsheet edits a draft of the guests: Delete or Ctrl+Z must not change the list behind it.
+  const spreadsheetOpen = useEditorUiStore.use.spreadsheetOpen()
   const { interaction, guides, marquee, setEditing, onBackgroundPointerDown } = useCanvasInteraction({
     layout,
     scale,
@@ -73,7 +86,7 @@ export const EditorCanvas: FC<Props> = ({ doc, zoom, onZoomChange, onFitZoomChan
   const pageWidthPx = layout.width * MM_TO_PX
   const stackHeightMm = layout.pages * layout.height + (layout.pages - 1) * PAGE_GAP_MM
 
-  useCanvasShortcuts({ layout, enabled: !previewing })
+  useCanvasShortcuts({ layout, enabled: !previewing && !spreadsheetOpen })
 
   useEffect(() => {
     const scroller = scrollerRef.current
@@ -169,30 +182,60 @@ export const EditorCanvas: FC<Props> = ({ doc, zoom, onZoomChange, onFitZoomChan
     void message.success(t('fitted', { summary }))
   }
 
+  /** Back to the template's columns, letter size and block sizes — what "fit" changes. One undo step. */
+  const resetSizing = () => {
+    if (sizingAtDefault) return
+    resetDesign('sizing')
+    void message.success(t('resetSizingDone'))
+  }
+
   /** Sized in screen pixels over the zoom, as the resize handles are: the same button at any zoom. */
   const onScreen = (px: number): string => `calc(${px}px / var(--canvas-zoom, 1))`
+
+  const roundButton =
+    'absolute z-30 grid place-items-center rounded-full border-solid border-line bg-surface p-0 text-ink shadow-sm transition-colors focus-visible:outline-2 focus-visible:outline-accent'
+  const roundButtonStyle = (right: number) => ({
+    top: onScreen(-34),
+    right: onScreen(right),
+    width: onScreen(28),
+    height: onScreen(28),
+    borderWidth: onScreen(1),
+    fontSize: onScreen(14),
+  })
 
   const pageExtras = (page: number) => (
     <>
       {page === 0 && canFit && (
-        <Tooltip title={t('fitHint')} placement='left'>
-          <button
-            type='button'
-            data-canvas-ui
-            aria-label={t('fit')}
-            onClick={fit}
-            className='absolute right-0 z-30 grid cursor-pointer place-items-center rounded-full border-solid border-line bg-surface p-0 text-ink shadow-sm transition-colors hover:border-accent hover:text-accent-strong focus-visible:outline-2 focus-visible:outline-accent'
-            style={{
-              top: onScreen(-34),
-              width: onScreen(28),
-              height: onScreen(28),
-              borderWidth: onScreen(1),
-              fontSize: onScreen(14),
-            }}
-          >
-            <ExpandOutlined />
-          </button>
-        </Tooltip>
+        <>
+          <Tooltip title={t('resetSizingHint')} placement='left'>
+            {/* `aria-disabled`, not `disabled`: a disabled button never shows its tooltip. */}
+            <button
+              type='button'
+              data-canvas-ui
+              aria-label={t('resetSizing')}
+              aria-disabled={sizingAtDefault}
+              onClick={resetSizing}
+              className={`${roundButton} ${
+                sizingAtDefault ? 'cursor-default opacity-40' : 'cursor-pointer hover:border-accent hover:text-accent-strong'
+              }`}
+              style={roundButtonStyle(34)}
+            >
+              <ReloadOutlined />
+            </button>
+          </Tooltip>
+          <Tooltip title={t('fitHint')} placement='left'>
+            <button
+              type='button'
+              data-canvas-ui
+              aria-label={t('fit')}
+              onClick={fit}
+              className={`${roundButton} cursor-pointer hover:border-accent hover:text-accent-strong`}
+              style={roundButtonStyle(0)}
+            >
+              <ExpandOutlined />
+            </button>
+          </Tooltip>
+        </>
       )}
       <span
         className='pointer-events-none absolute -top-[7mm] left-0 text-[3.2mm] font-medium text-muted'
