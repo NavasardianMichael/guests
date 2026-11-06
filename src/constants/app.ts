@@ -49,7 +49,7 @@ export const OG_LOCALE = OG_LOCALES[DEFAULT_LOCALE]
 /** Dates are shown in Armenian time wherever the browser or server is. */
 export const TIME_ZONE = 'Asia/Yerevan'
 
-export const SUPPORT_EMAIL = 'guests@eapps.site'
+export const SUPPORT_EMAIL = 'guests-seating-board@eapps.site'
 /** Shown on the contact page as written; an empty one is left out. */
 export const SUPPORT_PHONE = '098 75 16 15'
 /** The phone in international form, for the Organization JSON-LD. */

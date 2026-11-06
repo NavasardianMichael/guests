@@ -68,6 +68,19 @@ const missing = REQUIRED.filter((key) => !value(key))
 if (missing.length) warn(`missing or empty: ${missing.join(', ')}`)
 
 const databaseUrl = value('DATABASE_URL')
+if (databaseUrl) {
+  // The deploy parses it with `new URL` and derives the container's POSTGRES_* from it.
+  let parsed = null
+  try {
+    parsed = new URL(databaseUrl)
+  } catch {
+    warn('DATABASE_URL is not a valid URL — a password with / ? # @ breaks it; use a hex one (openssl rand -hex 32)')
+  }
+  if (parsed && !/^[A-Za-z0-9._~-]+$/.test(decodeURIComponent(parsed.password))) {
+    warn('DATABASE_URL password has characters other than A-Z a-z 0-9 . _ ~ - — the deploy refuses it; use a hex one')
+  }
+  if (/<[^>]*>/.test(databaseUrl)) warn('DATABASE_URL still has a <placeholder>')
+}
 // Dev and production both publish Postgres on 5010, so `localhost` vs `127.0.0.1` is the
 // only thing distinguishing a dev URL from a production one. Worth shouting about.
 if (/@localhost:/.test(databaseUrl)) warn('DATABASE_URL uses `localhost` — production needs 127.0.0.1')
