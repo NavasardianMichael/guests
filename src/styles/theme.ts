@@ -43,6 +43,12 @@ export const antdTheme: ThemeConfig = {
     Form: {
       verticalLabelPadding: '0 0 4px',
     },
+    /** antd gives a tooltip `min-height: controlHeight`; at our 38px that is taller than one line
+        plus its padding, and the spare height all falls below the text. antd's own 32px is shorter
+        than a line, so the even padding decides the height and the text sits centred. */
+    Tooltip: {
+      controlHeight: 32,
+    },
     Segmented: {
       itemSelectedBg: CANVAS.raised,
       trackBg: CANVAS.sunken,

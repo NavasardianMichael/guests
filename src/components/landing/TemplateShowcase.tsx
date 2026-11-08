@@ -14,7 +14,7 @@ export const TemplateShowcase: FC = async () => {
   const t = await getTranslations('Home')
   const texts = await sampleTexts()
   return (
-    <section className='mx-auto max-w-7xl px-4 py-14 sm:py-20 md:px-6' aria-labelledby='showcase-title'>
+    <section className='mx-auto max-w-page px-4 py-14 sm:py-20 md:px-6' aria-labelledby='showcase-title'>
       <div className='flex flex-wrap items-end justify-between gap-6'>
         <div className='max-w-2xl min-w-0 flex-1 basis-md'>
           <h2 id='showcase-title' className='text-balance font-display text-title font-extrabold tracking-tight text-ink sm:text-4xl'>

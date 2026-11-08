@@ -9,14 +9,15 @@ list stays printable and editable forever; a duplicate is a new, unpaid list.
 Nothing charges yet, but premium templates are already refused: `printTerms()` in
 `server/src/services/entitlement.ts` allows an unpaid list only in the free template (402,
 code `4021` otherwise), and the web stops the download first (`isPrintable` in
-`src/constants/templates.ts`), offering to switch to the free template. `BILLING_ENABLED` only
-adds the "made with" line to free prints. The pricing page says payments are coming soon.
+`src/constants/templates.ts`), offering to switch to the free template. Every download not paid
+for carries the "made with" line on each page, as in cv-builder; a paid list prints clean.
+The pricing page says payments are coming soon.
 
 ## What is already in place
 
 - `GuestList.paidAt` (schema) and `paidAt` in every list the API returns.
 - `printTerms()` — a paid list prints as designed; an unpaid list prints only in the free
-  template (with the `guests-seating-board.eapps.site` line on each page once `BILLING_ENABLED`); a
+  template, with the `guests-seating-board.eapps.site` line on each page; a
   premium template unpaid answers **402** with code `4021` (`listNotPaid`), which the web translates.
 - Guest-owned server lists (`guestKeyHash`, `lib/guest.ts`) and their move to the account on
   sign-in (`services/guestLists.ts`) — a payment needs a server copy to attach to, exactly as

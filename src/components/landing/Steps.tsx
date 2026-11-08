@@ -7,7 +7,7 @@ export const Steps: FC = async () => {
   const t = await getTranslations('Home')
   return (
     <section className='bg-ink py-14 text-white sm:py-20' aria-labelledby='steps-title'>
-      <div className='mx-auto max-w-7xl px-4 md:px-6'>
+      <div className='mx-auto max-w-page px-4 md:px-6'>
         <h2 id='steps-title' className='text-center font-display text-title font-extrabold tracking-tight text-white sm:text-4xl'>
           {t('stepsTitle')}
         </h2>

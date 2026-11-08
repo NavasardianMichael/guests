@@ -12,7 +12,7 @@ type ShapeChoice = { shape: SheetShape; setShape: (shape: SheetShape) => void }
 
 const TemplateShapeContext = createContext<ShapeChoice | null>(null)
 
-/** The shape last picked on a template's page, for the next one opened in this tab. */
+/** The shape last picked in the gallery or on a template's page, for the next page in this tab. */
 const STORAGE_KEY = 'guests:template-shape'
 
 const readStored = (): SheetShape | null => {
@@ -25,9 +25,9 @@ const readStored = (): SheetShape | null => {
 }
 
 /**
- * A template's page: the shape its previews, the cards of other templates and "use this
- * template" share. Remembered for the tab, so the next template opens in the same shape.
- * Outside it (the gallery, the landing page) previews keep their own shape.
+ * The templates gallery and a template's page: the shape their previews, cards and "use this
+ * template" share. Remembered for the tab, so a template opened from the gallery, and the next
+ * one after it, keeps the shape. Outside it (the landing page) previews keep their own shape.
  */
 export const TemplateShapeProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const [shape, setShapeState] = useState<SheetShape>('rectangle')
@@ -49,7 +49,7 @@ export const TemplateShapeProvider: FC<{ children: ReactNode }> = ({ children })
   return <TemplateShapeContext.Provider value={value}>{children}</TemplateShapeContext.Provider>
 }
 
-/** The template page's shape picker. */
+/** The shape picker of the gallery and of a template's page. */
 export const TemplateShapePicker: FC = () => {
   const choice = useContext(TemplateShapeContext)
   if (!choice) return null

@@ -27,7 +27,7 @@ export const Hero: FC = async () => {
 
   return (
     <section className='mesh-bg overflow-hidden'>
-      <div className='mx-auto grid max-w-7xl items-center gap-10 px-4 pt-10 pb-14 sm:gap-12 sm:pt-14 sm:pb-20 md:px-6 lg:grid-cols-[1.05fr_1fr] lg:pt-20 lg:pb-28'>
+      <div className='mx-auto grid max-w-page items-center gap-10 px-4 pt-10 pb-14 sm:gap-12 sm:pt-14 sm:pb-20 md:px-6 lg:grid-cols-[1.05fr_1fr] lg:pt-20 lg:pb-28'>
         <div>
           <span className='inline-flex items-center gap-2 rounded-full bg-surface/80 px-3.5 py-1.5 text-sm font-medium text-ink shadow-sm ring-1 ring-line'>
             <span className='size-2 rounded-full bg-accent' aria-hidden='true' />

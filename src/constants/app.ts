@@ -15,6 +15,8 @@ export const APP_DESCRIPTION =
 
 /** The public domain, as printed in the free PDF's watermark (which links to it). */
 export const SITE_DOMAIN = 'guests-seating-board.eapps.site'
+/** The watermark's words when the API sends none; twin of the server's (`routes/pdf.ts`). */
+export const WATERMARK_TEXT = `Ստեղծված ${SITE_DOMAIN}-ում`
 
 /** `NEXT_PUBLIC_SITE_URL` when unset (local dev). */
 export const SITE_URL_FALLBACK = 'http://localhost:7010'

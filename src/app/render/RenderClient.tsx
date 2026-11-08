@@ -3,7 +3,7 @@
 import { type FC, useEffect, useMemo, useState } from 'react'
 import type { ListDocument } from '@store/lists/single/types'
 import { loadDocumentFonts } from '@hooks/useSheetLayout'
-import { SITE_DOMAIN } from '@constants/app'
+import { SITE_DOMAIN, WATERMARK_TEXT } from '@constants/app'
 import { measureText, resetMeasureCache } from '@helpers/measureText'
 import { layoutSheet } from '@helpers/sheetLayout'
 import { SheetDocument } from '@components/sheet/SheetDocument'
@@ -75,7 +75,7 @@ export const RenderClient: FC = () => {
         pageOverlay={
           doc.watermark ? (
             <a className='sh-watermark' href={`https://${SITE_DOMAIN}/`}>
-              {doc.watermarkText ?? SITE_DOMAIN}
+              {doc.watermarkText ?? WATERMARK_TEXT}
             </a>
           ) : undefined
         }

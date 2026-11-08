@@ -6,8 +6,9 @@ import { FREE_TEMPLATE_IDS, type TemplateId } from '../lib/catalogue.js'
  * checkout is not built yet (`docs/BILLING.md`). Premium templates are already refused unless
  * the list is paid, so today only the free one (`FREE_TEMPLATE_IDS`) prints at all.
  *
- * `BILLING_ENABLED` only switches on the "made with" line a free print carries once payments
- * are live. Every PDF route asks here, so nothing else decides.
+ * As in cv-builder, every download not paid for carries the "made with" line on each page; a
+ * paid list prints clean. `BILLING_ENABLED` only tells the web whether checkout is live
+ * (`/health`). Every PDF route asks here, so nothing else decides.
  */
 const BILLING_ENABLED = false
 
@@ -22,6 +23,5 @@ export type PrintTerms = {
 
 export const printTerms = (list: { templateId: TemplateId; paidAt: Date | null }): PrintTerms => {
   if (list.paidAt) return { allowed: true, watermark: false }
-  const free = FREE_TEMPLATE_IDS.includes(list.templateId)
-  return { allowed: free, watermark: free && billingEnabled() }
+  return { allowed: FREE_TEMPLATE_IDS.includes(list.templateId), watermark: true }
 }

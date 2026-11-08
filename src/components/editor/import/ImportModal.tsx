@@ -2,7 +2,7 @@
 
 import { type FC, useMemo, useState } from 'react'
 import { CameraOutlined, FileExcelOutlined, InboxOutlined, SnippetsOutlined } from '@ant-design/icons'
-import { Alert, App, Input, Modal, Progress, Radio, Select, Upload } from 'antd'
+import { Alert, App, Button, Input, Modal, Progress, Select, Upload } from 'antd'
 import { useTranslations } from 'next-intl'
 import { extractGuestsAPI } from '@api/ai/main'
 import { useEditorUiStore } from '@store/editorUi/store'
@@ -27,6 +27,30 @@ import { ColumnMapper } from './ColumnMapper'
 import { ImportPreview } from './ImportPreview'
 
 const MAX_PHOTOS = 5
+/**
+ * Named types, not `image/*`: Chrome on Windows resolves the wildcard against every image type
+ * in the registry, and the picker takes seconds to open — a click looks like it did nothing.
+ * Anything the browser decodes will do; `fileToUploadDataUrl` sends it on as a JPEG.
+ */
+const PHOTO_ACCEPT = [
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/heic',
+  'image/heif',
+  'image/avif',
+  'image/gif',
+  'image/bmp',
+  '.jpg',
+  '.jpeg',
+  '.png',
+  '.webp',
+  '.heic',
+  '.heif',
+  '.avif',
+  '.gif',
+  '.bmp',
+].join(',')
 const MAX_FILE_BYTES = 10 * 1024 * 1024
 
 type Sheet = { rows: string[][]; mapping: ColumnMapping }
@@ -55,12 +79,13 @@ const readFile = async (file: File): Promise<{ sheets: Record<string, string[][]
  * Bringing an existing list in, three ways: pasted text (one name per line, "Table 5:" lines
  * seating the names under them — or a block copied from Excel), a file (CSV, TSV, TXT, XLSX,
  * with the columns mapped), or photos read by the AI (`POST /ai/extract-guests`). Whatever the
- * source, the result is shown, editable, before it is added to the list or replaces it.
+ * source, the result is shown, editable; on Import, a list that already has guests asks whether
+ * the result replaces them or is added to them.
  */
 export const ImportModal: FC = () => {
   const t = useTranslations('Editor.import')
   const tErrors = useTranslations('Errors')
-  const { message } = App.useApp()
+  const { message, modal } = App.useApp()
   const source = useEditorUiStore.use.importSource()
   const openImport = useEditorUiStore.use.openImport()
   const closeImport = useEditorUiStore.use.closeImport()
@@ -76,7 +101,6 @@ export const ImportModal: FC = () => {
   const [photoGuests, setPhotoGuests] = useState<IncomingGuest[] | null>(null)
   const [photoProgress, setPhotoProgress] = useState<{ done: number; total: number } | null>(null)
   const [edited, setEdited] = useState<IncomingGuest[] | null>(null)
-  const [mode, setMode] = useState<ImportMode>('append')
 
   const reset = () => {
     setText('')
@@ -87,7 +111,6 @@ export const ImportModal: FC = () => {
     setPhotoGuests(null)
     setPhotoProgress(null)
     setEdited(null)
-    setMode('append')
   }
 
   const close = () => {
@@ -165,13 +188,44 @@ export const ImportModal: FC = () => {
     if (!found.length && failures < batch.length) void message.warning(t('photoNothing'))
   }
 
+  const importRows = (rows: IncomingGuest[], mode: ImportMode) => {
+    if (!source) return
+    addGuests(rows, mode)
+    trackEvent('guests_import', { source, count: rows.length, mode })
+    void message.success(t('imported', { count: rows.length }))
+    close()
+  }
+
+  /**
+   * Onto an empty list the guests just go in. Onto a list that has guests — often still the
+   * sample a new list starts with — it asks whether they replace those or join them.
+   */
   const submit = () => {
     const rows = guests.filter((guest) => guest.name.trim())
     if (!rows.length || !source) return
-    addGuests(rows, mode)
-    trackEvent('guests_import', { source, count: rows.length })
-    void message.success(t('imported', { count: rows.length }))
-    close()
+    if (!existing) return importRows(rows, 'append')
+    const dialog: { destroy: () => void } = modal.confirm({
+      title: t('modeTitle', { count: existing }),
+      content: t('modeText'),
+      centered: true,
+      okText: t('replace'),
+      cancelText: t('cancel'),
+      onOk: () => importRows(rows, 'replace'),
+      footer: (_, { OkBtn, CancelBtn }) => (
+        <>
+          <CancelBtn />
+          <Button
+            onClick={() => {
+              dialog.destroy()
+              importRows(rows, 'append')
+            }}
+          >
+            {t('append')}
+          </Button>
+          <OkBtn />
+        </>
+      ),
+    })
   }
 
   const sheet = sheetName ? sheets[sheetName] : undefined
@@ -182,9 +236,15 @@ export const ImportModal: FC = () => {
       open={source !== null}
       onCancel={close}
       title={t('title')}
-      width={720}
+      width={880}
+      centered
       // Phones: nearly the full width, so the preview has room.
       style={{ maxWidth: 'calc(100vw - 16px)' }}
+      // Never taller than the screen: the title and the buttons stay put, the body scrolls.
+      styles={{
+        container: { display: 'flex', flexDirection: 'column', maxHeight: 'calc(100dvh - 32px)' },
+        body: { flex: '1 1 auto', minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain' },
+      }}
       destroyOnHidden
       okText={t('submit', { count: guests.filter((guest) => guest.name.trim()).length })}
       okButtonProps={{ disabled: !guests.some((guest) => guest.name.trim()) || busy }}
@@ -289,7 +349,7 @@ export const ImportModal: FC = () => {
             <>
               {capabilities && !capabilities.ai && <Alert type='warning' showIcon title={t('photoUnavailable')} />}
               <Upload.Dragger
-                accept='image/*'
+                accept={PHOTO_ACCEPT}
                 multiple
                 showUploadList={false}
                 disabled={busy || (capabilities !== null && !capabilities.ai)}
@@ -316,13 +376,6 @@ export const ImportModal: FC = () => {
           )}
 
           {!busy && <ImportPreview guests={guests} onChange={setEdited} />}
-
-          {existing > 0 && guests.length > 0 && (
-            <Radio.Group value={mode} onChange={(event) => setMode(event.target.value as ImportMode)}>
-              <Radio value='append'>{t('append', { count: existing })}</Radio>
-              <Radio value='replace'>{t('replace')}</Radio>
-            </Radio.Group>
-          )}
         </div>
       )}
     </Modal>

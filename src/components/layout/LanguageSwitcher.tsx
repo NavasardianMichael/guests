@@ -5,7 +5,7 @@ import { GlobalOutlined } from '@ant-design/icons'
 import { Select } from 'antd'
 import { useRouter } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
-import { isLocale, LOCALE_COOKIE, LOCALE_NAMES, LOCALES } from '@constants/app'
+import { DEFAULT_LOCALE, isLocale, LOCALE_COOKIE, LOCALE_NAMES, LOCALES } from '@constants/app'
 import { cn } from '@helpers/cn'
 
 /** A year: the choice outlives the session, like any language preference. */
@@ -29,7 +29,7 @@ export const LanguageSwitcher: FC<Props> = ({ className, size = 'middle' }) => {
       <Select
         className='min-w-28'
         size={size}
-        value={isLocale(locale) ? locale : 'hy'}
+        value={isLocale(locale) ? locale : DEFAULT_LOCALE}
         loading={pending}
         aria-label={t('language')}
         prefix={<GlobalOutlined className='text-muted' />}

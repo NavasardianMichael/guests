@@ -11,7 +11,7 @@ type AnalyticsEvents = {
   /** A PDF saved or sent to the printer: which kind of sheet, in which template. */
   list_pdf: { kind: string; template: string }
   /** A list imported: from where, and how many guests came in. */
-  guests_import: { source: 'paste' | 'file' | 'photo'; count: number }
+  guests_import: { source: 'paste' | 'file' | 'photo'; count: number; mode: 'append' | 'replace' }
   sign_up: { method: 'password' }
   login: { method: 'password' }
 }

@@ -111,7 +111,7 @@ export const DashboardClient: FC = () => {
   }
 
   return (
-    <div className='mx-auto max-w-7xl px-4 py-10 sm:py-20 md:px-6'>
+    <div className='mx-auto max-w-page px-4 py-10 sm:py-20 md:px-6'>
       <div className='flex items-end justify-between gap-4'>
         <div className='min-w-0 flex-1'>
           <h1 className='m-0 font-display text-title font-extrabold tracking-tight text-ink sm:text-4xl'>{t('title')}</h1>

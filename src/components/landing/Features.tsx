@@ -14,7 +14,7 @@ const FEATURES: { key: string; icon: ReactNode }[] = [
 export const Features: FC = async () => {
   const t = await getTranslations('Home')
   return (
-    <section className='mx-auto max-w-7xl px-4 py-14 sm:py-20 md:px-6' aria-labelledby='features-title'>
+    <section className='mx-auto max-w-page px-4 py-14 sm:py-20 md:px-6' aria-labelledby='features-title'>
       <div className='mx-auto max-w-2xl text-center'>
         <h2 id='features-title' className='text-balance font-display text-title font-extrabold tracking-tight text-ink sm:text-4xl'>
           {t('featuresTitle')}

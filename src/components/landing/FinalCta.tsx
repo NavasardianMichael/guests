@@ -7,7 +7,7 @@ import { ArrowRightOutlined } from '@components/ui/icons'
 export const FinalCta: FC = async () => {
   const t = await getTranslations('Home')
   return (
-    <section className='mx-auto max-w-7xl px-4 md:px-6'>
+    <section className='mx-auto max-w-page px-4 md:px-6'>
       <div className='relative overflow-hidden rounded-3xl bg-ink px-6 py-12 text-center sm:px-12 sm:py-16'>
         <div
           className='pointer-events-none absolute -top-24 -right-24 size-72 rounded-full bg-accent opacity-30 blur-3xl'

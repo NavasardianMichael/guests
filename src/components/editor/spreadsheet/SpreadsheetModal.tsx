@@ -53,7 +53,6 @@ type HeaderProps = { col: number; tableId: string; name: string; count: number; 
 const ColumnHeader: FC<HeaderProps> = memo(function ColumnHeader({ col, tableId, name, count, first, last }) {
   const t = useTranslations('Editor.spreadsheet')
   const tGuests = useTranslations('Editor.guests')
-  const { modal } = App.useApp()
 
   const menu = {
     items: [
@@ -67,15 +66,8 @@ const ColumnHeader: FC<HeaderProps> = memo(function ColumnHeader({ col, tableId,
       const index = tables.findIndex((table) => table.id === tableId)
       if (key === 'left') store().moveTable(tableId, tables[index - 1]?.id ?? null)
       if (key === 'right') store().moveTable(tableId, tables[index + 2]?.id ?? null)
-      if (key === 'delete') {
-        modal.confirm({
-          title: name || tGuests('tableName'),
-          content: tGuests('removeTableConfirm'),
-          okText: tGuests('removeTable'),
-          okButtonProps: { danger: true },
-          onOk: () => store().removeTable(tableId),
-        })
-      }
+      // No confirmation: this edits the draft, and nothing reaches the list until Save.
+      if (key === 'delete') store().removeTable(tableId)
     },
   }
 
@@ -362,7 +354,7 @@ export const SpreadsheetModal: FC = () => {
       open={open}
       onCancel={requestClose}
       afterClose={() => store().clear()}
-      maskClosable={false}
+      mask={{ closable: false }}
       destroyOnHidden
       width={1280}
       title={t('title')}

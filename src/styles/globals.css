@@ -9,6 +9,8 @@
   --breakpoint-lg: 992px;
   --breakpoint-xl: 1200px;
   --breakpoint-xxl: 1600px;
+  /* The site's content width (`max-w-page`): header, footer and every page share it. */
+  --container-page: 90rem;
 }
 
 /* Aliases over antd's CSS variables. The only place an `--ant-*` name appears. */

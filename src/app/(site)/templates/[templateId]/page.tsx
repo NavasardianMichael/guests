@@ -84,7 +84,7 @@ export default async function TemplatePage({ params }: Props) {
           ]),
         ]}
       />
-      <div className='mx-auto grid max-w-7xl grid-cols-1 gap-8 px-4 pt-8 pb-12 sm:gap-12 sm:pt-10 sm:pb-16 md:px-6 lg:grid-cols-[1fr_1.1fr]'>
+      <div className='mx-auto grid max-w-page grid-cols-1 gap-8 px-4 pt-8 pb-12 sm:gap-12 sm:pt-10 sm:pb-16 md:px-6 lg:grid-cols-[1fr_1.1fr]'>
         <div className='lg:sticky lg:top-24 lg:self-start'>
           <nav aria-label='breadcrumb' className='text-sm text-muted'>
             <Link href={ROUTES.templates} className='no-underline hover:text-ink'>
@@ -150,7 +150,7 @@ export default async function TemplatePage({ params }: Props) {
         </div>
       </div>
 
-      <section className='mx-auto max-w-7xl px-4 pb-10 md:px-6' aria-labelledby='other-templates'>
+      <section className='mx-auto max-w-page px-4 pb-10 md:px-6' aria-labelledby='other-templates'>
         <h2 id='other-templates' className='font-display text-xl font-extrabold text-ink sm:text-2xl'>
           {t('otherTemplates')}
         </h2>

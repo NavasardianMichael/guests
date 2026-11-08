@@ -7,8 +7,11 @@ import { asyncHandler } from '../middleware/error.js'
 import { printTerms } from '../services/entitlement.js'
 import { coerceContent, coerceDesign, coerceTitle, DEFAULT_LIST_TITLE } from '../services/listDocument.js'
 
-/** The "made with" line a free print carries once billing is on. */
-export const WATERMARK_TEXT = 'guests-seating-board.eapps.site'
+/**
+ * The "made with" line every download not paid for carries (`services/entitlement.ts`), worded
+ * as cv-builder's; it links to the site. Twin of the web's `WATERMARK_TEXT` (`constants/app.ts`).
+ */
+export const WATERMARK_TEXT = 'Ստեղծված guests-seating-board.eapps.site-ում'
 
 /**
  * The PDF of a document the server does not hold: a guest's local draft. No account and no

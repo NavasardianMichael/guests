@@ -23,7 +23,7 @@ export const ShapeIcon: FC<{ shape: SheetShape; className?: string }> = ({ shape
 type Props = { value: SheetShape; onChange: (shape: SheetShape) => void }
 
 /**
- * The sheet's outline, as tiles. The editor's template step and a template's own page use it;
+ * The sheet's outline, as tiles. The editor's template step, the templates gallery and a template's page use it;
  * picking one redraws every template in that shape.
  */
 export const ShapePicker: FC<Props> = ({ value, onChange }) => {

@@ -5,15 +5,18 @@ import { Checkbox, Select } from 'antd'
 import { useTranslations } from 'next-intl'
 import type { ColumnMapping } from '@helpers/guestImport'
 
+const NONE = -1
+
 type Props = {
   rows: string[][]
   mapping: ColumnMapping
   onChange: (mapping: ColumnMapping) => void
 }
 
-const PREVIEW_ROWS = 4
-
-/** Which column is the name (or the first and last names), the table, the note. */
+/**
+ * Which column is the name (or the first and last names), the table, the note. Each option is
+ * labelled with the column's title or first value; the guests it yields show in the preview below.
+ */
 export const ColumnMapper: FC<Props> = ({ rows, mapping, onChange }) => {
   const t = useTranslations('Editor.import')
   const columns = rows.reduce((max, row) => Math.max(max, row.length), 0)
@@ -23,31 +26,12 @@ export const ColumnMapper: FC<Props> = ({ rows, mapping, onChange }) => {
     return `${t('column', { number: col + 1 })}${title ? ` · ${title}` : sample ? ` · ${sample.slice(0, 24)}` : ''}`
   }
   const options = Array.from({ length: columns }, (_, col) => ({ value: col, label: label(col) }))
+  // antd warns on a `null` option value, so "none" is NONE inside the Select and null outside it.
+  const optional = [{ value: NONE, label: t('none') }, ...options]
+  const fromSelect = (col: number): number | null => (col === NONE ? null : col)
 
   return (
     <div className='flex flex-col gap-3'>
-      <div className='scrollbar-thin overflow-x-auto rounded-lg border border-line'>
-        <table className='w-full border-collapse text-xs'>
-          <tbody>
-            {rows.slice(0, PREVIEW_ROWS).map((row, index) => (
-              <tr key={index} className={index === 0 && mapping.header ? 'bg-canvas font-semibold' : undefined}>
-                {Array.from({ length: columns }, (_, col) => (
-                  <td
-                    key={col}
-                    className={
-                      mapping.name.includes(col)
-                        ? 'border-b border-line bg-accent-soft/60 px-2 py-1 whitespace-nowrap'
-                        : 'border-b border-line px-2 py-1 whitespace-nowrap'
-                    }
-                  >
-                    {row[col] ?? ''}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
       <Checkbox checked={mapping.header} onChange={(event) => onChange({ ...mapping, header: event.target.checked })}>
         {t('headerRow')}
       </Checkbox>
@@ -64,20 +48,20 @@ export const ColumnMapper: FC<Props> = ({ rows, mapping, onChange }) => {
         </label>
         <label className='flex flex-col gap-1 text-xs text-muted'>
           {t('tableColumn')}
-          <Select<number | null>
+          <Select<number>
             size='small'
-            value={mapping.table}
-            options={[{ value: null, label: t('none') }, ...options]}
-            onChange={(table) => onChange({ ...mapping, table })}
+            value={mapping.table ?? NONE}
+            options={optional}
+            onChange={(col) => onChange({ ...mapping, table: fromSelect(col) })}
           />
         </label>
         <label className='flex flex-col gap-1 text-xs text-muted'>
           {t('noteColumn')}
-          <Select<number | null>
+          <Select<number>
             size='small'
-            value={mapping.note}
-            options={[{ value: null, label: t('none') }, ...options]}
-            onChange={(note) => onChange({ ...mapping, note })}
+            value={mapping.note ?? NONE}
+            options={optional}
+            onChange={(col) => onChange({ ...mapping, note: fromSelect(col) })}
           />
         </label>
       </div>

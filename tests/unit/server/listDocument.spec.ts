@@ -85,8 +85,12 @@ describe('coerceTitle', () => {
 })
 
 describe('printTerms', () => {
-  it('prints the free template, unmarked while billing is off', () => {
-    expect(printTerms({ templateId: 'memorial', paidAt: null })).toEqual({ allowed: true, watermark: false })
+  it('prints a free download with the watermark', () => {
+    expect(printTerms({ templateId: 'memorial', paidAt: null })).toEqual({ allowed: true, watermark: true })
+  })
+
+  it('prints a paid list without the watermark', () => {
+    expect(printTerms({ templateId: 'memorial', paidAt: new Date() })).toEqual({ allowed: true, watermark: false })
   })
 
   it('refuses a premium template until the list is paid', () => {

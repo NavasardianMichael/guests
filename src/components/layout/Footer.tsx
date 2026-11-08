@@ -32,7 +32,7 @@ export const Footer: FC = async () => {
 
   return (
     <footer className='mt-24 border-t border-line bg-surface'>
-      <div className='mx-auto grid max-w-7xl gap-10 px-4 py-12 md:grid-cols-[2fr_1fr_1fr] md:px-6'>
+      <div className='mx-auto grid max-w-page gap-10 px-4 py-12 md:grid-cols-[2fr_1fr_1fr] md:px-6'>
         <div className='max-w-sm'>
           <BrandLogo />
           <p className='mt-4 text-sm leading-relaxed text-muted'>{t('tagline')}</p>
@@ -67,7 +67,7 @@ export const Footer: FC = async () => {
         ))}
       </div>
       <div className='border-t border-line'>
-        <div className='mx-auto flex max-w-7xl flex-col-reverse items-center justify-between gap-3 px-4 py-4 sm:flex-row md:px-6'>
+        <div className='mx-auto flex max-w-page flex-col-reverse items-center justify-between gap-3 px-4 py-4 sm:flex-row md:px-6'>
           <p className='m-0 text-xs text-muted'>{t('rights', { year: new Date().getFullYear(), name: APP_NAME })}</p>
           {/* The only language switch on the site: the interface language is a cookie, set rarely. */}
           <LanguageSwitcher size='small' />

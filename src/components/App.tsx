@@ -7,7 +7,7 @@ import hyAM from 'antd/locale/hy_AM'
 import ruRU from 'antd/locale/ru_RU'
 import { useLocale } from 'next-intl'
 import { useAuthStoreBase } from '@store/auth/store'
-import { isLocale, type Locale } from '@constants/app'
+import { DEFAULT_LOCALE, isLocale, type Locale } from '@constants/app'
 import { antdTheme } from '@styles/theme'
 import { LeaveGuard } from './LeaveGuard'
 
@@ -27,7 +27,7 @@ export const App: FC<PropsWithChildren> = ({ children }) => {
   return (
     <ConfigProvider
       theme={antdTheme}
-      locale={ANTD_LOCALES[isLocale(locale) ? locale : 'hy']}
+      locale={ANTD_LOCALES[isLocale(locale) ? locale : DEFAULT_LOCALE]}
       // Every modal and confirm dialog sits in the middle of the viewport. A modal must not set
       // `style.top`, which would push it off the centre.
       modal={{ centered: true }}
