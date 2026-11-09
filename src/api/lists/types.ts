@@ -8,7 +8,7 @@ export type CreateListAPI = Endpoint<{ payload: ListDocument; response: GuestLis
 export type GetListAPI = Endpoint<{ payload: { id: string }; response: GuestList; processed: GuestList }>
 
 export type UpdateListPayload = { id: string } & Partial<ListDocument>
-export type UpdateListResponse = { updatedAt: string; paidAt: string | null }
+export type UpdateListResponse = { updatedAt: string }
 export type UpdateListAPI = Endpoint<{
   payload: UpdateListPayload
   response: UpdateListResponse

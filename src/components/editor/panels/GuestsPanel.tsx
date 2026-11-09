@@ -1,6 +1,6 @@
 'use client'
 
-import { type FC, memo, useMemo, useRef, useState } from 'react'
+import { type FC, memo, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
   CameraOutlined,
@@ -48,6 +48,7 @@ import type { Guest, GuestTable } from '@store/lists/single/types'
 import { cn } from '@helpers/cn'
 import { HintTooltip } from '@components/ui/HintTooltip'
 import { TileButton } from '@components/ui/TileButton'
+import { LiveTextInput } from '../controls/LiveFields'
 import { SpreadsheetButton } from '../spreadsheet/SpreadsheetModal'
 
 type TableOption = { id: string; name: string }
@@ -103,23 +104,23 @@ const GuestFields: FC<RowProps> = memo(function GuestFields({ guest, index, tabl
   return (
     <>
       <span className='w-6 shrink-0 text-right text-[11px] text-muted tabular-nums'>{index + 1}</span>
-      <input
+      <LiveTextInput
         className='min-w-0 flex-1 rounded-md border-0 bg-transparent px-1.5 py-1.5 text-sm outline-none focus:bg-surface focus:ring-1 focus:ring-line'
         value={guest.name}
         placeholder={t('namePlaceholder')}
         aria-label={t('name')}
         maxLength={120}
         onFocus={() => select([guest.id])}
-        onChange={(event) => updateGuest(guest.id, { name: event.target.value })}
+        onChange={(name) => updateGuest(guest.id, { name })}
       />
       {showNote && (
-        <input
+        <LiveTextInput
           className='w-16 min-w-0 shrink rounded-md border-0 bg-transparent px-1.5 py-1.5 text-xs text-muted outline-none focus:bg-surface focus:ring-1 focus:ring-line sm:w-20'
           value={guest.note}
           placeholder={t('notePlaceholder')}
           aria-label={t('note')}
           maxLength={120}
-          onChange={(event) => updateGuest(guest.id, { note: event.target.value })}
+          onChange={(note) => updateGuest(guest.id, { note })}
         />
       )}
       {showTable !== 'never' && (
@@ -166,6 +167,7 @@ const GuestRow: FC<RowProps & { selected: boolean }> = ({ selected, ...row }) =>
   return (
     <li
       ref={setNodeRef}
+      data-guest-row={row.guest.id}
       style={{ transform: CSS.Translate.toString(transform), transition }}
       className={cn(
         'group flex items-center gap-1 rounded-lg border border-transparent px-0.5 py-0.5',
@@ -358,13 +360,13 @@ const TableGroup: FC<GroupProps> = ({ table, guests, tableOptions, selection, no
     >
       <header className='mb-1 flex items-center gap-1.5'>
         {table ? (
-          <input
+          <LiveTextInput
             className='min-w-0 flex-1 rounded-md border-0 bg-transparent px-1.5 py-1 text-sm font-semibold outline-none focus:bg-surface focus:ring-1 focus:ring-line'
             value={table.name}
             placeholder={t('tableName')}
             aria-label={t('tableName')}
             maxLength={60}
-            onChange={(event) => renameTable(table.id, event.target.value)}
+            onChange={(name) => renameTable(table.id, name)}
           />
         ) : (
           <span className='flex-1 px-1.5 py-1 text-sm font-semibold text-muted'>{noTableLabel}</span>
@@ -404,6 +406,34 @@ const TableGroup: FC<GroupProps> = ({ table, guests, tableOptions, selection, no
   )
 }
 
+/** The nearest ancestor that scrolls vertically: the side panel's column, or the phone's bottom sheet. */
+const scrollParentOf = (element: HTMLElement): HTMLElement | null => {
+  for (let parent = element.parentElement; parent; parent = parent.parentElement) {
+    const { overflowY } = getComputedStyle(parent)
+    if ((overflowY === 'auto' || overflowY === 'scroll') && parent.scrollHeight > parent.clientHeight) return parent
+  }
+  return null
+}
+
+/**
+ * Brings a row into the middle of its panel when any of it is out of sight. Only the panel
+ * scrolls — `scrollIntoView` would move every ancestor, the editor's own layout too.
+ */
+const revealRow = (row: HTMLElement) => {
+  // The side panel is mounted but hidden on phones and tablets (they use the bottom sheet).
+  if (!row.getClientRects().length) return
+  const container = scrollParentOf(row)
+  if (!container) return
+  const box = container.getBoundingClientRect()
+  const rect = row.getBoundingClientRect()
+  if (rect.top >= box.top && rect.bottom <= box.bottom) return
+  const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  container.scrollTo({
+    top: container.scrollTop + rect.top - box.top - (box.height - rect.height) / 2,
+    behavior: still ? 'auto' : 'smooth',
+  })
+}
+
 /** A drag under way: the dragged row, where it started, and every group as it now stands. */
 type DragState = { id: string; from: { group: string; index: number }; groups: Groups }
 
@@ -441,6 +471,21 @@ export const GuestsPanel: FC = () => {
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   )
+
+  /**
+   * A guest picked on the sheet scrolls into view here — the last one picked, when several are.
+   * A row selected by focusing its own field is already in view and is left where it is.
+   */
+  useEffect(() => {
+    const list = listRef.current
+    if (!list) return
+    for (let at = selectionList.length - 1; at >= 0; at--) {
+      const row = list.querySelector<HTMLElement>(`[data-guest-row="${window.CSS.escape(selectionList[at])}"]`)
+      if (!row) continue
+      if (!row.contains(document.activeElement)) revealRow(row)
+      return
+    }
+  }, [selectionList])
 
   if (!content) return null
   const { addTable, sortGuests, dedupeGuests, clearGuests, moveGuest, seatGuest } = useListEditorStoreBase.getState()

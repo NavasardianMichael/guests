@@ -38,6 +38,7 @@
     "legal": "Legal",
     "terms": "Terms of use",
     "privacy": "Privacy policy",
+    "refund": "Refund policy",
     "rights": "© {year} {name}. All rights reserved.",
     "fonts": "Fonts from <link>fonter.am</link>, all free for commercial use."
   },
@@ -113,7 +114,7 @@
   "Faq": {
     "price": {
       "q": "How much does it cost?",
-      "a": "Making a list and downloading it as a PDF in the “Classic” template is free. The other templates will cost {price} per list — once, no subscription; payments are coming soon."
+      "a": "Making a list and downloading it as a PDF in the “Classic” template is free. Each other template costs {price} — once, no subscription — and once bought it’s yours for all your lists."
     },
     "account": {
       "q": "Do I need an account?",
@@ -149,6 +150,9 @@
     "subtitle": "Every template works for a seating chart, a list and place cards. Colours, fonts and ornaments can be changed after you fill it in.",
     "free": "Free",
     "premium": "Premium",
+    "premiumPrice": "{price}, once — for all your lists",
+    "bought": "Bought",
+    "boughtNote": "This template is yours: every new list you make in it prints without limits.",
     "names": {
       "classic": "Traditional",
       "minimal": "Minimal",
@@ -287,10 +291,9 @@
   },
   "Pricing": {
     "metaTitle": "Pricing",
-    "metaDescription": "Making a list and printing in the “Classic” template costs nothing. Printing in the other templates is {price} per list, once.",
+    "metaDescription": "Making a list and printing in the “Classic” template costs nothing. Each other template is {price}, once — for all your lists.",
     "title": "One price, once",
-    "subtitle": "No subscription. Making a list is always free; printing in the template you chose is paid once per list.",
-    "beta": "Payments are coming soon; until then, PDFs download only in the free “Classic” template",
+    "subtitle": "No subscription. Making a list is always free; a template is bought once and used for all your lists.",
     "free": "Free",
     "freePrice": "0 AMD",
     "freeItems": [
@@ -299,15 +302,32 @@
       "The “Classic” template",
       "Any paper size, PDF download"
     ],
-    "paid": "All templates",
-    "perList": "per list",
+    "paid": "One template",
+    "perTemplate": "per template, once",
     "paidItems": [
-      "Any of the 46 templates",
-      "Any colour, ornament and font",
+      "Any one of the 46 templates",
+      "For all your lists, now and later",
       "Seating chart, list and place cards",
-      "Unlimited editing and downloads"
+      "No “made with” line, unlimited downloads"
     ],
     "cta": "Create a list"
+  },
+  "Payment": {
+    "metaTitle": "Payment result",
+    "succeeded": "Payment successful",
+    "succeededText": "Thank you. The “{template}” template is now yours, for all your lists.",
+    "failed": "Payment failed",
+    "failedText": "Nothing was charged. You can try again or use another card.",
+    "pending": "Payment is being processed",
+    "pendingText": "The bank hasn’t confirmed the payment yet. This page will refresh in a few seconds.",
+    "toEditor": "Back to the editor",
+    "newList": "New list in this template",
+    "toDashboard": "My lists",
+    "toTemplates": "Templates",
+    "tryAgain": "Try again",
+    "guestTitle": "Keep your purchase",
+    "guestText": "You bought without an account, so the template is only available in this browser. Sign in to keep it in your account and use it on any device.",
+    "guestSignIn": "Sign in"
   },
   "Contact": {
     "metaTitle": "Contact us",
@@ -462,6 +482,7 @@
     },
     "guestBanner": "You are working without an account — the list is kept only in this browser.",
     "guestBannerCta": "Sign in",
+    "guestBannerClose": "Hide this notice",
     "importing": "Saving your list to your account…",
     "loadFailed": "Couldn’t load the list",
     "replaceDraftTitle": "Replace the draft?",
@@ -715,10 +736,35 @@
       "button": "Download PDF",
       "preparing": "Preparing the PDF…",
       "done": "PDF downloaded",
-      "premiumTitle": "“{template}” is a premium template",
-      "premiumText": "Payments for premium templates are coming soon. Until then, PDFs download only in the free “{free}” template. Your guests and layout stay as they are.",
-      "premiumSwitch": "Switch to “{free}”",
-      "premiumShort": "“{template}” is a premium template: for now, PDFs download only in “{free}”."
+      "checkoutTitle": "Buy the “{template}” template",
+      "checkoutLead": "Pay once and the template is yours — for every list you make, now and later.",
+      "includes": [
+        "This template for all your lists",
+        "Seating chart, guest list and place cards",
+        "No “made with” line on the pages",
+        "Unlimited editing and downloads"
+      ],
+      "lockNote": "Once bought, this list stays in “{template}”. For another template, start a new list.",
+      "pay": "Pay {price}",
+      "redirecting": "Taking you to the payment page…",
+      "secure": "Payment is made on Ameriabank’s secure page. Your card details never reach us.",
+      "agree": "By paying you agree to the <terms>terms</terms> and the <refund>refund policy</refund>.",
+      "unavailable": "Payments aren’t available right now. Try again a little later.",
+      "freeTitle": "Or print for free",
+      "freeText": "Switch to “{free}”: it’s free, with a small “made with” line on each page. Your guests and layout stay as they are.",
+      "freeSwitch": "Switch to “{free}”",
+      "guestWarningTitle": "Buying without an account",
+      "guestWarningText": "The template will belong to this browser only. It won’t be available on other devices, and if this browser’s data is ever cleared (we never clear it), you’ll lose it. Sign in and it’s kept in your account.",
+      "guestContinue": "Continue without an account",
+      "guestSignIn": "Sign in and buy",
+      "signInTitle": "Sign in to buy",
+      "signInText": "Your list is saved to your account, and the template you buy stays yours on any device.",
+      "signInEmail": "Sign in with email"
+    },
+    "template": {
+      "lockedText": "This list is in “{template}”, a template you bought, and stays in it. You can still change the shape here, and colours and fonts in the Design step. For another template, start a new list.",
+      "newInThis": "New list in this template",
+      "otherTemplates": "Other templates"
     },
     "tabsShort": {
       "kind": "Type",
@@ -780,7 +826,10 @@
       "4006": "Your email isn’t confirmed yet. Follow the link in the email we sent.",
       "4007": "The confirmation link is invalid or expired. Sign in to get a new one.",
       "4010": "You have reached the maximum number of lists. Delete old ones.",
-      "4021": "Printing in this template requires payment.",
+      "4020": "You already own this template.",
+      "4021": "To print in this template, buy it first.",
+      "4022": "Payments aren’t available right now. Try again a little later.",
+      "4023": "Couldn’t open the payment page. Try again.",
       "4030": "Couldn’t create the PDF. Try again.",
       "4040": "Couldn’t send the message. Try again a little later.",
       "4050": "Photo import isn’t available right now.",

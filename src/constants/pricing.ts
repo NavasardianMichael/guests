@@ -1,13 +1,12 @@
 /**
- * The business model, as cv-builder's: building is free; printing a list in a premium
- * template is a one-time payment per list; the free templates always print free (with a small
- * "made with" line). Billing is not built yet (`docs/BILLING.md`): until the API reports
- * `billing: true`, every template prints free and without the line.
+ * The business model (docs/PAYMENTS.md): building is free; a premium **template** is bought
+ * once and then prints on every list its buyer has or makes, without the "made with" line; the
+ * free template always prints free (with the line).
  *
- * The server's `LIST_PRICE_AMD` (`server/src/services/pricing.ts`) is the one that will be
- * charged; `twins.spec.ts` pins them equal.
+ * The server's `TEMPLATE_PRICE_AMD` (`server/src/services/pricing.ts`) is the one charged;
+ * `twins.spec.ts` pins them equal.
  */
-export const LIST_PRICE_AMD = 2000
+export const TEMPLATE_PRICE_AMD = 2000
 
 export const CURRENCY = 'AMD'
 

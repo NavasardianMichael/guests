@@ -104,6 +104,16 @@ if (!value('MAIL_API_URL') || !value('MAIL_API_KEY')) {
 }
 if (!value('GOOGLE_CLIENT_ID')) warn('GOOGLE_CLIENT_ID is empty — "Sign in with Google" stays hidden')
 
+if (value('PAYMENT_GATEWAY') !== 'ameria') {
+  warn('PAYMENT_GATEWAY is not `ameria` — the mock is refused in production, so nobody can buy a template')
+}
+if (value('PAYMENT_GATEWAY') === 'ameria') {
+  const missingAmeria = ['AMERIA_CLIENT_ID', 'AMERIA_USERNAME', 'AMERIA_PASSWORD'].filter((key) => !value(key))
+  if (missingAmeria.length) warn(`missing or empty: ${missingAmeria.join(', ')} — checkout answers 503`)
+  if (value('AMERIA_TEST_MODE') !== 'false') warn('AMERIA_TEST_MODE is not "false" — payments go to the bank’s TEST terminal')
+}
+if (value('AMERIA_AMOUNT_OVERRIDE')) warn('AMERIA_AMOUNT_OVERRIDE is set — every template is charged that amount')
+
 console.error('')
 console.error(`Encoded ${path.relative(rootDir, filePath)} — ${keys.length} variables`)
 console.error(`  ${keys.join(', ')}`)

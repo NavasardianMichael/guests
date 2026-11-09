@@ -9,7 +9,7 @@ import {
   SUPPORT_POSTAL_ADDRESS,
 } from '@constants/app'
 import { FONT_SLUGS } from '@constants/fonts'
-import { CURRENCY, LIST_PRICE_AMD } from '@constants/pricing'
+import { CURRENCY, TEMPLATE_PRICE_AMD } from '@constants/pricing'
 import { ROUTES, templatePath } from '@constants/routes'
 import { ALTERNATE_NAMES, SEARCH_KEYWORDS } from '@constants/seo'
 import { TEMPLATE_LIST, type TemplateId } from '@constants/templates'
@@ -97,10 +97,10 @@ export const webApplicationSchema = (): WithContext<WebApplication> => ({
     },
     {
       '@type': 'Offer',
-      price: LIST_PRICE_AMD,
+      price: TEMPLATE_PRICE_AMD,
       priceCurrency: CURRENCY,
-      description: 'Մեկ ցուցակի տպում ցանկացած ձևանմուշով, մեկանգամյա վճար',
-      availability: 'https://schema.org/PreOrder',
+      description: 'Մեկ ձևանմուշ՝ գնողի բոլոր ցուցակների համար, մեկանգամյա վճար',
+      availability: 'https://schema.org/InStock',
     },
   ],
 })

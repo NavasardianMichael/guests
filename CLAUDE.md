@@ -3,9 +3,10 @@
 Guest lists for Armenian events, printed. Users build a list (typed, pasted, Excel/CSV, or a
 photo read by Gemini), arrange it on a sheet and print one of three **kinds**: a seating board
 (guests under their tables), a plain guest list, or place cards. Any paper size, 46 templates,
-40 Armenian fonts, interface in hy (default) / ru / en. No account needed. Billing is planned,
-not built (`docs/BILLING.md`). Built from `../cv-builder` — same stack, conventions, auth,
-guest mode, PDF printing and deploy.
+40 Armenian fonts, interface in hy (default) / ru / en. No account needed. A premium template
+is **bought once** (Ameriabank vPOS, as cv-builder) and then prints on every list its buyer
+makes; a list in a bought template keeps it (`docs/PAYMENTS.md`). Built from `../cv-builder` —
+same stack, conventions, auth, guest mode, PDF printing, payments and deploy.
 
 **Stack:** Next.js 16 · React 19 · TypeScript · Ant Design 6 · Tailwind 4 · Zustand (immer) ·
 next-intl (hy/ru/en, cookie) · pnpm · Express 5 + Prisma 6 + PostgreSQL · Puppeteer (PDF) ·
@@ -56,7 +57,8 @@ cv-builder's notes: under `concurrently` on Windows `tsx watch` never starts the
 | Import | `src/components/editor/import/` · parsing `src/helpers/guestImport.ts` · photo → `server/src/routes/ai.ts` → `services/guestReader.ts` (Gemini) |
 | Guest drafts (localStorage) | `src/helpers/localDraft.ts` — imported on sign-in by `EditorShell` |
 | PDF | `server/src/services/pdf.ts` prints the web's `/render` page (`src/app/render/`); the editor and dashboard only download it (`src/hooks/usePdfDownload.ts`, `PdfActions`) — no browser printing |
-| Who may print what | `server/src/services/entitlement.ts`: only the free template (`memorial`, shown as “Classic”) unless paid; web twin `isPrintable` |
+| Who may print what | `server/src/services/entitlement.ts` (pure rule): the free template (`memorial`, shown as “Classic”) for anyone, a premium one once its owner bought it — `printTermsFor` in `services/payments.ts`; web twin `isPrintable` |
+| Payments (buy a template) | `docs/PAYMENTS.md` · server `services/payments.ts`, `services/gateways/` (Ameria + dev mock, as cv-builder), `routes/purchases.ts` (owned, checkout), `routes/payments.ts` (bank return) · web `store/purchases/` + `hooks/useOwnedTemplates.ts`, `components/editor/download/CheckoutModal.tsx`, `/payment/result`, `/refund-policy` |
 | Languages | `src/i18n/request.ts` (cookie `NEXT_LOCALE`, default hy) · `src/messages/{hy,ru,en}.json` · switcher `components/layout/LanguageSwitcher.tsx` |
 | Auth (password + Google), guest key | as cv-builder: `server/src/routes/identity*.ts`, `lib/guest.ts`, `services/guestLists.ts` |
 | CI/CD, production | `.github/workflows/{ci,deploy}.yml` · `docs/DEPLOYMENT.md` · `docs/PRODUCTION_SETUP.md` · `deployment/` |
@@ -109,6 +111,10 @@ cv-builder's notes: under `concurrently` on Windows `tsx watch` never starts the
   must stay explicit so those routes stay static. Legal pages are Armenian in every language.
 - **A list is owned by an account or a guest key**, never both (CHECK constraint); every
   `/lists` route scopes by `listOwnerOf(req)`.
+- **What is bought is a template, not a list.** A `succeeded` `Payment` (owner + `templateId`)
+  is the licence; there is no `paidAt` on a list. A list in a bought template keeps it: the
+  Template step shows only the shape picker and a note. A guest's purchases follow the guest
+  key and move to the account on sign-in with the lists (`services/guestLists.ts`).
 - **Server Components cannot import `@ant-design/icons`**: import from `@components/ui/icons`.
 - **antd styles are unlayered and beat Tailwind utilities** — override antd's own
   `display`/`height`/`white-space` inline or on a wrapper. Hide or show an antd control at a

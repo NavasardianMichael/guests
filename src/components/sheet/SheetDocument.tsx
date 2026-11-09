@@ -196,7 +196,7 @@ const GuestView: FC<BlockProps<GuestBlock>> = ({ block, design, interaction }) =
         <TextLines lines={block.lines} />
       </EditableText>
       {block.tableName && (
-        <div className='sh-guest-table' style={{ ...textCss(type.name, textScale), color: tableLabelColor(design), textAlign: 'right' }}>
+        <div className='sh-guest-table' style={{ ...textCss(type.group, textScale), color: tableLabelColor(design), textAlign: 'right' }}>
           {block.tableName}
         </div>
       )}

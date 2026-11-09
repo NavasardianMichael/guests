@@ -18,7 +18,6 @@ export const mapList = (list: GuestList) => ({
   title: list.title,
   content: coerceContent(list.content),
   design: coerceDesign(list.design),
-  paidAt: list.paidAt?.toISOString() ?? null,
   createdAt: list.createdAt.toISOString(),
   updatedAt: list.updatedAt.toISOString(),
 })

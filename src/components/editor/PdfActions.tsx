@@ -4,17 +4,20 @@ import type { FC } from 'react'
 import { DownloadOutlined } from '@ant-design/icons'
 import { App, Button } from 'antd'
 import { useTranslations } from 'next-intl'
-import { useListEditorStore, useListEditorStoreBase } from '@store/lists/single/store'
+import { useEditorUiStore } from '@store/editorUi/store'
+import { useListEditorStoreBase } from '@store/lists/single/store'
 import { DRAFT_ID } from '@store/lists/single/types'
+import { usePurchasesStoreBase } from '@store/purchases/store'
+import { useOwnedTemplates } from '@hooks/useOwnedTemplates'
 import { usePdfDownload } from '@hooks/usePdfDownload'
-import { FREE_TEMPLATE_ID, isPrintable } from '@constants/templates'
+import { isPrintable } from '@constants/templates'
 import { flushSave } from './useAutosave'
 
 /**
  * Download PDF. It goes through the API's PDF (headless Chrome printing `/render`), so the
  * file is exactly what the venue's printer will print — sized to the chosen paper, fonts
- * embedded. A saved list is saved first: the server prints its copy. A premium template does
- * not download until paid for; the dialog offers the free one instead.
+ * embedded. A saved list is saved first: the server prints its copy. A premium template not
+ * bought opens the checkout (`CheckoutModal`), which also offers the free template.
  */
 type Props = {
   /** The word beside the icon at every width; the editor's top bar hides it on phones. */
@@ -23,34 +26,24 @@ type Props = {
 
 export const PdfActions: FC<Props> = ({ label = false }) => {
   const t = useTranslations('Editor.download')
-  const tTemplates = useTranslations('Templates')
-  const tCommon = useTranslations('Common')
   const tErrors = useTranslations('Errors')
-  const { message, modal } = App.useApp()
-  const applyTemplate = useListEditorStore.use.applyTemplate()
+  const { message } = App.useApp()
+  const setCheckoutOpen = useEditorUiStore.use.setCheckoutOpen()
+  // Loads the bought templates for whoever is signed in, so the check below is ready by the click.
+  useOwnedTemplates()
   const { run, isWorking } = usePdfDownload()
 
   const download = async () => {
-    const { listId, doc, paidAt } = useListEditorStoreBase.getState()
+    const { listId, doc } = useListEditorStoreBase.getState()
     if (!listId || !doc) return
-    if (!isPrintable(doc.design.templateId, paidAt)) {
-      const free = tTemplates(`names.${FREE_TEMPLATE_ID}`)
-      modal.confirm({
-        title: t('premiumTitle', { template: tTemplates(`names.${doc.design.templateId}`) }),
-        content: t('premiumText', { free }),
-        okText: t('premiumSwitch', { free }),
-        cancelText: tCommon('cancel'),
-        centered: true,
-        onOk: () => applyTemplate(FREE_TEMPLATE_ID),
-      })
-      return
-    }
+    const owned = usePurchasesStoreBase.getState().templates
+    if (owned !== null && !isPrintable(doc.design.templateId, owned)) return setCheckoutOpen(true)
     if (listId !== DRAFT_ID && !(await flushSave())) {
       void message.error(tErrors('kinds.server'))
       return
     }
     const saved = useListEditorStoreBase.getState()
-    if (saved.doc) await run(listId, saved.doc, saved.paidAt)
+    if (saved.doc && (await run(listId, saved.doc)) === 'locked') setCheckoutOpen(true)
   }
 
   return (

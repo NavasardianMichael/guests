@@ -1,6 +1,7 @@
 'use client'
 
-import { type FC, useCallback, useEffect, useState } from 'react'
+import { type FC, useCallback, useDeferredValue, useEffect, useState } from 'react'
+import { CloseOutlined } from '@ant-design/icons'
 import { Button, Drawer, Spin } from 'antd'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -18,6 +19,7 @@ import { clearLocalDraft, readLocalDraft } from '@helpers/localDraft'
 import { ErrorState } from '@components/ui/ErrorState'
 import { CanvasZoomControl } from './canvas/CanvasZoomControl'
 import { EditorCanvas } from './canvas/EditorCanvas'
+import { CheckoutModal } from './download/CheckoutModal'
 import { EditorBottomBar } from './EditorBottomBar'
 import { EditorSteps } from './EditorSteps'
 import { EditorTopBar } from './EditorTopBar'
@@ -28,6 +30,17 @@ import { SpreadsheetModal } from './spreadsheet/SpreadsheetModal'
 import { Autosave } from './useAutosave'
 
 type Props = { listId: string }
+
+/** The "no account" notice, once closed, stays closed for this browser session. */
+const BANNER_KEY = 'guests:guest-banner-closed'
+
+const bannerClosed = (): boolean => {
+  try {
+    return sessionStorage.getItem(BANNER_KEY) === '1'
+  } catch {
+    return false
+  }
+}
 
 type LoadState = { phase: 'loading' } | { phase: 'importing' } | { phase: 'ready' } | { phase: 'error'; error: unknown }
 
@@ -56,6 +69,10 @@ export const EditorShell: FC<Props> = ({ listId }) => {
   const isResolved = useAuthStore.use.isResolved()
   const loadDocument = useListEditorStore.use.loadDocument()
   const doc = useListEditorStore.use.doc()
+  // The sheet draws the document at a lower priority than the controls: while a colour, a
+  // slider or a name is changing, the control answers at once and the sheet follows when it
+  // can (an interrupted render of it is dropped for the newer document).
+  const sheetDoc = useDeferredValue(doc)
   const openListId = useListEditorStore.use.listId()
   const select = useListEditorStore.use.select()
   const tab = useEditorUiStore.use.tab()
@@ -66,6 +83,19 @@ export const EditorShell: FC<Props> = ({ listId }) => {
   const [fitZoom, setFitZoom] = useState(1)
   const [pages, setPages] = useState(1)
   const [previewing, setPreviewing] = useState(false)
+  const [bannerHidden, setBannerHidden] = useState(bannerClosed)
+  /**
+   * As cv-builder's hints: a close button. Only for the session, not for good: it says the list
+   * lives in this browser alone, which is worth seeing again on the next visit.
+   */
+  const closeBanner = () => {
+    setBannerHidden(true)
+    try {
+      sessionStorage.setItem(BANNER_KEY, '1')
+    } catch {
+      // Private mode: the notice comes back on the next load, which is harmless.
+    }
+  }
   const compact = useMediaQuery(COMPACT_QUERY)
   const tTabs = useTranslations('Editor.tabs')
 
@@ -74,7 +104,7 @@ export const EditorShell: FC<Props> = ({ listId }) => {
       const draft = readLocalDraft()
       if (!draft) return router.replace(newListPath())
       if (!user) {
-        loadDocument({ listId: DRAFT_ID, doc: draft, paidAt: null })
+        loadDocument({ listId: DRAFT_ID, doc: draft })
         useEditorUiStore.getState().startAt(startStep(draft), DRAFT_ID)
         return setState({ phase: 'ready' })
       }
@@ -84,7 +114,8 @@ export const EditorShell: FC<Props> = ({ listId }) => {
         clearLocalDraft()
         return created.id
       })
-      return router.replace(editorPath(createdId))
+      // `?checkout=1` (back from signing in to buy) follows the draft to its new address.
+      return router.replace(`${editorPath(createdId)}${window.location.search}`)
     }
 
     let list
@@ -97,7 +128,7 @@ export const EditorShell: FC<Props> = ({ listId }) => {
       return router.replace(`${ROUTES.signIn}?${RETURN_TO_QUERY}=${encodeURIComponent(editorPath(listId))}`)
     }
     const loaded: ListDocument = { title: list.title, content: list.content, design: list.design }
-    loadDocument({ listId: list.id, doc: loaded, paidAt: list.paidAt })
+    loadDocument({ listId: list.id, doc: loaded })
     useEditorUiStore.getState().startAt(startStep(loaded), list.id)
     setState({ phase: 'ready' })
   }, [listId, loadDocument, router, user])
@@ -157,8 +188,8 @@ export const EditorShell: FC<Props> = ({ listId }) => {
       <Autosave />
       <EditorTopBar zoom={zoom} fitZoom={fitZoom} pages={pages} onZoomChange={setZoom} onPreview={openPreview} />
       <EditorSteps />
-      {!user && openListId === DRAFT_ID && (
-        <div className='flex shrink-0 items-center justify-center gap-3 bg-accent-soft px-3 py-1 text-center text-[11px] leading-snug sm:px-4 sm:py-1.5 sm:text-xs'>
+      {!user && openListId === DRAFT_ID && !bannerHidden && (
+        <div className='relative flex shrink-0 items-center justify-center gap-3 bg-accent-soft py-1 pr-9 pl-3 text-center text-[11px] leading-snug sm:py-1.5 sm:pr-10 sm:pl-4 sm:text-xs'>
           <span>{t('guestBanner')}</span>
           <Link
             href={`${ROUTES.signIn}?${RETURN_TO_QUERY}=${encodeURIComponent(editorPath(DRAFT_ID))}`}
@@ -166,6 +197,10 @@ export const EditorShell: FC<Props> = ({ listId }) => {
           >
             {t('guestBannerCta')}
           </Link>
+          {/* Placed by a native wrapper: antd's own `position: relative` would beat `absolute`. */}
+          <span className='absolute top-1/2 right-1 flex -translate-y-1/2 sm:right-2'>
+            <Button type='text' size='small' className='text-muted' icon={<CloseOutlined />} aria-label={t('guestBannerClose')} onClick={closeBanner} />
+          </span>
         </div>
       )}
       <div className='flex min-h-0 flex-1'>
@@ -177,7 +212,7 @@ export const EditorShell: FC<Props> = ({ listId }) => {
         </aside>
         <div className='relative flex min-w-0 flex-1'>
           <EditorCanvas
-            doc={doc}
+            doc={sheetDoc ?? doc}
             zoom={zoom}
             onZoomChange={setZoom}
             previewing={previewing}
@@ -210,6 +245,7 @@ export const EditorShell: FC<Props> = ({ listId }) => {
       )}
       <ImportModal />
       <SpreadsheetModal />
+      <CheckoutModal />
     </div>
   )
 }

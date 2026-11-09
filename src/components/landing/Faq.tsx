@@ -1,6 +1,6 @@
 import type { FC } from 'react'
 import { getTranslations } from 'next-intl/server'
-import { formatAmount, LIST_PRICE_AMD } from '@constants/pricing'
+import { formatAmount, TEMPLATE_PRICE_AMD } from '@constants/pricing'
 import { faqSchema } from '@linkedDataSchema/site'
 import { JsonLd } from '@components/seo/JsonLd'
 import { PlusOutlined } from '@components/ui/icons'
@@ -15,7 +15,7 @@ export const Faq: FC<{ title?: string }> = async ({ title }) => {
   const t = await getTranslations('Faq')
   const tHome = await getTranslations('Home')
   const tCommon = await getTranslations('Common')
-  const price = tCommon('amount', { amount: formatAmount(LIST_PRICE_AMD) })
+  const price = tCommon('amount', { amount: formatAmount(TEMPLATE_PRICE_AMD) })
   const items = FAQ_KEYS.map((key) => ({ key, question: t(`${key}.q`), answer: t(`${key}.a`, { price }) }))
 
   return (

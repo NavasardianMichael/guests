@@ -223,6 +223,10 @@ Then the outside services:
   answers the contact form with 502 and logs `[mail] … failed: <status> <reason>`.
 - **Google Gemini** (photo import): an API key from https://aistudio.google.com/apikey as
   `GEMINI_API_KEY`. Without it the import dialog says photo import is unavailable.
+- **Ameriabank vPOS** (buying templates): `ClientID`, username and password from
+  vpos.support@ameriabank.am, as `AMERIA_CLIENT_ID`, `AMERIA_USERNAME`, `AMERIA_PASSWORD`, with
+  `PAYMENT_GATEWAY="ameria"`. Test terminal first (`AMERIA_TEST_MODE`, the 10 AMD override and
+  the OrderID range): docs/PAYMENTS.md, "Going live".
 
 `server/.env.production.local` (git-ignored). Put the database password after `guests-seating-board:`:
 
@@ -240,9 +244,18 @@ GOOGLE_CLIENT_SECRET=""
 GOOGLE_REDIRECT_URI="https://api.guests-seating-board.eapps.site/identity/google/callback"
 
 GEMINI_API_KEY=""
+
+PAYMENT_GATEWAY="ameria"
+AMERIA_CLIENT_ID="<from the bank>"
+AMERIA_USERNAME="<from the bank>"
+AMERIA_PASSWORD="<from the bank>"
+AMERIA_TEST_MODE="false"
+AMERIA_ORDER_ID_OFFSET="<past every test OrderID>"
 ```
 
-The first four are required; `GEMINI_API_KEY` turns photo import on.
+The first four are required; `GEMINI_API_KEY` turns photo import on; `PAYMENT_GATEWAY` and the
+`AMERIA_*` keys turn checkout on (until the bank signs off, keep `AMERIA_TEST_MODE="true"` and
+add `AMERIA_AMOUNT_OVERRIDE="10"` — docs/PAYMENTS.md).
 Add `PUPPETEER_NO_SANDBOX="true"` only if step 2 sent you here. Leave out `NODE_ENV`, `PORT`,
 `HOST` and `RENDER_ORIGIN`: the pipeline sets them itself.
 
@@ -316,8 +329,9 @@ If one changes later, update its secret and redeploy the web (step 10's **Run wo
 - Only with Google sign-in (step 6's `GOOGLE_*` filled): Google Cloud console → OAuth consent
   screen: add `eapps.site` to the authorized domains, and `https://guests-seating-board.eapps.site/privacy`
   and `/terms` as the privacy-policy and terms links.
-- The Terms and Privacy pages (`/terms`, `/privacy`) are drafts (`src/constants/legal.ts`):
-  have them reviewed before launch. Billing will add a refund page (`docs/BILLING.md`).
+- The Terms, Privacy and Refund pages (`/terms`, `/privacy`, `/refund-policy`) are drafts
+  (`src/constants/legal.ts`): have them reviewed before launch. Ameriabank requires all three
+  to be reachable before it signs off the terminal (`docs/PAYMENTS.md`).
 
 ## 9. GitHub secrets **[GH]** (once)
 

@@ -9,7 +9,8 @@
 #   APP_DIR          deployment root, e.g. /home/michael/apps/guests-seating-board
 #   ENV_API_BASE64   base64 of the API env file (`pnpm env:base64 production`) — DATABASE_URL,
 #                    JWT_SECRET, CORS_ORIGIN, API_PUBLIC_URL, the mail engine, Google OAuth,
-#                    GEMINI_API_KEY (photo import). NODE_ENV/PORT/HOST/RENDER_ORIGIN are appended
+#                    GEMINI_API_KEY (photo import), PAYMENT_GATEWAY + AMERIA_* (checkout,
+#                    docs/PAYMENTS.md). NODE_ENV/PORT/HOST/RENDER_ORIGIN are appended
 #                    below, so do not put them in the secret.
 #   NEXT_PUBLIC_API_URL    https://api.guests-seating-board.eapps.site
 #   NEXT_PUBLIC_SITE_URL   https://guests-seating-board.eapps.site

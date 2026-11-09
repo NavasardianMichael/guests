@@ -102,7 +102,8 @@ name as a Variable wins. Deploy fails closed if either origin is missing, loopba
 
 `ENV_API_BASE64` is `server/.env.production.local`, encoded: `DATABASE_URL`, `JWT_SECRET`,
 `CORS_ORIGIN`, `API_PUBLIC_URL`, the mail engine (`MAIL_API_*`), Google OAuth (`GOOGLE_*`) and
-photo import (`GEMINI_API_KEY`) — every key in `server/.env.example` except the
+photo import (`GEMINI_API_KEY`), checkout (`PAYMENT_GATEWAY`, `AMERIA_*` — docs/PAYMENTS.md) —
+every key in `server/.env.example` except the
 "Local dev only" ones. Do **not** put `NODE_ENV`, `PORT`, `HOST` or `RENDER_ORIGIN` in it: the
 deploy strips and rewrites those four so they cannot drift from the units.
 
@@ -192,7 +193,10 @@ assistants.
   never at boot — which is why the deploy ends with `check_pdf`. "No usable sandbox" there means the host
   blocks Chrome's sandbox: PRODUCTION_SETUP.md step 2.
 - **Photo import is off until `GEMINI_API_KEY` is in `ENV_API_BASE64`**: the web says so in
-  the import dialog; everything else works. Billing is not built (`docs/BILLING.md`).
+  the import dialog; everything else works.
+- **Nobody can buy a template until `PAYMENT_GATEWAY="ameria"` and the three `AMERIA_*`
+  credentials are in `ENV_API_BASE64`**: the mock bank is refused in production, so checkout
+  answers 503 and the dialog says payments are unavailable. Going live: docs/PAYMENTS.md.
 - **`deploy` needs `verify` to have passed, not merely "not failed".** A failed `verify` skips
   both build jobs instead of failing them, so a "no failed build" condition let the deploy job
   start anyway.

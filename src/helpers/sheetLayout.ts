@@ -66,6 +66,7 @@ type Box = { id: string; page: number; x: number; y: number; w: number; h: numbe
 
 export type HeaderBlock = Box & { type: 'header'; heading: Lines; subheading: Lines; headingH: number }
 export type FooterBlock = Box & { type: 'footer'; lines: Lines }
+/** A name on a plain list; `tableName` as printed (the table names' case) and `tableW` its width in their style. */
 export type GuestBlock = Box & { type: 'guest'; guest: Guest; lines: Lines; tableName: string; tableW: number }
 export type TableBlock = Box & {
   type: 'table'
@@ -77,6 +78,7 @@ export type TableBlock = Box & {
   headGap: number
   guests: { guest: Guest; lines: Lines }[]
 }
+/** A place card; `tableName` and `note` as printed, in the case their text roles set. */
 export type CardBlock = Box & { type: 'card'; guest: Guest; lines: Lines; tableName: string; note: string; faceH: number }
 
 export type SheetBlock = HeaderBlock | FooterBlock | GuestBlock | TableBlock | CardBlock
@@ -517,18 +519,20 @@ export const layoutSheet =(doc: ListDocument, measure: Measure): SheetLayout => 
         h: cardH,
         guest,
         lines: wrapText(guest.name, inner, nameStyle, scale, measure),
-        tableName,
-        note: layout.showNote ? guest.note : '',
+        tableName: displayText(tableName, type.group),
+        note: layout.showNote ? displayText(guest.note, type.subheading) : '',
         faceH,
       }
       sized.push({ id: guest.id, w: colW, h: cardH, block })
     }
   } else if (design.kind === 'list') {
     const nameLH = lineHeight(type.name, scale)
+    // The table beside each name is set in the table names' style (`type.group`), as on a board.
+    const tableLH = lineHeight(type.group, scale)
     const ordered = sortGuests(content.guests, layout.sort)
     ordered.forEach((guest, index) => {
-      const tableName = layout.showTable ? (tablesById.get(guest.tableId)?.name ?? '') : ''
-      const tableW = tableName ? measure(tableName, type.name, scale) : 0
+      const tableName = layout.showTable ? displayText(tablesById.get(guest.tableId)?.name ?? '', type.group) : ''
+      const tableW = tableName ? measure(tableName, type.group, scale) : 0
       const text = layout.numbering ? `${index + 1}. ${guest.name}` : guest.name
       const w = widthOf(guest.id, colW)
       const nameW = w - (tableW ? tableW + LIST_TABLE_GAP * scale : 0)
@@ -540,7 +544,7 @@ export const layoutSheet =(doc: ListDocument, measure: Measure): SheetLayout => 
         x: 0,
         y: 0,
         w,
-        h: heightOf(guest.id, Math.max(1, lines.length) * nameLH),
+        h: heightOf(guest.id, Math.max(Math.max(1, lines.length) * nameLH, tableName ? tableLH : 0)),
         guest,
         lines,
         tableName,

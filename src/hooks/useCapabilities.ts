@@ -17,7 +17,7 @@ const load = (): Promise<AppCapabilities | null> => {
   return pending
 }
 
-/** What the API offers right now (Google, AI import, billing); null while loading or unreachable. */
+/** What the API offers right now (Google, AI import, payments); null while loading or unreachable. */
 export const useCapabilities = (): AppCapabilities | null => {
   const [capabilities, setCapabilities] = useState<AppCapabilities | null>(null)
   useEffect(() => {

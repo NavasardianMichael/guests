@@ -32,7 +32,8 @@ model User {
   createdAt              DateTime  @default(now())
   updatedAt              DateTime  @updatedAt
 
-  lists GuestList[]
+  lists    GuestList[]
+  payments Payment[]
 }
 
 /// One guest list and how it prints. `content` and `design` are JSON coerced by
@@ -54,11 +55,84 @@ model GuestList {
   guestCount   Int       @default(0)
   content      Json
   design       Json
-  /// Set once billing is live and this list is paid for (docs/BILLING.md). Never set today.
-  paidAt       DateTime?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
+  payments  Payment[]
+  downloads PdfDownload[]
+
   @@index([userId, updatedAt])
   @@index([guestKeyHash, updatedAt])
+}
+
+enum PaymentStatus {
+  pending
+  succeeded
+  failed
+  /// Was `succeeded`, then refunded or voided in the bank's panel: the template is no longer
+  /// its owner's, unless another payment for it is still `succeeded`.
+  refunded
+}
+
+enum PaymentGateway {
+  ameria
+  mock
+}
+
+/// One checkout attempt for one **template** (docs/PAYMENTS.md). A `succeeded` row is the
+/// licence: its owner — an account, or a browser's guest key until they sign in — prints that
+/// template on every list they have or make (services/payments.ts#ownedTemplateIds). There is
+/// no other record of who bought what.
+///
+/// Kept when the account or the list is deleted: it is the accounting record, so the links
+/// are nullable. `listId` is only the list the purchase was started from (where the buyer
+/// returns to).
+model Payment {
+  id               String         @id @default(cuid())
+  /// The integer order number a gateway needs (Ameria's `OrderID`, plus an offset).
+  orderNumber      Int            @unique @default(autoincrement())
+  userId           String?
+  user             User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  /// A guest buyer's key (lib/guest.ts), hashed; moved to `userId` when they sign in.
+  guestKeyHash     String?
+  templateId       String
+  listId           String?
+  list             GuestList?     @relation(fields: [listId], references: [id], onDelete: SetNull)
+  /// Whole drams.
+  amount           Int
+  currency         String         @default("AMD")
+  gateway          PaymentGateway
+  gatewayPaymentId String?        @unique
+  status           PaymentStatus  @default(pending)
+  failureReason    String?
+  paidAt           DateTime?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  downloads PdfDownload[]
+
+  @@index([userId, templateId, status])
+  @@index([guestKeyHash, templateId, status])
+}
+
+/// One PDF in a bought template the server sent in full (routes/lists.ts, routes/pdf.ts): the
+/// proof, next to the payment's, that what was paid for was delivered — what the refund
+/// policy's "could not download it" claim is checked against. Written once the last byte is
+/// handed to the connection. Free-template PDFs are not recorded. Kept, like `Payment`, when
+/// the list or account goes. `listId` is null for a guest's local draft.
+model PdfDownload {
+  id         String     @id @default(cuid())
+  listId     String?
+  list       GuestList? @relation(fields: [listId], references: [id], onDelete: SetNull)
+  templateId String
+  /// The `succeeded` payment for that template the download was served under.
+  paymentId  String?
+  payment    Payment?   @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+  bytes      Int
+  ip         String?
+  userAgent  String?
+  createdAt  DateTime   @default(now())
+
+  @@index([listId, createdAt])
+  @@index([paymentId])
 }

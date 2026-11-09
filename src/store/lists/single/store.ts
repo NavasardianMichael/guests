@@ -33,7 +33,6 @@ export const DEFAULT_SEATS_PER_TABLE = 10
 const initialState: ListEditorState = {
   listId: null,
   doc: null,
-  paidAt: null,
   saveStatus: 'saved',
   past: [],
   future: [],
@@ -90,23 +89,20 @@ export const useListEditorStoreBase = create<ListEditorState & ListEditorActions
     combine(
       initialState,
       (set, get): ListEditorActions => ({
-        loadDocument: ({ listId, doc, paidAt }) => {
+        loadDocument: ({ listId, doc }) => {
           // A draft saved in this browser before blocks could be resized has no `sizes`, and
           // one saved before sheets had shapes no `shape`.
           const stored: Partial<Pick<ListDocument['design']['layout'], 'sizes'>> = doc.design.layout
           const storedDesign: Partial<Pick<ListDocument['design'], 'shape'>> = doc.design
           const layout = { ...doc.design.layout, sizes: stored.sizes ?? {} }
           const loaded = { ...doc, design: { ...doc.design, shape: storedDesign.shape ?? 'rectangle', layout } }
-          set((state) => ({ ...state, ...initialState, listId, doc: loaded, paidAt }))
+          set((state) => ({ ...state, ...initialState, listId, doc: loaded }))
         },
         reset: () => {
           set((state) => ({ ...state, ...initialState }))
         },
         setSaveStatus: (saveStatus) => {
           set({ saveStatus })
-        },
-        setPaidAt: (paidAt) => {
-          set({ paidAt })
         },
         setListId: (listId) => {
           set({ listId })

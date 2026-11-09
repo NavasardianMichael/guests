@@ -54,7 +54,10 @@ export const TEMPLATE_IDS = [
 
 export type TemplateId = (typeof TEMPLATE_IDS)[number]
 
-/** Printable without paying; every other template prints only once paid (`services/entitlement.ts`). Twin: `free` in the web's templates. */
+export const isTemplateId = (value: unknown): value is TemplateId =>
+  typeof value === 'string' && (TEMPLATE_IDS as readonly string[]).includes(value)
+
+/** Printable without paying; every other template prints only once its owner has bought it (`services/entitlement.ts`). Twin: `free` in the web's templates. */
 export const FREE_TEMPLATE_IDS: readonly TemplateId[] = ['memorial']
 
 export const DEFAULT_TEMPLATE_ID: TemplateId = 'memorial'

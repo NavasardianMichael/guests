@@ -21,6 +21,9 @@ export const RETURN_TO_QUERY = 'returnTo'
 /** Where Google sign-in errors land (`ROUTES.signIn`), with `?error=`. */
 export const SIGN_IN_PATH = '/auth/sign-in'
 
+/** Where the bank's return trip lands, with `?status=` (`ROUTES.paymentResult`). */
+export const PAYMENT_RESULT_PATH = '/payment/result'
+
 /** Signed-in default destination (`ROUTES.dashboard`). */
 export const DASHBOARD_PATH = '/dashboard'
 

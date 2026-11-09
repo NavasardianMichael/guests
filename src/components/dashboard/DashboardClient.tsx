@@ -4,12 +4,14 @@ import { type FC, useCallback, useEffect, useState } from 'react'
 import { PlusOutlined } from '@ant-design/icons'
 import { Alert, App, Button, Empty, Skeleton, Tooltip } from 'antd'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { useAuthStore } from '@store/auth/store'
 import { useListsStore } from '@store/lists/list/store'
 import type { GuestList } from '@store/lists/single/types'
+import { useOwnedTemplates } from '@hooks/useOwnedTemplates'
 import { usePdfDownload } from '@hooks/usePdfDownload'
-import { newListPath, RETURN_TO_QUERY, ROUTES } from '@constants/routes'
+import { CHECKOUT_QUERY, editorPath, newListPath, RETURN_TO_QUERY, ROUTES } from '@constants/routes'
 import { classifyError, errorCopyKey } from '@helpers/error'
 import { reportError } from '@helpers/reportError'
 import { ErrorState } from '@components/ui/ErrorState'
@@ -30,6 +32,12 @@ export const DashboardClient: FC = () => {
   const deleteList = useListsStore.use.deleteList()
   const { message, modal } = App.useApp()
   const { run } = usePdfDownload()
+  const router = useRouter()
+  const owned = useOwnedTemplates()
+  /** A list in a template not bought opens in the editor with the checkout, which shows what it buys. */
+  const onDownload = async (item: GuestList) => {
+    if ((await run(item.id, item)) === 'locked') router.push(`${editorPath(item.id)}?${CHECKOUT_QUERY}=1`)
+  }
   const [loadError, setLoadError] = useState<unknown>(null)
 
   const load = useCallback(
@@ -104,7 +112,14 @@ export const DashboardClient: FC = () => {
     return (
       <div className='mt-10 grid grid-cols-2 gap-x-6 gap-y-10 md:grid-cols-3 xl:grid-cols-4'>
         {lists.map((item) => (
-          <ListCard key={item.id} list={item} onDuplicate={onDuplicate} onDelete={onDelete} onDownload={(target) => void run(target.id, target, target.paidAt)} />
+          <ListCard
+            key={item.id}
+            list={item}
+            bought={Boolean(owned?.includes(item.design.templateId))}
+            onDuplicate={onDuplicate}
+            onDelete={onDelete}
+            onDownload={(target) => void onDownload(target)}
+          />
         ))}
       </div>
     )

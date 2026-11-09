@@ -1,6 +1,6 @@
 'use client'
 
-import { type FC, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { type FC, memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import {
   CameraOutlined,
   ExpandOutlined,
@@ -53,8 +53,11 @@ const distanceOf = (touches: TouchPoints): number =>
  * rectangle) are passed in per page and never reach a print.
  *
  * Touch screens pinch to zoom the sheet, not the page (as in cv-builder's editor).
+ *
+ * Memoised: the shell re-renders on every edit, and hands this a deferred copy of the document
+ * (`useDeferredValue`), so the sheet re-renders only when that copy moves on.
  */
-export const EditorCanvas: FC<Props> = ({ doc, zoom, onZoomChange, onFitZoomChange, onPagesChange, previewing }) => {
+export const EditorCanvas: FC<Props> = memo(function EditorCanvas({ doc, zoom, onZoomChange, onFitZoomChange, onPagesChange, previewing }) {
   const t = useTranslations('Editor.canvas')
   const tSamples = useTranslations('Samples')
   const autoSeat = useListEditorStore.use.autoSeat()
@@ -347,4 +350,4 @@ export const EditorCanvas: FC<Props> = ({ doc, zoom, onZoomChange, onFitZoomChan
       </div>
     </div>
   )
-}
+})

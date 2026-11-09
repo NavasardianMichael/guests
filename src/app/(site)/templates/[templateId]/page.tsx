@@ -8,6 +8,7 @@ import { PRINT_KINDS } from '@store/lists/single/types'
 import { sampleTexts } from '@i18n/sampleTexts'
 import { APP_NAME } from '@constants/app'
 import { FONTS, fontSourceUrl } from '@constants/fonts'
+import { formatAmount, TEMPLATE_PRICE_AMD } from '@constants/pricing'
 import { ROUTES, templatePath } from '@constants/routes'
 import { isTemplateId, TEMPLATE_IDS, TEMPLATE_LIST, TEMPLATES } from '@constants/templates'
 import { sampleContent, templateDesign } from '@helpers/listFactory'
@@ -16,6 +17,7 @@ import { absoluteUrl } from '@helpers/url'
 import { breadcrumbSchema, ORGANIZATION_ID } from '@linkedDataSchema/site'
 import { JsonLd } from '@components/seo/JsonLd'
 import { SheetFontsLink } from '@components/sheet/SheetFontsLink'
+import { OwnedTemplateNote, TemplatePriceValue } from '@components/templates/OwnedTemplateNote'
 import { TemplateCard } from '@components/templates/TemplateCard'
 import { ShapedSheetPreview, TemplateShapePicker, TemplateShapeProvider, UseTemplateLink } from '@components/templates/TemplateShape'
 
@@ -48,6 +50,7 @@ export default async function TemplatePage({ params }: Props) {
   const tKinds = await getTranslations('Editor.layout.kinds')
   const tNav = await getTranslations('Nav')
   const tShapes = await getTranslations('Shapes')
+  const tCommon = await getTranslations('Common')
   const locale = await getLocale()
   const texts = await sampleTexts()
   const template = TEMPLATES[templateId]
@@ -101,7 +104,13 @@ export default async function TemplatePage({ params }: Props) {
               <dt className='text-xs font-semibold tracking-wider text-muted uppercase'>{t('style')}</dt>
               <dd className='m-0 mt-2 text-sm'>{t(`categories.${template.category}`)}</dd>
               <dt className='mt-4 text-xs font-semibold tracking-wider text-muted uppercase'>{t('price')}</dt>
-              <dd className='m-0 mt-2 text-sm'>{template.free ? t('free') : t('premium')}</dd>
+              <dd className='m-0 mt-2 text-sm'>
+                <TemplatePriceValue
+                  templateId={templateId}
+                  free={template.free}
+                  price={tCommon('amount', { amount: formatAmount(TEMPLATE_PRICE_AMD) })}
+                />
+              </dd>
             </div>
             <div>
               <dt className='text-xs font-semibold tracking-wider text-muted uppercase'>{t('fonts')}</dt>
@@ -136,6 +145,7 @@ export default async function TemplatePage({ params }: Props) {
               {t('useThis')}
             </UseTemplateLink>
           </div>
+          <OwnedTemplateNote templateId={templateId} />
         </div>
 
         <div className='grid grid-cols-2 gap-4 sm:gap-6'>

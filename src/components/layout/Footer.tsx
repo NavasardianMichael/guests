@@ -26,6 +26,7 @@ export const Footer: FC = async () => {
       links: [
         { href: ROUTES.terms, label: t('terms') },
         { href: ROUTES.privacy, label: t('privacy') },
+        { href: ROUTES.refundPolicy, label: t('refund') },
       ],
     },
   ]

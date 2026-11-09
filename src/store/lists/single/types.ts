@@ -169,8 +169,6 @@ export type ListDocument = {
 
 export type GuestList = ListDocument & {
   id: string
-  /** Set once billing is live and this list is paid for (`docs/BILLING.md`). */
-  paidAt: string | null
   createdAt: string
   updatedAt: string
 }
@@ -207,7 +205,6 @@ export type SheetContent = Pick<ListContent, 'guests' | 'tables'>
 export type ListEditorState = {
   listId: string | null
   doc: ListDocument | null
-  paidAt: string | null
   saveStatus: SaveStatus
   past: ListDocument[]
   future: ListDocument[]
@@ -218,10 +215,9 @@ export type ListEditorState = {
 } & StateCommonProps
 
 export type ListEditorActions = {
-  loadDocument: (args: { listId: string; doc: ListDocument; paidAt: string | null }) => void
+  loadDocument: (args: { listId: string; doc: ListDocument }) => void
   reset: () => void
   setSaveStatus: (status: SaveStatus) => void
-  setPaidAt: (paidAt: string | null) => void
   setListId: (listId: string) => void
   undo: () => void
   redo: () => void

@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { getTranslations } from 'next-intl/server'
-import { formatAmount, LIST_PRICE_AMD } from '@constants/pricing'
+import { formatAmount, TEMPLATE_PRICE_AMD } from '@constants/pricing'
 import { newListPath, ROUTES } from '@constants/routes'
 import { pageMetadata } from '@helpers/metadata'
 import { breadcrumbSchema, webApplicationSchema } from '@linkedDataSchema/site'
@@ -12,14 +12,13 @@ import { CheckOutlined } from '@components/ui/icons'
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations('Pricing')
   const tCommon = await getTranslations('Common')
-  const price = tCommon('amount', { amount: formatAmount(LIST_PRICE_AMD) })
+  const price = tCommon('amount', { amount: formatAmount(TEMPLATE_PRICE_AMD) })
   return pageMetadata({ title: t('metaTitle'), description: t('metaDescription', { price }), path: ROUTES.pricing })
 }
 
 /**
- * The model, as cv-builder's: free to build, free templates print free, a premium template's
- * print is paid once per list. Billing is not built yet, so the page says printing is free
- * for now (`Pricing.beta`) — `docs/BILLING.md` lists what changes here when it is.
+ * The model (docs/PAYMENTS.md): free to build, the free template prints free, a premium
+ * template is bought once and prints on every list its buyer makes.
  */
 export default async function PricingPage() {
   const t = await getTranslations('Pricing')
@@ -27,7 +26,7 @@ export default async function PricingPage() {
   const tCommon = await getTranslations('Common')
   const freeItems = t.raw('freeItems') as string[]
   const paidItems = t.raw('paidItems') as string[]
-  const price = tCommon('amount', { amount: formatAmount(LIST_PRICE_AMD) })
+  const price = tCommon('amount', { amount: formatAmount(TEMPLATE_PRICE_AMD) })
 
   return (
     <div className='mesh-bg'>
@@ -44,7 +43,6 @@ export default async function PricingPage() {
         <div className='text-center'>
           <h1 className='font-display text-title font-extrabold tracking-tight text-ink sm:text-5xl'>{t('title')}</h1>
           <p className='mx-auto mt-4 max-w-2xl text-base leading-relaxed text-muted sm:mt-5 sm:text-lg'>{t('subtitle')}</p>
-          <p className='mx-auto mt-5 inline-flex max-w-2xl rounded-full bg-accent-soft px-4 py-2 text-sm font-semibold text-ink'>{t('beta')}</p>
         </div>
 
         <div className='mt-10 grid gap-5 sm:mt-14 sm:gap-6 md:grid-cols-2'>
@@ -64,7 +62,7 @@ export default async function PricingPage() {
             <div className='pointer-events-none absolute -top-20 -right-20 size-60 rounded-full bg-accent opacity-30 blur-3xl' aria-hidden='true' />
             <h2 className='relative m-0 text-base font-bold text-white/70 sm:text-lg'>{t('paid')}</h2>
             <p className='relative mt-2 mb-1 font-display text-4xl font-extrabold text-white sm:mt-3 sm:text-5xl'>{price}</p>
-            <p className='relative mt-0 mb-6 text-white/60'>{t('perList')}</p>
+            <p className='relative mt-0 mb-6 text-white/60'>{t('perTemplate')}</p>
             <ul className='relative m-0 flex list-none flex-col gap-3 p-0'>
               {paidItems.map((item) => (
                 <li key={item} className='flex gap-3'>

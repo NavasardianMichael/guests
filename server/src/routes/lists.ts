@@ -10,15 +10,17 @@ import { createRateLimiter } from '../lib/rateLimit.js'
 import { mapList } from '../mappers/entities.js'
 import { type ListOwner, listOwnerOf, ownerKey, requireListOwner } from '../middleware/auth.js'
 import { asyncHandler, HttpError } from '../middleware/error.js'
-import { printTerms } from '../services/entitlement.js'
+import { recordDownload } from '../services/downloads.js'
 import { coerceContent, coerceDesign, coerceTitle, DEFAULT_LIST_TITLE } from '../services/listDocument.js'
+import { printTermsFor } from '../services/payments.js'
 
 /**
  * A user's guest lists — or a guest's: lists a browser keeps on the server without an
  * account, owned by its guest key (`lib/guest.ts`). Every route is scoped to that owner
  * (`requireListOwner`): an id that is not theirs answers 404, the same as one that does not
- * exist. (A guest normally works in a local draft; the guest-key path is there for billing,
- * which needs a server copy to attach a payment to — `docs/BILLING.md`.)
+ * exist. (A guest normally works in a local draft; a guest's server lists come from
+ * duplicates and earlier imports. What a guest buys — a template — belongs to the same key:
+ * `docs/PAYMENTS.md`.)
  */
 export const listsRouter = Router()
 
@@ -108,11 +110,11 @@ listsRouter.put(
     if (req.body?.design !== undefined) data.design = asJson(design)
     Object.assign(data, denormalised(content, design))
     const updated = await prisma.guestList.update({ where: { id: list.id }, data })
-    ok(res, { updatedAt: updated.updatedAt.toISOString(), paidAt: updated.paidAt?.toISOString() ?? null })
+    ok(res, { updatedAt: updated.updatedAt.toISOString() })
   })
 )
 
-/** A copy is a new list: never paid for. */
+/** A copy is a new list, in the same template: printable on the same terms (a bought template is the owner's). */
 listsRouter.post(
   '/:id/duplicate',
   asyncHandler(async (req, res) => {
@@ -145,21 +147,25 @@ listsRouter.delete(
   })
 )
 
-/** The PDF, as designed — on the terms `services/entitlement.ts` sets (a premium template only once paid). */
+/**
+ * The PDF, as designed — on the terms `services/entitlement.ts` sets (a premium template only
+ * once its owner has bought it, asked again so a refund takes it back). Every clean one sent
+ * in full is recorded against its payment (`PdfDownload`).
+ */
 listsRouter.get(
   '/:id/pdf',
   asyncHandler(async (req, res) => {
     const list = await loadOwnedList(req)
-    if (!pdfLimiter(ownerKey(listOwnerOf(req))).allowed) return fail(res, 'Too many prints', ERROR_CODE.rateLimited, 429)
+    const owner = listOwnerOf(req)
+    if (!pdfLimiter(ownerKey(owner)).allowed) return fail(res, 'Too many prints', ERROR_CODE.rateLimited, 429)
     const design = coerceDesign(list.design)
-    const terms = printTerms({ templateId: design.templateId, paidAt: list.paidAt })
+    const terms = await printTermsFor(owner, design.templateId)
     if (!terms.allowed) return fail(res, 'Payment required', ERROR_CODE.listNotPaid, 402)
-    await sendPdf(res, list.id, {
-      title: list.title,
-      content: coerceContent(list.content),
-      design,
-      watermark: terms.watermark,
-      watermarkText: WATERMARK_TEXT,
-    })
+    await sendPdf(
+      res,
+      list.id,
+      { title: list.title, content: coerceContent(list.content), design, watermark: terms.watermark, watermarkText: WATERMARK_TEXT },
+      terms.paymentId ? recordDownload(req, { listId: list.id, templateId: design.templateId, paymentId: terms.paymentId }) : undefined
+    )
   })
 )

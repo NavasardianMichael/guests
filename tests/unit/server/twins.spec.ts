@@ -5,9 +5,9 @@ import { GUEST_COOKIE, RESET_TOKEN_QUERY, VERIFY_TOKEN_QUERY } from '@constants/
 import { ERROR_CODES } from '@constants/errors'
 import { FONT_SLUGS } from '@constants/fonts'
 import { PAPER_FORMATS, PAPER_LIMITS, PAPER_SIZES } from '@constants/paper'
-import { LIST_PRICE_AMD } from '@constants/pricing'
+import { TEMPLATE_PRICE_AMD } from '@constants/pricing'
 import { RETURN_TO_QUERY, ROUTES } from '@constants/routes'
-import { DEFAULT_TEMPLATE_ID, TABLE_STYLES, TEMPLATE_IDS, TEMPLATE_LIST } from '@constants/templates'
+import { DEFAULT_TEMPLATE_ID, isTemplateId, TABLE_STYLES, TEMPLATE_IDS, TEMPLATE_LIST } from '@constants/templates'
 import { DEFAULT_LIST_TITLE, templateDesign } from '@helpers/listFactory'
 import * as serverCatalogue from '../../../server/src/lib/catalogue'
 import { DEFAULT_TEMPLATE_ID as SERVER_DEFAULT_TEMPLATE, FREE_TEMPLATE_IDS } from '../../../server/src/lib/catalogue'
@@ -15,7 +15,7 @@ import { ERROR_CODE } from '../../../server/src/lib/error-codes'
 import * as guest from '../../../server/src/lib/guest'
 import * as returnPath from '../../../server/src/lib/return-path'
 import { coerceDesign, DEFAULT_LIST_TITLE as SERVER_DEFAULT_TITLE, LIST_LIMITS } from '../../../server/src/services/listDocument'
-import { LIST_PRICE_AMD as SERVER_PRICE } from '../../../server/src/services/pricing'
+import { TEMPLATE_PRICE_AMD as SERVER_PRICE } from '../../../server/src/services/pricing'
 
 /**
  * Strings and numbers that live twice, once per package, with no import path between them.
@@ -25,6 +25,8 @@ import { LIST_PRICE_AMD as SERVER_PRICE } from '../../../server/src/services/pri
 describe('server/web twins', () => {
   it('agree on the template catalogue and which templates are free', () => {
     expect([...serverCatalogue.TEMPLATE_IDS]).toEqual([...TEMPLATE_IDS])
+    expect(serverCatalogue.isTemplateId('ivory')).toBe(isTemplateId('ivory'))
+    expect(serverCatalogue.isTemplateId('nope')).toBe(isTemplateId('nope'))
     expect([...FREE_TEMPLATE_IDS]).toEqual(TEMPLATE_LIST.filter((template) => template.free).map((template) => template.id))
     expect(SERVER_DEFAULT_TEMPLATE).toBe(DEFAULT_TEMPLATE_ID)
   })
@@ -61,7 +63,7 @@ describe('server/web twins', () => {
   })
 
   it('charge what the pages print', () => {
-    expect(SERVER_PRICE).toBe(LIST_PRICE_AMD)
+    expect(SERVER_PRICE).toBe(TEMPLATE_PRICE_AMD)
   })
 
   it('name the guest cookie the proxy looks for', () => {
@@ -85,5 +87,6 @@ describe('server/web twins', () => {
     expect(returnPath.RETURN_TO_QUERY).toBe(RETURN_TO_QUERY)
     expect(returnPath.SIGN_IN_PATH).toBe(ROUTES.signIn)
     expect(returnPath.DASHBOARD_PATH).toBe(ROUTES.dashboard)
+    expect(returnPath.PAYMENT_RESULT_PATH).toBe(ROUTES.paymentResult)
   })
 })

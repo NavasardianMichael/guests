@@ -19,5 +19,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     page(ROUTES.contact, 0.3, 'yearly'),
     page(ROUTES.terms, 0.2, 'yearly'),
     page(ROUTES.privacy, 0.2, 'yearly'),
+    page(ROUTES.refundPolicy, 0.2, 'yearly'),
   ]
 }

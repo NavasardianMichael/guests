@@ -181,3 +181,34 @@ describe('layoutSheet', () => {
     expect(layoutSheet(doc, measure).blocks[0].h).toBe(100)
   })
 })
+
+describe('a plain list', () => {
+  it('sets the table beside each name in the table names’ style', () => {
+    const doc = docWith(2, 1, (d) => {
+      d.design.kind = 'list'
+      d.design.layout.showTable = true
+      d.design.type.group = { ...d.design.type.group, uppercase: true, size: d.design.type.name.size * 4 }
+    })
+    // Measured in the table names' style: a width that grows with their size.
+    const sized: Measure = (text, style, scale) => Array.from(text).length * style.size * 0.2 * scale
+    const layout = layoutSheet(doc, sized)
+    const block = layout.blocks.find((candidate) => candidate.type === 'guest')
+    if (block?.type !== 'guest') throw new Error('no guest block')
+    expect(block.tableName).toBe('T1')
+    expect(block.tableW).toBeCloseTo(sized('T1', doc.design.type.group, doc.design.textScale))
+    // Taller than one line of the name: the row makes room for the bigger table name.
+    const nameLine = doc.design.type.name.size * doc.design.textScale * (25.4 / 72) * 1.3
+    expect(block.h).toBeGreaterThan(nameLine)
+  })
+
+  it('prints the table in capitals when the table names are set in capitals', () => {
+    const doc = docWith(1, 1, (d) => {
+      d.design.kind = 'list'
+      d.design.layout.showTable = true
+      d.content.tables[0].name = 'Table one'
+      d.design.type.group = { ...d.design.type.group, uppercase: true }
+    })
+    const block = layoutSheet(doc, measure).blocks.find((candidate) => candidate.type === 'guest')
+    expect(block?.type === 'guest' && block.tableName).toBe('TABLE ONE')
+  })
+})

@@ -6,6 +6,10 @@ const nodeEnv = process.env.NODE_ENV ?? 'development'
 const corsOrigin = (process.env.CORS_ORIGIN ?? 'http://localhost:7010').replace(/\/+$/, '')
 const port = Number(process.env.PORT ?? 9010)
 
+export type PaymentGatewayId = 'ameria' | 'mock'
+
+const paymentGateway = (process.env.PAYMENT_GATEWAY ?? 'mock') as PaymentGatewayId
+
 /** The only reader of `process.env` (with `load-env.ts`). */
 export const config = {
   port,
@@ -14,7 +18,7 @@ export const config = {
   nodeEnv,
   jwtSecret: process.env.JWT_SECRET ?? 'dev-secret-change-me',
   corsOrigin,
-  /** This API's public origin: links back to it (Google's redirect) are built on it. */
+  /** This API's public origin: links back to it (Google's redirect, the bank's return) are built on it. */
   apiPublicUrl: (process.env.API_PUBLIC_URL ?? `http://localhost:${port}`).replace(/\/+$/, ''),
   /** Where headless Chrome opens the web app's `/render` page. */
   renderOrigin: (process.env.RENDER_ORIGIN ?? corsOrigin).replace(/\/+$/, ''),
@@ -47,6 +51,19 @@ export const config = {
   gemini: {
     apiKey: process.env.GEMINI_API_KEY ?? '',
   },
+  payments: {
+    gateway: paymentGateway,
+    /** Ameriabank vPOS 3.1. The three credentials are read only by `services/gateways/ameria.ts`. */
+    ameria: {
+      clientId: process.env.AMERIA_CLIENT_ID ?? '',
+      username: process.env.AMERIA_USERNAME ?? '',
+      password: process.env.AMERIA_PASSWORD ?? '',
+      testMode: process.env.AMERIA_TEST_MODE !== 'false',
+      orderIdOffset: Number(process.env.AMERIA_ORDER_ID_OFFSET ?? 0) || 0,
+      /** The test terminal accepts only 10 AMD; null charges the real price. */
+      amountOverride: process.env.AMERIA_AMOUNT_OVERRIDE ? Number(process.env.AMERIA_AMOUNT_OVERRIDE) : null,
+    },
+  },
 }
 
 export const isGoogleOAuthConfigured = (): boolean =>
@@ -54,3 +71,14 @@ export const isGoogleOAuthConfigured = (): boolean =>
 
 /** Whether photos can be read into guests (the web hides the option when not). */
 export const isAiConfigured = (): boolean => Boolean(config.gemini.apiKey)
+
+/**
+ * Whether a checkout can be started. The mock gateway is a development tool: it hands out
+ * templates for a click, so it is never available in production whatever the env says.
+ */
+export const isPaymentConfigured = (): boolean => {
+  const { gateway, ameria } = config.payments
+  if (gateway === 'mock') return config.nodeEnv !== 'production'
+  if (gateway === 'ameria') return Boolean(ameria.clientId && ameria.username && ameria.password)
+  return false
+}

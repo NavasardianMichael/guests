@@ -2,11 +2,12 @@
 
 import type { FC } from 'react'
 import { AlignCenterOutlined, AlignLeftOutlined, AlignRightOutlined, BoldOutlined, FontSizeOutlined, ItalicOutlined } from '@ant-design/icons'
-import { Button, ColorPicker, InputNumber, Segmented, Slider, Tooltip } from 'antd'
+import { Button, Segmented, Tooltip } from 'antd'
 import { useTranslations } from 'next-intl'
 import { useListEditorStore, useListEditorStoreBase } from '@store/lists/single/store'
 import type { Align, TextRole } from '@store/lists/single/types'
 import { FontSelect } from './FontSelect'
+import { LiveColorPicker, LiveInputNumber, LiveSlider } from './LiveFields'
 
 /** Point sizes a text may take (before the sheet's text scale). Twin: `TEXT_LIMITS` on the server. */
 export const SIZE_MIN = 5
@@ -26,7 +27,7 @@ export const TextStyleEditor: FC<Props> = ({ role }) => {
     <div className='flex flex-col gap-2.5'>
       <FontSelect value={style.font} onChange={(font) => set({ font })} ariaLabel={t('font')} />
       <div className='flex items-center gap-2'>
-        <InputNumber
+        <LiveInputNumber
           className='w-24'
           size='small'
           min={SIZE_MIN}
@@ -36,15 +37,9 @@ export const TextStyleEditor: FC<Props> = ({ role }) => {
           suffix='pt'
           aria-label={t('size')}
           prefix={<FontSizeOutlined className='text-muted' />}
-          onChange={(size) => typeof size === 'number' && set({ size })}
+          onChange={(size) => set({ size })}
         />
-        <ColorPicker
-          size='small'
-          disabledAlpha
-          value={style.color}
-          aria-label={t('color')}
-          onChange={(color) => set({ color: color.toHexString().slice(0, 7) })}
-        />
+        <LiveColorPicker size='small' value={style.color} aria-label={t('color')} onChange={(color) => set({ color })} />
         <div className='ml-auto flex gap-0.5'>
           <Tooltip title={t('bold')}>
             <Button
@@ -91,7 +86,7 @@ export const TextStyleEditor: FC<Props> = ({ role }) => {
           ]}
         />
         <span className='shrink-0 text-xs text-muted'>{t('tracking')}</span>
-        <Slider
+        <LiveSlider
           className='min-w-0 flex-1'
           min={-5}
           max={40}

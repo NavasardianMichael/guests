@@ -1,13 +1,14 @@
 'use client'
 
 import type { FC } from 'react'
-import { InputNumber, Segmented, Slider } from 'antd'
+import { Segmented } from 'antd'
 import { useTranslations } from 'next-intl'
 import { useListEditorStore, useListEditorStoreBase } from '@store/lists/single/store'
 import { type Orientation, PAPER_FORMATS, PAPER_LIMITS, PAPER_SIZES, type PaperFormat } from '@constants/paper'
 import { pageSize } from '@helpers/sheetLayout'
 import { TileButton } from '@components/ui/TileButton'
 import { PanelSection, Row } from './LayoutPanel'
+import { LiveInputNumber, LiveSlider } from '../controls/LiveFields'
 
 const formatLabel = (format: PaperFormat): string =>
   format === 'letter' ? 'Letter' : format === 'custom' ? '' : format
@@ -42,7 +43,7 @@ export const PaperPanel: FC = () => {
           <div className='flex items-end gap-2'>
             <label className='flex min-w-0 flex-1 flex-col gap-1'>
               <span className='text-xs text-muted'>{t('width')}</span>
-              <InputNumber
+              <LiveInputNumber
                 style={{ width: '100%' }}
                 size='small'
                 min={PAPER_LIMITS.minSide}
@@ -55,7 +56,7 @@ export const PaperPanel: FC = () => {
             <span className='pb-0.5 text-muted'>×</span>
             <label className='flex min-w-0 flex-1 flex-col gap-1'>
               <span className='text-xs text-muted'>{t('height')}</span>
-              <InputNumber
+              <LiveInputNumber
                 style={{ width: '100%' }}
                 size='small'
                 min={PAPER_LIMITS.minSide}
@@ -83,7 +84,7 @@ export const PaperPanel: FC = () => {
 
       <PanelSection title={t('margin')} hint={t('marginHint')} reset='paper.margin'>
         <Row label={t('margin')}>
-          <InputNumber
+          <LiveInputNumber
             size='small'
             className='w-36'
             min={PAPER_LIMITS.minMargin}
@@ -93,7 +94,7 @@ export const PaperPanel: FC = () => {
             onChange={(margin) => margin !== null && setPaper({ margin })}
           />
         </Row>
-        <Slider min={PAPER_LIMITS.minMargin} max={40} value={Math.min(40, paper.margin)} onChange={(margin) => setPaper({ margin })} aria-label={t('margin')} />
+        <LiveSlider min={PAPER_LIMITS.minMargin} max={40} value={Math.min(40, paper.margin)} onChange={(margin) => setPaper({ margin })} aria-label={t('margin')} />
       </PanelSection>
     </div>
   )

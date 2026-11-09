@@ -31,7 +31,7 @@ const list = () => useListEditorStoreBase.getState()
 
 describe('the spreadsheet draft', () => {
   beforeEach(() => {
-    list().loadDocument({ listId: 'list', doc: listDoc(), paidAt: null })
+    list().loadDocument({ listId: 'list', doc: listDoc() })
     const { guests, tables } = list().doc!.content
     sheet().start({ guests, tables })
   })

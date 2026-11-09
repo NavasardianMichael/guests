@@ -13,7 +13,7 @@ import {
   ZoomInOutlined,
   ZoomOutOutlined,
 } from '@ant-design/icons'
-import { Button, Input } from 'antd'
+import { Button } from 'antd'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { useAuthStore } from '@store/auth/store'
@@ -23,6 +23,7 @@ import { ROUTES } from '@constants/routes'
 import { stepZoom } from '@helpers/canvasZoom'
 import { BrandMark } from '@components/layout/BrandMark'
 import { HintTooltip } from '@components/ui/HintTooltip'
+import { LiveInput } from './controls/LiveFields'
 import { ResetButton } from './controls/ResetButton'
 import { PdfActions } from './PdfActions'
 
@@ -84,14 +85,14 @@ export const EditorTopBar: FC<Props> = ({ zoom, fitZoom, pages, onZoomChange, on
         <ArrowLeftOutlined />
         <BrandMark className='hidden size-7 sm:block' />
       </Link>
-      <Input
+      <LiveInput
         variant='borderless'
         className='max-w-56 min-w-20 flex-1 px-1 font-semibold sm:px-2.5'
         value={title ?? ''}
         placeholder={t('untitled')}
         aria-label={t('titleLabel')}
         maxLength={120}
-        onChange={(event) => setTitle(event.target.value)}
+        onChange={setTitle}
       />
       <SaveIndicator />
 

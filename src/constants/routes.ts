@@ -3,7 +3,7 @@ import type { TemplateId } from './templates'
 
 /**
  * Every path in the app. Server-built links (email verification, password reset, Google
- * errors) are twins in `server/src/lib/return-path.ts`, pinned by `twins.spec.ts`.
+ * errors, the payment result) are twins in `server/src/lib/return-path.ts`, pinned by `twins.spec.ts`.
  */
 export const ROUTES = {
   home: '/',
@@ -21,7 +21,10 @@ export const ROUTES = {
   render: '/render',
   terms: '/terms',
   privacy: '/privacy',
+  refundPolicy: '/refund-policy',
   contact: '/contact',
+  /** Where the bank's return trip lands. Twin: `PAYMENT_RESULT_PATH` on the server. */
+  paymentResult: '/payment/result',
 } as const
 
 export const templatePath = (id: TemplateId): string => `${ROUTES.templates}/${id}`
@@ -45,3 +48,5 @@ export const RETURN_TO_QUERY = 'returnTo'
 export const TEMPLATE_QUERY = 'template'
 export const KIND_QUERY = 'kind'
 export const SHAPE_QUERY = 'shape'
+/** On the editor's URL: open the checkout at once (back from signing in to buy). */
+export const CHECKOUT_QUERY = 'checkout'

@@ -85,17 +85,16 @@ describe('coerceTitle', () => {
 })
 
 describe('printTerms', () => {
-  it('prints a free download with the watermark', () => {
-    expect(printTerms({ templateId: 'memorial', paidAt: null })).toEqual({ allowed: true, watermark: true })
+  it('prints the free template for anyone, with the watermark', () => {
+    expect(printTerms({ templateId: 'memorial', owned: false })).toEqual({ allowed: true, watermark: true })
   })
 
-  it('prints a paid list without the watermark', () => {
-    expect(printTerms({ templateId: 'memorial', paidAt: new Date() })).toEqual({ allowed: true, watermark: false })
+  it('refuses a premium template its owner has not bought', () => {
+    expect(printTerms({ templateId: 'ivory', owned: false }).allowed).toBe(false)
+    expect(printTerms({ templateId: 'classic', owned: false }).allowed).toBe(false)
   })
 
-  it('refuses a premium template until the list is paid', () => {
-    expect(printTerms({ templateId: 'ivory', paidAt: null }).allowed).toBe(false)
-    expect(printTerms({ templateId: 'classic', paidAt: null }).allowed).toBe(false)
-    expect(printTerms({ templateId: 'ivory', paidAt: new Date() })).toEqual({ allowed: true, watermark: false })
+  it('prints a bought template clean', () => {
+    expect(printTerms({ templateId: 'ivory', owned: true })).toEqual({ allowed: true, watermark: false })
   })
 })

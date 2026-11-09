@@ -10,8 +10,9 @@ import type { FontSlug } from './fonts'
  * read when printed — names at least 7:1 against the sheet, decor free to be softer.
  *
  * `free`: printable without paying. Only `memorial` (named “Classic” in the interface — the id
- * predates the name and stays, as saved lists store it) is free, and premium templates do not
- * print until a list is paid for (`server/src/services/entitlement.ts`, `docs/BILLING.md`).
+ * predates the name and stays, as saved lists store it) is free, and a premium template does
+ * not print until its owner has bought it (`server/src/services/entitlement.ts`,
+ * `docs/PAYMENTS.md`).
  * The free template comes first in `TEMPLATE_IDS`, so every gallery opens with it.
  *
  * Twin: `TEMPLATE_IDS` and `FREE_TEMPLATE_IDS` in `server/src/lib/catalogue.ts` (pinned by
@@ -665,9 +666,12 @@ export const DEFAULT_TEMPLATE_ID: TemplateId = 'memorial'
 /** The one free template: what a new list starts in and what a premium print is offered instead. */
 export const FREE_TEMPLATE_ID: TemplateId = 'memorial'
 
-/** May this list download? The free template always; a premium one once paid. Twin: `printTerms` on the server. */
-export const isPrintable = (templateId: TemplateId, paidAt: string | null): boolean =>
-  Boolean(paidAt) || TEMPLATES[templateId].free
+/**
+ * May a list in this template download? The free template always; a premium one once its owner
+ * has bought it (`owned`, the bought templates). Twin: `printTerms` on the server.
+ */
+export const isPrintable = (templateId: TemplateId, owned: readonly TemplateId[] | null): boolean =>
+  TEMPLATES[templateId].free || Boolean(owned?.includes(templateId))
 
 export const isTemplateId = (value: unknown): value is TemplateId =>
   typeof value === 'string' && (TEMPLATE_IDS as readonly string[]).includes(value)

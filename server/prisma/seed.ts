@@ -2,6 +2,7 @@ import type { Prisma } from '@prisma/client'
 import { randomBytes } from 'node:crypto'
 import { hashPassword } from '../src/lib/password.js'
 import { coerceContent, coerceDesign } from '../src/services/listDocument.js'
+import { TEMPLATE_PRICE_AMD } from '../src/services/pricing.js'
 
 // The API's own loader, so the seed reads the same env files as the API and `prisma migrate`
 // (`.env.development.local` first) — `dotenv/config` reads only `server/.env`.
@@ -55,13 +56,19 @@ const christening = () => ({
   design: { kind: 'list', templateId: 'pastel', layout: { columns: 2, flow: 'columns' } },
 })
 
-type SeedUser = { email: string; fullName: string; lists: (() => { title: string; content: unknown; design: unknown })[] }
+type SeedUser = {
+  email: string
+  fullName: string
+  lists: (() => { title: string; content: unknown; design: unknown })[]
+  /** Templates the account has bought: a `succeeded` mock payment each, with no bank record to re-check. */
+  templates?: string[]
+}
 
 const USERS: SeedUser[] = [
   // A brand-new account: empty dashboard, first-run experience.
   { email: 'demo@guests.local', fullName: 'Արամ Պետրոսյան', lists: [] },
-  // A returning user: a seating board and a plain list.
-  { email: 'ani@guests.local', fullName: 'Անի Հովհաննիսյան', lists: [wedding, christening] },
+  // A returning user: a seating board in a bought template and a plain list in an unbought one.
+  { email: 'ani@guests.local', fullName: 'Անի Հովհաննիսյան', lists: [wedding, christening], templates: ['ivory'] },
 ]
 
 const asJson = (value: unknown): Prisma.InputJsonValue => value as Prisma.InputJsonValue
@@ -92,7 +99,14 @@ const main = async (): Promise<void> => {
         },
       })
     }
-    console.log(`[seed] ${seed.email} / ${PASSWORD} — ${seed.lists.length} list(s)`)
+    for (const templateId of seed.templates ?? []) {
+      if (await prisma.payment.findFirst({ where: { userId: user.id, templateId, status: 'succeeded' } })) continue
+      await prisma.payment.create({
+        data: { userId: user.id, templateId, amount: TEMPLATE_PRICE_AMD, gateway: 'mock', status: 'succeeded', paidAt: new Date() },
+      })
+    }
+    const bought = seed.templates?.length ? `, bought ${seed.templates.join(', ')}` : ''
+    console.log(`[seed] ${seed.email} / ${PASSWORD} — ${seed.lists.length} list(s)${bought}`)
   }
 }
 

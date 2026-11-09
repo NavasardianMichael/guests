@@ -19,6 +19,8 @@ type EditorUiState = {
    * resolves late) and every load must agree. Dropped once the user moves to another step.
    */
   justCreated: string | null
+  /** The template checkout (`CheckoutModal`): from either Download button, or `?checkout=1`. */
+  checkoutOpen: boolean
 }
 
 type EditorUiActions = {
@@ -31,6 +33,7 @@ type EditorUiActions = {
   openImport: (source: ImportSource) => void
   closeImport: () => void
   setSpreadsheetOpen: (open: boolean) => void
+  setCheckoutOpen: (open: boolean) => void
 }
 
 /** Editor chrome only — what is open — never document data. */
@@ -40,6 +43,7 @@ export const useEditorUiStoreBase = create<EditorUiState & EditorUiActions>()((s
   importSource: null,
   spreadsheetOpen: false,
   justCreated: null,
+  checkoutOpen: false,
   openTab: (tab) => set({ tab, sheetOpen: true, justCreated: null }),
   startAt: (tab, listId) =>
     set((state) =>
@@ -50,6 +54,7 @@ export const useEditorUiStoreBase = create<EditorUiState & EditorUiActions>()((s
   openImport: (importSource) => set({ importSource }),
   closeImport: () => set({ importSource: null }),
   setSpreadsheetOpen: (spreadsheetOpen) => set({ spreadsheetOpen }),
+  setCheckoutOpen: (checkoutOpen) => set({ checkoutOpen }),
 }))
 
 export const useEditorUiStore = appendSelectors(useEditorUiStoreBase)

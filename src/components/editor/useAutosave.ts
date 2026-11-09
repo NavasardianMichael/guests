@@ -16,7 +16,7 @@ let inFlight: Promise<void> = Promise.resolve()
 
 const saveCurrent = (): Promise<void> => {
   inFlight = inFlight.then(async () => {
-    const { listId, doc, saveStatus, setSaveStatus, setPaidAt } = useListEditorStoreBase.getState()
+    const { listId, doc, saveStatus, setSaveStatus } = useListEditorStoreBase.getState()
     if (!listId || !doc || saveStatus === 'saved') return
 
     if (listId === DRAFT_ID) {
@@ -26,8 +26,7 @@ const saveCurrent = (): Promise<void> => {
 
     setSaveStatus('saving')
     try {
-      const result = await updateListAPI({ id: listId, title: doc.title, content: doc.content, design: doc.design })
-      setPaidAt(result.paidAt)
+      await updateListAPI({ id: listId, title: doc.title, content: doc.content, design: doc.design })
       // An edit made while the request was out leaves the document newer than what was sent.
       setSaveStatus(useListEditorStoreBase.getState().doc === doc ? 'saved' : 'dirty')
     } catch (error) {

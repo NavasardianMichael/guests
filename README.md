@@ -4,8 +4,9 @@ For Armenian weddings, christenings and celebrations: make the guest list (type 
 import Excel/CSV, or photograph a handwritten list and let Gemini read it), arrange it on paper
 — by dragging, in columns or rows, or freely — and print a **seating chart**, a **guest list**
 or **place cards** on any paper size, in 46 classic and creative templates with 40 Armenian
-fonts. Interface in Armenian (default), Russian and English. Building and printing are free
-today; the paid model is planned (`docs/BILLING.md`).
+fonts. Interface in Armenian (default), Russian and English. Building is free and the
+“Classic” template prints free; each premium template is bought once (Ameriabank) and then
+prints on every list its buyer makes (`docs/PAYMENTS.md`).
 
 ## Quick start
 
@@ -30,7 +31,7 @@ deployed by `.github/workflows/deploy.yml` — `docs/DEPLOYMENT.md`, `docs/PRODU
 ## Docs
 
 - `CLAUDE.md` — architecture, where things live, the invariants
-- `docs/BILLING.md` — the business model and what is left to build for it
+- `docs/PAYMENTS.md` — template purchases, the Ameriabank gateway, refunds and going live
 - `public/fonts/LICENSES.md` — where every font comes from and its licence
 
 ## Before launch

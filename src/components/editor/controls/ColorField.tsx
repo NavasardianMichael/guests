@@ -1,10 +1,10 @@
 'use client'
 
 import type { FC } from 'react'
-import { ColorPicker } from 'antd'
 import { useTranslations } from 'next-intl'
 import { useListEditorStoreBase } from '@store/lists/single/store'
 import { TEMPLATE_LIST } from '@constants/templates'
+import { LiveColorPicker } from './LiveFields'
 
 type Props = {
   label: string
@@ -16,7 +16,8 @@ const TEMPLATE_ACCENTS = [...new Set(TEMPLATE_LIST.flatMap((template) => [templa
 
 /**
  * A colour, as the document stores it: `#rrggbb` (the API accepts six-digit hex only, so any
- * alpha is dropped). Presets: the sheet's own colours first, then every template's.
+ * alpha is dropped). Presets: the sheet's own colours first, then every template's. Dragging
+ * writes to the sheet a few times a second, not on every pixel (`LiveColorPicker`).
  */
 export const ColorField: FC<Props> = ({ label, value, onChange }) => {
   const t = useTranslations('Editor.design')
@@ -30,13 +31,12 @@ export const ColorField: FC<Props> = ({ label, value, onChange }) => {
   return (
     <label className='flex items-center justify-between gap-3 py-1 text-sm'>
       <span className='text-muted'>{label}</span>
-      <ColorPicker
+      <LiveColorPicker
         value={value}
-        disabledAlpha
         presets={presets}
         size='small'
         showText={(color) => color.toHexString().slice(0, 7).toUpperCase()}
-        onChange={(color) => onChange(color.toHexString().slice(0, 7))}
+        onChange={onChange}
       />
     </label>
   )

@@ -2,11 +2,12 @@
 
 import type { FC, ReactNode } from 'react'
 import { AppstoreOutlined, BarsOutlined, ColumnHeightOutlined, CompressOutlined, DragOutlined, RollbackOutlined } from '@ant-design/icons'
-import { Alert, Button, InputNumber, Segmented, Slider, Switch } from 'antd'
+import { Alert, Button, Segmented, Switch } from 'antd'
 import { useTranslations } from 'next-intl'
 import { useListEditorStore, useListEditorStoreBase } from '@store/lists/single/store'
 import type { Flow, LayoutMode, SortOrder } from '@store/lists/single/types'
 import type { ResetScope } from '@helpers/designReset'
+import { LiveInputNumber, LiveSlider } from '../controls/LiveFields'
 import { ResetButton } from '../controls/ResetButton'
 import { SpreadsheetButton } from '../spreadsheet/SpreadsheetModal'
 
@@ -80,7 +81,7 @@ export const LayoutPanel: FC = () => {
       {kind !== 'cards' && (
         <PanelSection title={t('grid')} reset='layout.grid'>
           <Row label={t('columns')}>
-            <InputNumber
+            <LiveInputNumber
               size='small'
               className='w-20'
               min={1}
@@ -90,7 +91,7 @@ export const LayoutPanel: FC = () => {
               aria-label={t('columns')}
             />
           </Row>
-          <Slider min={1} max={8} value={Math.min(8, layout.columns)} onChange={(columns) => setLayout({ columns })} aria-label={t('columns')} />
+          <LiveSlider min={1} max={8} value={Math.min(8, layout.columns)} onChange={(columns) => setLayout({ columns })} aria-label={t('columns')} />
           <Row label={t('flow')}>
             <Segmented<Flow>
               size='small'
@@ -108,10 +109,10 @@ export const LayoutPanel: FC = () => {
             </Row>
           )}
           <Row label={t('gapX')}>
-            <InputNumber size='small' className='w-36' min={0} max={60} step={0.5} value={layout.gapX} suffix={tEditor('mm')} onChange={(gapX) => gapX !== null && setLayout({ gapX })} />
+            <LiveInputNumber size='small' className='w-36' min={0} max={60} step={0.5} value={layout.gapX} suffix={tEditor('mm')} onChange={(gapX) => gapX !== null && setLayout({ gapX })} />
           </Row>
           <Row label={t('gapY')}>
-            <InputNumber size='small' className='w-36' min={0} max={60} step={0.5} value={layout.gapY} suffix={tEditor('mm')} onChange={(gapY) => gapY !== null && setLayout({ gapY })} />
+            <LiveInputNumber size='small' className='w-36' min={0} max={60} step={0.5} value={layout.gapY} suffix={tEditor('mm')} onChange={(gapY) => gapY !== null && setLayout({ gapY })} />
           </Row>
         </PanelSection>
       )}
@@ -131,10 +132,10 @@ export const LayoutPanel: FC = () => {
             ))}
           </div>
           <Row label={t('cardWidth')}>
-            <InputNumber size='small' className='w-36' min={30} max={300} value={layout.cardWidth} suffix={tEditor('mm')} onChange={(cardWidth) => cardWidth && setLayout({ cardWidth })} />
+            <LiveInputNumber size='small' className='w-36' min={30} max={300} value={layout.cardWidth} suffix={tEditor('mm')} onChange={(cardWidth) => cardWidth && setLayout({ cardWidth })} />
           </Row>
           <Row label={t('cardHeight')}>
-            <InputNumber size='small' className='w-36' min={20} max={300} value={layout.cardHeight} suffix={tEditor('mm')} onChange={(cardHeight) => cardHeight && setLayout({ cardHeight })} />
+            <LiveInputNumber size='small' className='w-36' min={20} max={300} value={layout.cardHeight} suffix={tEditor('mm')} onChange={(cardHeight) => cardHeight && setLayout({ cardHeight })} />
           </Row>
           <Row label={t('cardFold')}>
             <Switch size='small' checked={layout.cardFold} onChange={(cardFold) => setLayout({ cardFold })} />
@@ -143,10 +144,10 @@ export const LayoutPanel: FC = () => {
             <Switch size='small' checked={layout.cutMarks} onChange={(cutMarks) => setLayout({ cutMarks })} />
           </Row>
           <Row label={t('gapX')}>
-            <InputNumber size='small' className='w-36' min={0} max={30} step={0.5} value={layout.gapX} suffix={tEditor('mm')} onChange={(gapX) => gapX !== null && setLayout({ gapX })} />
+            <LiveInputNumber size='small' className='w-36' min={0} max={30} step={0.5} value={layout.gapX} suffix={tEditor('mm')} onChange={(gapX) => gapX !== null && setLayout({ gapX })} />
           </Row>
           <Row label={t('gapY')}>
-            <InputNumber size='small' className='w-36' min={0} max={30} step={0.5} value={layout.gapY} suffix={tEditor('mm')} onChange={(gapY) => gapY !== null && setLayout({ gapY })} />
+            <LiveInputNumber size='small' className='w-36' min={0} max={30} step={0.5} value={layout.gapY} suffix={tEditor('mm')} onChange={(gapY) => gapY !== null && setLayout({ gapY })} />
           </Row>
         </PanelSection>
       )}
