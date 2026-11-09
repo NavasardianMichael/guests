@@ -15,6 +15,7 @@ const docWith = (guests: number, tables = 0, patch: (doc: ListDocument) => void 
       subheading: '',
       footer: '',
       tables: tableList,
+      venue: [],
       guests: Array.from({ length: guests }, (_, index) => newGuest(`Guest ${index + 1}`, tableList.length ? tableList[index % tableList.length].id : '')),
     },
     design: templateDesign('classic', tables ? 'seating' : 'list'),

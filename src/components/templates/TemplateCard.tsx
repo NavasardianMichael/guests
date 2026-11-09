@@ -4,7 +4,6 @@ import { templatePath } from '@constants/routes'
 import type { TemplateMeta } from '@constants/templates'
 import { cn } from '@helpers/cn'
 import { sampleContent, type SampleTexts, templateDesign } from '@helpers/listFactory'
-import { OwnedTemplateBadge } from './BoughtBadge'
 import { TemplateCardLink, TemplateCardPending } from './TemplateCardLink'
 import { ShapedSheetPreview } from './TemplateShape'
 
@@ -12,8 +11,8 @@ type Props = { template: TemplateMeta; texts: SampleTexts; className?: string; h
 
 /**
  * A template's live preview (the sample wedding's seating board) linking to its own page; in the
- * gallery and on a template's page, in the shape picked there (`TemplateShapeProvider`). A
- * template the visitor bought says so (`OwnedTemplateBadge`, client-side: the page is static).
+ * gallery and on a template's page, in the shape picked there (`TemplateShapeProvider`). The
+ * free template says so; the others print with an access pass (docs/PAYMENTS.md).
  */
 export const TemplateCard: FC<Props> = async ({ template, texts, className, headingLevel: Heading = 'h3' }) => {
   const t = await getTranslations('Templates')
@@ -26,12 +25,10 @@ export const TemplateCard: FC<Props> = async ({ template, texts, className, head
         <ShapedSheetPreview
           doc={{ title: '', content: sampleContent(texts), design: templateDesign(template.id, 'seating') }}
         />
-        {template.free ? (
+        {template.free && (
           <span className='absolute top-3 right-3 rounded-full bg-surface/90 px-2.5 py-1 text-xs font-semibold text-ink shadow-sm'>
             {t('free')}
           </span>
-        ) : (
-          <OwnedTemplateBadge templateId={template.id} className='absolute top-3 right-3' />
         )}
         <TemplateCardPending />
       </div>

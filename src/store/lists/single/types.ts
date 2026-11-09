@@ -13,9 +13,11 @@ import type { ResetScope } from '@helpers/designReset'
  * What the sheet is:
  * - `list`: names, for the entrance or check-in desk;
  * - `seating`: a seating board, guests grouped under their tables;
- * - `cards`: place cards to cut out, one per guest.
+ * - `cards`: place cards to cut out, one per guest;
+ * - `plan`: the hall's floor plan — tables drawn as round or long tables, their guests inside,
+ *   with the stage, dance floor and entrance, each placed where the user puts it.
  */
-export const PRINT_KINDS = ['seating', 'list', 'cards'] as const
+export const PRINT_KINDS = ['seating', 'list', 'cards', 'plan'] as const
 export type PrintKind = (typeof PRINT_KINDS)[number]
 
 /**
@@ -35,9 +37,28 @@ export type Guest = {
   note: string
 }
 
+/** A table on the hall plan: round, or a long (banquet / head) table. */
+export const TABLE_SHAPES = ['round', 'rect'] as const
+export type TableShape = (typeof TABLE_SHAPES)[number]
+
 export type GuestTable = {
   id: string
   name: string
+  /** How the hall plan draws it. */
+  shape: TableShape
+  /** Chairs drawn around it on the hall plan; a table with more guests gets a chair each. 0: one per guest. */
+  seats: number
+}
+
+/** What else stands in the hall, drawn on the plan. */
+export const VENUE_KINDS = ['stage', 'dancefloor', 'entrance'] as const
+export type VenueKind = (typeof VENUE_KINDS)[number]
+
+export type VenueItem = {
+  id: string
+  kind: VenueKind
+  /** Printed on it: "Stage", "Dance floor", or the user's own words. */
+  label: string
 }
 
 export type ListContent = {
@@ -50,6 +71,8 @@ export type ListContent = {
   guests: Guest[]
   /** In the order they print. */
   tables: GuestTable[]
+  /** The hall plan's stage, dance floor, entrances. Only the plan shows them. */
+  venue: VenueItem[]
 }
 
 /** The texts a sheet has, each styled on its own. */
@@ -145,6 +168,27 @@ export type Layout = {
  */
 export type Size = { w: number; h: number }
 
+/**
+ * Where the hall plan's tables and venue items stand, and their sizes — kept apart from
+ * `layout` so switching to another kind and back never loses the arrangement. A block without
+ * a position is placed by the app (`layoutSheet`); `sizes` work as `Layout.sizes` (a least
+ * height; a round table takes the larger side as its diameter).
+ */
+/**
+ * How the app sets out the hall while nothing on it is placed by hand: in centred rows; round
+ * tables around the dance floor; tables down both sides of a dance floor in the middle; rows of
+ * long tables facing the stage. The stage stands at the top and the entrance at the bottom.
+ */
+export const PLAN_ARRANGEMENTS = ['rows', 'around', 'sides', 'banquet'] as const
+export type PlanArrangement = (typeof PLAN_ARRANGEMENTS)[number]
+
+export type Plan = {
+  /** What places the blocks without a position (`placePlan`). */
+  arrangement: PlanArrangement
+  positions: Record<string, Position>
+  sizes: Record<string, Size>
+}
+
 export type ListDesign = {
   kind: PrintKind
   templateId: TemplateId
@@ -159,6 +203,8 @@ export type ListDesign = {
   /** The template's ornaments and frames. */
   decor: boolean
   layout: Layout
+  /** The hall plan's arrangement (`kind: 'plan'`). */
+  plan: Plan
 }
 
 export type ListDocument = {
@@ -210,7 +256,7 @@ export type ListEditorState = {
   future: ListDocument[]
   lastEditKey: string | null
   lastEditAt: number
-  /** Canvas blocks selected (guest, table, header, footer ids). */
+  /** Canvas blocks selected (guest, table, venue item, header, footer ids). */
   selection: string[]
 } & StateCommonProps
 
@@ -242,13 +288,21 @@ export type ListEditorActions = {
   /** The spreadsheet saved: its guests and tables replace the list's, in one undo step. */
   applySheet: (content: SheetContent) => void
 
-  addTable: (name?: string) => string
+  /** `seats`: chairs drawn on the hall plan (0: one per guest). */
+  addTable: (name?: string, shape?: TableShape, seats?: number) => string
   renameTable: (tableId: string, name: string) => void
+  /** A table's shape or chairs on the hall plan. */
+  updateTable: (tableId: string, patch: Partial<Pick<GuestTable, 'shape' | 'seats'>>) => void
   /** Its guests stay on the list, without a table. */
   removeTable: (tableId: string) => void
   moveTable: (tableId: string, beforeId: string | null) => void
   /** Guests without a table fill tables of `seats`, the existing ones first, new ones after. */
   autoSeat: (seats: number, tableName: (number: number) => string) => void
+
+  /** A stage, dance floor or entrance on the hall plan; answers its id. */
+  addVenueItem: (kind: VenueKind, label: string) => string
+  renameVenueItem: (itemId: string, label: string) => void
+  removeVenueItems: (itemIds: string[]) => void
 
   setDesign: (patch: Partial<Pick<ListDesign, 'kind' | 'shape' | 'textScale' | 'tableStyle' | 'decor'>>) => void
   setPaper: (patch: Partial<Paper>) => void
@@ -257,17 +311,28 @@ export type ListEditorActions = {
   setLayout: (patch: Partial<Omit<Layout, 'positions' | 'sizes'>>) => void
   /** The sheet fitted to its paper (`helpers/fitSheet`): columns and text size, back on the grid — one undo step. */
   fitToPage: (fit: { columns: number; textScale: number }) => void
+  /**
+   * The hall set out by `arrangement` again (`withArrangement`): nothing placed by hand, the
+   * tables in the shape it calls for — at `textScale`, when given — one undo step.
+   */
+  setArrangement: (arrangement: PlanArrangement, textScale?: number) => void
   /** The template's look replaces the current one; the guests, tables and layout stay. */
   applyTemplate: (templateId: TemplateId) => void
   /** Puts `scope`'s settings back at the template's defaults, one undo step (`helpers/designReset`). */
   resetDesign: (scope: ResetScope) => void
 
-  /** Free mode: blocks placed where they were dropped. One undo step per drag. */
+  /**
+   * Free mode: blocks placed where they were dropped. One undo step per drag. On the hall
+   * plan they go into `design.plan` (whatever the mode).
+   */
   setPositions: (positions: Record<string, Position>) => void
-  /** Every block back to its grid place. */
+  /** Every block back to its grid place (on the hall plan: placed by the app again). */
   resetPositions: (blockIds?: string[]) => void
-  /** A block resized from its corner; one undo step per resize. */
-  setSize: (blockId: string, size: Size) => void
+  /**
+   * A block resized from its corner; one undo step per resize. `pin` places blocks in the same
+   * step (the hall plan pins every block the first time one is moved or sized).
+   */
+  setSize: (blockId: string, size: Size, pin?: Record<string, Position>) => void
   /** Blocks back to the size their column and text give them (all of them when no ids). */
   resetSizes: (blockIds?: string[]) => void
 

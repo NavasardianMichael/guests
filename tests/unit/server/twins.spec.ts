@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { MAX_GUESTS, MAX_TABLES, MIN_BLOCK_SIZE } from '@store/lists/single/store'
-import { PRINT_KINDS, SHEET_SHAPES, TEXT_ROLES } from '@store/lists/single/types'
+import { MAX_GUESTS, MAX_SEATS, MAX_TABLES, MAX_VENUE_ITEMS, MIN_BLOCK_SIZE } from '@store/lists/single/store'
+import { PLAN_ARRANGEMENTS, PRINT_KINDS, SHEET_SHAPES, TABLE_SHAPES, TEXT_ROLES, VENUE_KINDS } from '@store/lists/single/types'
 import { GUEST_COOKIE, RESET_TOKEN_QUERY, VERIFY_TOKEN_QUERY } from '@constants/auth'
 import { ERROR_CODES } from '@constants/errors'
 import { FONT_SLUGS } from '@constants/fonts'
 import { PAPER_FORMATS, PAPER_LIMITS, PAPER_SIZES } from '@constants/paper'
-import { TEMPLATE_PRICE_AMD } from '@constants/pricing'
+import { PASS_DAYS, PASS_PRICE_AMD, RETENTION_DAYS } from '@constants/pricing'
 import { RETURN_TO_QUERY, ROUTES } from '@constants/routes'
 import { DEFAULT_TEMPLATE_ID, isTemplateId, TABLE_STYLES, TEMPLATE_IDS, TEMPLATE_LIST } from '@constants/templates'
 import { DEFAULT_LIST_TITLE, templateDesign } from '@helpers/listFactory'
@@ -15,7 +15,8 @@ import { ERROR_CODE } from '../../../server/src/lib/error-codes'
 import * as guest from '../../../server/src/lib/guest'
 import * as returnPath from '../../../server/src/lib/return-path'
 import { coerceDesign, DEFAULT_LIST_TITLE as SERVER_DEFAULT_TITLE, LIST_LIMITS } from '../../../server/src/services/listDocument'
-import { TEMPLATE_PRICE_AMD as SERVER_PRICE } from '../../../server/src/services/pricing'
+import { PASS_DAYS as SERVER_PASS_DAYS, PASS_PRICE_AMD as SERVER_PRICE } from '../../../server/src/services/pricing'
+import { RETENTION_DAYS as SERVER_RETENTION_DAYS } from '../../../server/src/services/retention'
 
 /**
  * Strings and numbers that live twice, once per package, with no import path between them.
@@ -37,6 +38,9 @@ describe('server/web twins', () => {
     expect([...serverCatalogue.TABLE_STYLES]).toEqual([...TABLE_STYLES])
     expect([...serverCatalogue.PRINT_KINDS].sort()).toEqual([...PRINT_KINDS].sort())
     expect([...serverCatalogue.TEXT_ROLES]).toEqual([...TEXT_ROLES])
+    expect([...serverCatalogue.TABLE_SHAPES]).toEqual([...TABLE_SHAPES])
+    expect([...serverCatalogue.VENUE_KINDS]).toEqual([...VENUE_KINDS])
+    expect([...serverCatalogue.PLAN_ARRANGEMENTS]).toEqual([...PLAN_ARRANGEMENTS])
   })
 
   it('agree on paper', () => {
@@ -48,6 +52,8 @@ describe('server/web twins', () => {
   it('agree on how many guests and tables a list holds', () => {
     expect(LIST_LIMITS.guests).toBe(MAX_GUESTS)
     expect(LIST_LIMITS.tables).toBe(MAX_TABLES)
+    expect(LIST_LIMITS.venue).toBe(MAX_VENUE_ITEMS)
+    expect(LIST_LIMITS.seats).toBe(MAX_SEATS)
     expect({ w: LIST_LIMITS.minBlockW, h: LIST_LIMITS.minBlockH }).toEqual(MIN_BLOCK_SIZE)
   })
 
@@ -62,8 +68,10 @@ describe('server/web twins', () => {
     }
   })
 
-  it('charge what the pages print', () => {
-    expect(SERVER_PRICE).toBe(TEMPLATE_PRICE_AMD)
+  it('charge what the pages print, for as many days, and delete when they say', () => {
+    expect(SERVER_PRICE).toBe(PASS_PRICE_AMD)
+    expect(SERVER_PASS_DAYS).toBe(PASS_DAYS)
+    expect(SERVER_RETENTION_DAYS).toBe(RETENTION_DAYS)
   })
 
   it('name the guest cookie the proxy looks for', () => {

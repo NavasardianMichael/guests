@@ -42,11 +42,12 @@ export const applyPaperPatch = (design: ListDesign, patch: Partial<Paper>): void
   if (after.width !== before.width || after.height !== before.height) {
     const sx = after.width / before.width
     const sy = after.height / before.height
-    for (const position of Object.values(design.layout.positions)) {
+    // The hall plan's arrangement too, whichever kind is showing.
+    for (const position of [...Object.values(design.layout.positions), ...Object.values(design.plan.positions)]) {
       position.x = Math.round(position.x * sx * 10) / 10
       position.y = Math.round(position.y * sy * 10) / 10
     }
-    for (const size of Object.values(design.layout.sizes)) {
+    for (const size of [...Object.values(design.layout.sizes), ...Object.values(design.plan.sizes)]) {
       size.w = Math.max(MIN_BLOCK_SIZE.w, Math.round(size.w * sx * 10) / 10)
       size.h = Math.max(MIN_BLOCK_SIZE.h, Math.round(size.h * sy * 10) / 10)
     }

@@ -11,6 +11,7 @@ export {
   BgColorsOutlined,
   CameraOutlined,
   CheckOutlined,
+  ClockCircleOutlined,
   DragOutlined,
   EditOutlined,
   EnvironmentOutlined,

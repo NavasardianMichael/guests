@@ -8,19 +8,16 @@ import { useFormatter, useTranslations } from 'next-intl'
 import type { GuestList } from '@store/lists/single/types'
 import { editorPath } from '@constants/routes'
 import { SheetPreview } from '@components/sheet/SheetPreview'
-import { BoughtBadge } from '@components/templates/BoughtBadge'
 
 type Props = {
   list: GuestList
-  /** Its template is one the owner bought: it prints clean. */
-  bought: boolean
   onDuplicate: (list: GuestList) => void
   onDelete: (list: GuestList) => void
   onDownload: (list: GuestList) => void
 }
 
 /** One list on the dashboard: its first page, its name, how many guests, when it last changed. */
-export const ListCard: FC<Props> = ({ list, bought, onDuplicate, onDelete, onDownload }) => {
+export const ListCard: FC<Props> = ({ list, onDuplicate, onDelete, onDownload }) => {
   const t = useTranslations('Dashboard')
   const tKinds = useTranslations('Editor.layout.kinds')
   const tCommon = useTranslations('Common')
@@ -35,7 +32,6 @@ export const ListCard: FC<Props> = ({ list, bought, onDuplicate, onDelete, onDow
         aria-label={`${tCommon('edit')}: ${list.title}`}
       >
         <SheetPreview doc={list} />
-        {bought && <BoughtBadge className='absolute top-2.5 right-2.5' />}
       </Link>
       <div className='mt-3 flex items-start gap-2 px-1'>
         <div className='min-w-0 flex-1'>

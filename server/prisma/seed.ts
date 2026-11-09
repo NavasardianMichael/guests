@@ -2,7 +2,7 @@ import type { Prisma } from '@prisma/client'
 import { randomBytes } from 'node:crypto'
 import { hashPassword } from '../src/lib/password.js'
 import { coerceContent, coerceDesign } from '../src/services/listDocument.js'
-import { TEMPLATE_PRICE_AMD } from '../src/services/pricing.js'
+import { PASS_PRICE_AMD } from '../src/services/pricing.js'
 
 // The API's own loader, so the seed reads the same env files as the API and `prisma migrate`
 // (`.env.development.local` first) — `dotenv/config` reads only `server/.env`.
@@ -60,16 +60,23 @@ type SeedUser = {
   email: string
   fullName: string
   lists: (() => { title: string; content: unknown; design: unknown })[]
-  /** Templates the account has bought: a `succeeded` mock payment each, with no bank record to re-check. */
-  templates?: string[]
+  /**
+   * An access pass bought this many days ago: a `succeeded` mock payment, with no bank record to
+   * re-check. 0 is running for the full 21 days; past 21 it has run out.
+   */
+  passPaidDaysAgo?: number
 }
 
 const USERS: SeedUser[] = [
   // A brand-new account: empty dashboard, first-run experience.
   { email: 'demo@guests.local', fullName: 'Արամ Պետրոսյան', lists: [] },
-  // A returning user: a seating board in a bought template and a plain list in an unbought one.
-  { email: 'ani@guests.local', fullName: 'Անի Հովհաննիսյան', lists: [wedding, christening], templates: ['ivory'] },
+  // A returning user with a running pass: a seating board and a plain list in premium templates.
+  { email: 'ani@guests.local', fullName: 'Անի Հովհաննիսյան', lists: [wedding, christening], passPaidDaysAgo: 0 },
+  // The same lists, but the pass ran out: what stays, and what asks for a new pass.
+  { email: 'gor@guests.local', fullName: 'Գոռ Մելքոնյան', lists: [wedding, christening], passPaidDaysAgo: 30 },
 ]
+
+const DAY_MS = 24 * 60 * 60 * 1000
 
 const asJson = (value: unknown): Prisma.InputJsonValue => value as Prisma.InputJsonValue
 
@@ -99,14 +106,14 @@ const main = async (): Promise<void> => {
         },
       })
     }
-    for (const templateId of seed.templates ?? []) {
-      if (await prisma.payment.findFirst({ where: { userId: user.id, templateId, status: 'succeeded' } })) continue
+    const daysAgo = seed.passPaidDaysAgo
+    if (daysAgo !== undefined && !(await prisma.payment.findFirst({ where: { userId: user.id, status: 'succeeded' } }))) {
       await prisma.payment.create({
-        data: { userId: user.id, templateId, amount: TEMPLATE_PRICE_AMD, gateway: 'mock', status: 'succeeded', paidAt: new Date() },
+        data: { userId: user.id, amount: PASS_PRICE_AMD, gateway: 'mock', status: 'succeeded', paidAt: new Date(Date.now() - daysAgo * DAY_MS) },
       })
     }
-    const bought = seed.templates?.length ? `, bought ${seed.templates.join(', ')}` : ''
-    console.log(`[seed] ${seed.email} / ${PASSWORD} — ${seed.lists.length} list(s)${bought}`)
+    const pass = daysAgo === undefined ? '' : `, pass paid ${daysAgo} day(s) ago`
+    console.log(`[seed] ${seed.email} / ${PASSWORD} — ${seed.lists.length} list(s)${pass}`)
   }
 }
 

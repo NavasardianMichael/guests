@@ -75,6 +75,7 @@ export const LAYOUT_FIELDS = {
   textScale: true,
   tableStyle: true,
   layout: true,
+  plan: true,
 } as const satisfies Record<Exclude<keyof ListDesign, 'palette' | 'decor'>, true>
 
 /** The typography as the layout sees it: a string that changes only when a measurement may. */
@@ -113,6 +114,6 @@ export const useSheetLayout = (doc: ListDocument): SheetLayout => {
   return useMemo(
     () => layoutSheet(doc, measureText),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [content, design.kind, design.templateId, design.shape, design.paper, metrics, design.textScale, design.tableStyle, design.layout, version]
+    [content, design.kind, design.templateId, design.shape, design.paper, metrics, design.textScale, design.tableStyle, design.layout, design.plan, version]
   )
 }

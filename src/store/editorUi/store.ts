@@ -10,6 +10,14 @@ type EditorUiState = {
   tab: EditorTab
   /** Phones and tablets: whether the panel's bottom sheet is open. */
   sheetOpen: boolean
+  /** Desktop: the settings column folded to a narrow rail, for more room on the canvas. */
+  panelCollapsed: boolean
+  /**
+   * A drop on the canvas is being committed: the sheet draws the new document in the same frame
+   * instead of its deferred copy (`EditorShell`), so what was dropped never shows its old place.
+   * Cleared by the shell once the deferred copy has caught up.
+   */
+  drawNow: boolean
   importSource: ImportSource | null
   /** The guests open as a spreadsheet (`SpreadsheetModal`). */
   spreadsheetOpen: boolean
@@ -30,6 +38,8 @@ type EditorUiActions = {
   /** Called before opening a list just created: `startAt` for it goes to the first step. */
   markJustCreated: (listId: string) => void
   setSheetOpen: (open: boolean) => void
+  setPanelCollapsed: (collapsed: boolean) => void
+  setDrawNow: (drawNow: boolean) => void
   openImport: (source: ImportSource) => void
   closeImport: () => void
   setSpreadsheetOpen: (open: boolean) => void
@@ -40,17 +50,22 @@ type EditorUiActions = {
 export const useEditorUiStoreBase = create<EditorUiState & EditorUiActions>()((set) => ({
   tab: 'kind',
   sheetOpen: false,
+  panelCollapsed: false,
+  drawNow: false,
   importSource: null,
   spreadsheetOpen: false,
   justCreated: null,
   checkoutOpen: false,
-  openTab: (tab) => set({ tab, sheetOpen: true, justCreated: null }),
+  // A step opened from the steps bar unfolds the column, so it shows.
+  openTab: (tab) => set({ tab, sheetOpen: true, panelCollapsed: false, justCreated: null }),
   startAt: (tab, listId) =>
     set((state) =>
       state.justCreated === listId ? { tab: 'kind', sheetOpen: false } : { tab, sheetOpen: false, justCreated: null }
     ),
   markJustCreated: (listId) => set({ justCreated: listId }),
   setSheetOpen: (sheetOpen) => set({ sheetOpen }),
+  setPanelCollapsed: (panelCollapsed) => set({ panelCollapsed }),
+  setDrawNow: (drawNow) => set({ drawNow }),
   openImport: (importSource) => set({ importSource }),
   closeImport: () => set({ importSource: null }),
   setSpreadsheetOpen: (spreadsheetOpen) => set({ spreadsheetOpen }),

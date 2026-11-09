@@ -454,7 +454,7 @@ export const GuestsPanel: FC = () => {
   /** The quick-add field's text; the list is filtered by it only while `searching`. */
   const [text, setText] = useState('')
   const [searching, setSearching] = useState(false)
-  const [view, setView] = useState<View>(kind === 'seating' ? 'tables' : 'all')
+  const [view, setView] = useState<View>(kind === 'seating' || kind === 'plan' ? 'tables' : 'all')
   const [drag, setDragState] = useState<DragState | null>(null)
   /** The drag as last set: a drop can arrive before the render of the last move. */
   const dragRef = useRef<DragState | null>(null)

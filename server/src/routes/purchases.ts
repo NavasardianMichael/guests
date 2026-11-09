@@ -1,18 +1,17 @@
 import { type Request, Router } from 'express'
 import { isPaymentConfigured } from '../config.js'
 import { fail, ok } from '../lib/api-response.js'
-import { isTemplateId } from '../lib/catalogue.js'
 import { ERROR_CODE } from '../lib/error-codes.js'
 import { ensureGuestKeyHash, readGuestKeyHash, renewGuestKey } from '../lib/guest.js'
 import { prisma } from '../lib/prisma.js'
 import { createRateLimiter } from '../lib/rateLimit.js'
 import type { ListOwner } from '../middleware/auth.js'
 import { asyncHandler } from '../middleware/error.js'
-import { ownedTemplateIds, reconcileOwnerPayments, startCheckout } from '../services/payments.js'
+import { accessUntil, startCheckout } from '../services/payments.js'
 
 /**
- * Bought templates (docs/PAYMENTS.md). A template belongs to an account, or — bought without
- * one — to this browser's guest key until its owner signs in (`services/guestLists.ts`).
+ * Access passes (docs/PAYMENTS.md). A pass belongs to an account, or — bought without one — to
+ * this browser's guest key until its owner signs in (`services/guestLists.ts`).
  */
 export const purchasesRouter = Router()
 
@@ -25,31 +24,33 @@ const ownerOf = (req: Request): ListOwner | null => {
 }
 
 /**
- * The templates this visitor owns. Anyone may ask: a visitor with neither session nor guest key
- * owns none. Reading re-checks their recent pending payments (a tab closed before the bank's
- * redirect), so the payment result page polls this.
+ * When this visitor's access ends (`accessUntil`: ISO, in the past once it has run out, null if
+ * they never bought). Anyone may ask: a visitor with neither session nor guest key has none.
+ * Reading re-checks their recent pending payments (a tab closed before the bank's redirect),
+ * so the payment result page polls this — with `?payment=<id>`, which also answers that
+ * payment's status (`payment`, null unless it is this visitor's).
  */
 purchasesRouter.get(
   '/',
   asyncHandler(async (req, res) => {
     const owner = ownerOf(req)
-    if (!owner) return ok(res, { templates: [] })
+    if (!owner) return ok(res, { accessUntil: null, payment: null })
     if (!req.session) renewGuestKey(req, res)
-    await reconcileOwnerPayments(owner)
-    ok(res, { templates: await ownedTemplateIds(owner) })
+    const until = await accessUntil(owner)
+    const paymentId = typeof req.query.payment === 'string' && req.query.payment.length <= 64 ? req.query.payment : null
+    const payment = paymentId ? await prisma.payment.findFirst({ where: { id: paymentId, ...owner }, select: { status: true } }) : null
+    ok(res, { accessUntil: until?.toISOString() ?? null, payment: payment?.status ?? null })
   })
 )
 
 /**
- * Starts buying a template: answers the bank page's URL. Without a session the browser's guest
- * key is minted and owns the purchase — the web warns about that first. `listId`, when it is
- * the buyer's own list, is where the result page leads back to.
+ * Starts buying a pass: answers the bank page's URL. Without a session the browser's guest key
+ * is minted and owns the purchase — the web warns about that first. `listId`, when it is the
+ * buyer's own list, is where the result page leads back to.
  */
 purchasesRouter.post(
   '/checkout',
   asyncHandler(async (req, res) => {
-    const templateId: unknown = req.body?.templateId
-    if (!isTemplateId(templateId)) return fail(res, 'Unknown template', 400, 400)
     if (!isPaymentConfigured()) return fail(res, 'Payments are unavailable', ERROR_CODE.paymentsUnavailable, 503)
 
     const limitKey = req.session ? req.session.userId : `ip:${req.ip ?? 'unknown'}`
@@ -66,7 +67,7 @@ purchasesRouter.post(
         ? await prisma.guestList.findFirst({ where: { id: rawListId, ...owner }, select: { id: true } })
         : null
 
-    const checkoutUrl = await startCheckout(owner, { templateId, listId: list?.id ?? null })
+    const checkoutUrl = await startCheckout(owner, { listId: list?.id ?? null })
     ok(res, { checkoutUrl })
   })
 )

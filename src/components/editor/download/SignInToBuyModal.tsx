@@ -8,10 +8,10 @@ import { CHECKOUT_QUERY, editorPath, RETURN_TO_QUERY, ROUTES } from '@constants/
 import { GoogleButton } from '@components/auth/GoogleButton'
 
 /**
- * A guest chose to sign in before buying, so the template belongs to an account. They come back
- * to the same list with the checkout open: a draft is imported on arrival (`EditorShell` keeps
- * the query), and a template they already bought as a guest has been moved to the account by
- * the API — the checkout then does not open.
+ * A guest chose to sign in before paying, so the access pass belongs to an account. They come
+ * back to the same list with the checkout open: a draft is imported on arrival (`EditorShell`
+ * keeps the query), and a pass they already bought as a guest has been moved to the account by
+ * the API — while it runs, the checkout then does not open.
  */
 export const SignInToBuyModal: FC<{ listId: string; open: boolean; onClose: () => void }> = ({ listId, open, onClose }) => {
   const t = useTranslations('Editor.download')

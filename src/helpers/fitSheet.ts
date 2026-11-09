@@ -51,6 +51,49 @@ const crowded = (sheet: SheetLayout, doc: ListDocument, scale: number, measure: 
 }
 
 /**
+ * The hall plan fitted to its paper: arranged by the app again (blocks placed by hand let go;
+ * sizes set by hand kept), at the biggest text that keeps it on the fewest pages — one,
+ * whenever it can — with nothing across the edge. Its grid columns are not used (`columns: 0`).
+ */
+const fitPlan = (doc: ListDocument, measure: Measure): Fit | null => {
+  const { design, content } = doc
+  if (!content.tables.length && !content.venue.length) return null
+  const planAt = (textScale: number): SheetLayout =>
+    layoutSheet({ ...doc, design: { ...design, textScale, plan: { ...design.plan, positions: {} } } }, measure)
+  const fitsIn = (sheet: SheetLayout, pages: number): boolean =>
+    sheet.pages <= pages &&
+    !sheet.overflow &&
+    sheet.blocks.every((block) => block.y + block.h <= sheet.area.y + sheet.area.h + 0.01 && block.x + block.w <= sheet.area.x + sheet.area.w + 0.01)
+
+  const smallest = planAt(FIT_SCALE.min)
+  const pages = smallest.pages
+  if (!fitsIn(smallest, pages)) return null
+  let low: number = FIT_SCALE.min
+  let high: number = FIT_SCALE.max
+  if (fitsIn(planAt(high), pages)) low = high
+  else
+    for (let step = 0; step < STEPS; step += 1) {
+      const middle = (low + high) / 2
+      if (fitsIn(planAt(middle), pages)) low = middle
+      else high = middle
+    }
+  return { columns: 0, textScale: Math.max(FIT_SCALE.min, Math.floor(low * 100) / 100), pages, rows: 0 }
+}
+
+/**
+ * The text size a hall plan the app arranges starts at: smaller, when at its own size it runs
+ * onto a second page or does not fit its arrangement (a plan is read at a glance); null when it already fits, or was arranged
+ * by hand.
+ */
+export const startingPlanScale = (doc: ListDocument, measure: Measure): number | null => {
+  if (doc.design.kind !== 'plan' || Object.keys(doc.design.plan.positions).length) return null
+  const sheet = layoutSheet(doc, measure)
+  if (sheet.pages <= 1 && !sheet.overflow) return null
+  const fit = fitPlan(doc, measure)
+  return fit && fit.textScale < doc.design.textScale ? fit.textScale : null
+}
+
+/**
  * The columns and text size that fit the sheet to its paper: the fewest pages first (one,
  * whenever it can), then the biggest text that keeps it there with every name on one line
  * and within its room (one too long for a line even across the page at the smallest text may
@@ -61,6 +104,8 @@ const crowded = (sheet: SheetLayout, doc: ListDocument, scale: number, measure: 
  */
 export const fitSheet = (doc: ListDocument, measure: Measure): Fit | null => {
   const { design, content } = doc
+  if (design.kind === 'plan') return fitPlan(doc, measure)
+  // Cards are sized by the card.
   if (design.kind === 'cards') return null
   const items = design.kind === 'seating' ? content.tables.length : content.guests.length
   if (!items) return null

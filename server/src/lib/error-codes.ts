@@ -12,7 +12,6 @@ export const ERROR_CODE = {
   emailNotVerified: 4006,
   verifyTokenInvalid: 4007,
   listLimitReached: 4010,
-  templateAlreadyOwned: 4020,
   listNotPaid: 4021,
   paymentsUnavailable: 4022,
   paymentInitFailed: 4023,

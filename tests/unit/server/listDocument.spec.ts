@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest'
-import { printTerms } from '../../../server/src/services/entitlement'
 import { coerceContent, coerceDesign, coerceTitle, LIST_LIMITS } from '../../../server/src/services/listDocument'
 
 describe('coerceContent', () => {
@@ -8,10 +7,32 @@ describe('coerceContent', () => {
       heading: 'Բարի գալուստ',
       subheading: '',
       footer: '',
-      tables: [{ id: 't1', name: 'Սեղան 1' }],
+      tables: [{ id: 't1', name: 'Սեղան 1', shape: 'rect', seats: 8 }],
       guests: [{ id: 'g1', name: 'Արամ', tableId: 't1', note: '+1' }],
+      venue: [{ id: 'v1', kind: 'stage', label: 'Բեմ' }],
     }
     expect(coerceContent(content)).toEqual(content)
+  })
+
+  it('gives a table saved before the hall plan a round shape and a chair per guest, and the list an empty hall', () => {
+    const content = coerceContent({ tables: [{ id: 't1', name: 'Սեղան 1' }], guests: [] })
+    expect(content.tables).toEqual([{ id: 't1', name: 'Սեղան 1', shape: 'round', seats: 0 }])
+    expect(content.venue).toEqual([])
+  })
+
+  it('keeps the hall plan within the catalogue and the limits', () => {
+    const content = coerceContent({
+      tables: [{ id: 't1', name: 'T', shape: 'oval', seats: 999 }],
+      venue: [
+        { id: 't1', kind: 'pool', label: 'x'.repeat(500) },
+        ...Array.from({ length: LIST_LIMITS.venue + 5 }, () => ({ kind: 'entrance', label: 'Մուտք' })),
+      ],
+    })
+    expect(content.tables[0]).toMatchObject({ shape: 'round', seats: LIST_LIMITS.seats })
+    expect(content.venue).toHaveLength(LIST_LIMITS.venue)
+    // An id a table already has is not reused: the plan keys both by id.
+    expect(content.venue[0]).toMatchObject({ kind: 'stage', label: 'x'.repeat(LIST_LIMITS.venueLabel) })
+    expect(content.venue[0].id).not.toBe('t1')
   })
 
   it('unseats a guest whose table does not exist and replaces bad or repeated ids', () => {
@@ -36,7 +57,7 @@ describe('coerceContent', () => {
   })
 
   it('answers an empty list for garbage', () => {
-    expect(coerceContent('nope')).toEqual({ heading: '', subheading: '', footer: '', guests: [], tables: [] })
+    expect(coerceContent('nope')).toEqual({ heading: '', subheading: '', footer: '', guests: [], tables: [], venue: [] })
   })
 })
 
@@ -67,6 +88,19 @@ describe('coerceDesign', () => {
     expect(coerceDesign({ layout: {} }).layout.sizes).toEqual({})
   })
 
+  it('keeps the hall plan apart from the layout, and gives a list saved before it an empty one', () => {
+    const design = coerceDesign({
+      kind: 'plan',
+      plan: { positions: { t1: { page: 0, x: 40, y: 60 }, 'bad id!': { page: 0, x: 0, y: 0 } }, sizes: { t1: { w: 50, h: 50 } } },
+    })
+    expect(design.kind).toBe('plan')
+    expect(design.plan).toEqual({ arrangement: 'rows', positions: { t1: { page: 0, x: 40, y: 60 } }, sizes: { t1: { w: 50, h: 50 } } })
+    expect(coerceDesign({ kind: 'plan', plan: { arrangement: 'sides' } }).plan.arrangement).toBe('sides')
+    expect(coerceDesign({ kind: 'plan', plan: { arrangement: 'spiral' } }).plan.arrangement).toBe('rows')
+    expect(design.layout.positions).toEqual({})
+    expect(coerceDesign({}).plan).toEqual({ arrangement: 'rows', positions: {}, sizes: {} })
+  })
+
   it('takes a named paper size from the catalogue, whatever was sent', () => {
     expect(coerceDesign({ paper: { format: 'A3', width: 1, height: 1 } }).paper).toMatchObject({ width: 297, height: 420 })
   })
@@ -81,20 +115,5 @@ describe('coerceTitle', () => {
   it('falls back for an empty title', () => {
     expect(coerceTitle('   ', 'Fallback')).toBe('Fallback')
     expect(coerceTitle('Հարսանիք', 'Fallback')).toBe('Հարսանիք')
-  })
-})
-
-describe('printTerms', () => {
-  it('prints the free template for anyone, with the watermark', () => {
-    expect(printTerms({ templateId: 'memorial', owned: false })).toEqual({ allowed: true, watermark: true })
-  })
-
-  it('refuses a premium template its owner has not bought', () => {
-    expect(printTerms({ templateId: 'ivory', owned: false }).allowed).toBe(false)
-    expect(printTerms({ templateId: 'classic', owned: false }).allowed).toBe(false)
-  })
-
-  it('prints a bought template clean', () => {
-    expect(printTerms({ templateId: 'ivory', owned: true })).toEqual({ allowed: true, watermark: false })
   })
 })

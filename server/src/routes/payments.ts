@@ -56,7 +56,7 @@ paymentsRouter.get(
     } catch (error) {
       console.error(`[payments] settle on return failed for ${payment.id}`, error instanceof Error ? error.message : error)
     }
-    toResult(res, { status, template: payment.templateId, payment: payment.id, ...(payment.listId ? { list: payment.listId } : {}) })
+    toResult(res, { status, payment: payment.id, ...(payment.listId ? { list: payment.listId } : {}) })
   })
 )
 

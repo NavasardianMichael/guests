@@ -20,14 +20,14 @@ export const WATERMARK_TEXT = 'Ստեղծված guests-seating-board.eapps.site-
  * The PDF of a document the server does not hold: a guest's local draft. No account and no
  * storage — the body is coerced like any list write, printed, and forgotten. Public, so it is
  * limited per IP; the print queue's own cap (`MAX_WAITING` in services/pdf.ts) bounds what
- * many IPs together can stack up. A template this browser (or account) has bought prints
- * clean here too: the licence is the owner's, not a list's.
+ * many IPs together can stack up. A draft prints clean here too while this browser's (or
+ * account's) pass runs: the pass is the owner's, not a list's.
  */
 export const pdfRouter = Router()
 
 const draftPdfLimiter = createRateLimiter({ limit: 20, windowMs: 10 * 60 * 1000 })
 
-/** Whose templates a draft may print in: the account, else this browser's guest key, else nobody's. */
+/** Whose pass a draft prints under: the account, else this browser's guest key, else nobody's. */
 const draftOwnerOf = (req: Request): ListOwner | null => {
   if (req.session) return { userId: req.session.userId }
   const guestKeyHash = readGuestKeyHash(req)

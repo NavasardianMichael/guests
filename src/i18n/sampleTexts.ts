@@ -9,5 +9,6 @@ export const sampleTexts = async (): Promise<SampleTexts> => {
     subheading: t('subheading'),
     footer: t('footer'),
     table: (number) => t('table', { number }),
+    venue: { stage: t('venue.stage'), dancefloor: t('venue.dancefloor'), entrance: t('venue.entrance') },
   }
 }

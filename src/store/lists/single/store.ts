@@ -5,10 +5,10 @@ import { immer } from 'zustand/middleware/immer'
 import { appendSelectors } from '@store/appendSelectors'
 import { TEMPLATES } from '@constants/templates'
 import { resetDesign } from '@helpers/designReset'
-import { KIND_ALIGN, KIND_LAYOUT, newGuest, newTable, templateTypography } from '@helpers/listFactory'
+import { arrange, KIND_ALIGN, KIND_LAYOUT, newGuest, newTable, newVenueItem, templateTypography, withPlanFields } from '@helpers/listFactory'
 import { applyPaperPatch, MIN_BLOCK_SIZE } from '@helpers/paperChange'
 import { compareNames } from '@helpers/sheetLayout'
-import type { GuestTable, ListDocument, ListEditorActions, ListEditorState } from './types'
+import type { GuestTable, ListDesign, ListDocument, ListEditorActions, ListEditorState, Plan } from './types'
 import { TEXT_ROLES } from './types'
 
 /**
@@ -29,6 +29,9 @@ export { MIN_BLOCK_SIZE } from '@helpers/paperChange'
 export const MAX_TABLES = 300
 /** Guests per table that auto-seating starts from. */
 export const DEFAULT_SEATS_PER_TABLE = 10
+/** The hall plan's stage, dance floor and entrances; chairs at one table. Twins: `LIST_LIMITS.venue` / `.seats`. */
+export const MAX_VENUE_ITEMS = 30
+export const MAX_SEATS = 40
 
 const initialState: ListEditorState = {
   listId: null,
@@ -72,6 +75,20 @@ export const moveBefore = <T extends { id: string }>(items: T[], id: string, bef
 
 const normalise = (name: string): string => name.replace(/\s+/g, ' ').trim().toLocaleLowerCase()
 
+/** Where dragged and resized blocks are kept: the hall plan's own record, or the layout's. */
+export const placementOf = <D extends Pick<ListDesign, 'kind' | 'layout' | 'plan'>>(design: D): Pick<Plan, 'positions' | 'sizes'> =>
+  design.kind === 'plan' ? design.plan : design.layout
+
+/** Blocks that are gone: their places and sizes, on the sheet and on the hall plan. */
+const forgetBlocks = (design: Draft<ListDesign>, ids: Iterable<string>): void => {
+  for (const id of ids) {
+    delete design.layout.positions[id]
+    delete design.layout.sizes[id]
+    delete design.plan.positions[id]
+    delete design.plan.sizes[id]
+  }
+}
+
 /** Finds a table by name (case and spacing ignored), creating it when new. */
 const tableByName = (tables: Draft<GuestTable>[], name: string): string => {
   const wanted = normalise(name)
@@ -95,7 +112,8 @@ export const useListEditorStoreBase = create<ListEditorState & ListEditorActions
           const stored: Partial<Pick<ListDocument['design']['layout'], 'sizes'>> = doc.design.layout
           const storedDesign: Partial<Pick<ListDocument['design'], 'shape'>> = doc.design
           const layout = { ...doc.design.layout, sizes: stored.sizes ?? {} }
-          const loaded = { ...doc, design: { ...doc.design, shape: storedDesign.shape ?? 'rectangle', layout } }
+          // One saved before the hall plan has no table shapes, hall or plan.
+          const loaded = withPlanFields({ ...doc, design: { ...doc.design, shape: storedDesign.shape ?? 'rectangle', layout } })
           set((state) => ({ ...state, ...initialState, listId, doc: loaded }))
         },
         reset: () => {
@@ -150,6 +168,7 @@ export const useListEditorStoreBase = create<ListEditorState & ListEditorActions
           set((state) =>
             edit(state, null, (doc) => {
               if (mode === 'replace') {
+                forgetBlocks(doc.design, doc.content.tables.map((table) => table.id))
                 doc.content.guests = []
                 doc.content.tables = []
                 doc.design.layout.positions = {}
@@ -241,10 +260,7 @@ export const useListEditorStoreBase = create<ListEditorState & ListEditorActions
               doc.content.guests = guests
               doc.content.tables = tables
               // Dragged or resized blocks that are gone.
-              for (const id of removed) {
-                delete doc.design.layout.positions[id]
-                delete doc.design.layout.sizes[id]
-              }
+              forgetBlocks(doc.design, removed)
             })
             if (state.selection.some((id) => removed.has(id))) state.selection = state.selection.filter((id) => !removed.has(id))
           })
@@ -260,8 +276,8 @@ export const useListEditorStoreBase = create<ListEditorState & ListEditorActions
           })
         },
 
-        addTable: (name) => {
-          const table = newTable(name ?? '')
+        addTable: (name, shape, seats) => {
+          const table = newTable(name ?? '', shape, Math.min(MAX_SEATS, Math.max(0, Math.round(seats ?? 0))))
           set((state) =>
             edit(state, null, (doc) => {
               if (doc.content.tables.length < MAX_TABLES) doc.content.tables.push(table)
@@ -277,13 +293,24 @@ export const useListEditorStoreBase = create<ListEditorState & ListEditorActions
             })
           )
         },
+        updateTable: (tableId, patch) => {
+          set((state) =>
+            edit(state, `${tableId}.${Object.keys(patch).join(',')}`, (doc) => {
+              const table = doc.content.tables.find((item) => item.id === tableId)
+              if (!table) return
+              if (patch.shape) table.shape = patch.shape
+              if (patch.seats !== undefined) table.seats = Math.min(MAX_SEATS, Math.max(0, Math.round(patch.seats)))
+              // A new shape is a new size: the old one was measured for the other outline.
+              if (patch.shape) delete doc.design.plan.sizes[tableId]
+            })
+          )
+        },
         removeTable: (tableId) => {
           set((state) => {
             edit(state, null, (doc) => {
               doc.content.tables = doc.content.tables.filter((table) => table.id !== tableId)
               for (const guest of doc.content.guests) if (guest.tableId === tableId) guest.tableId = ''
-              delete doc.design.layout.positions[tableId]
-              delete doc.design.layout.sizes[tableId]
+              forgetBlocks(doc.design, [tableId])
             })
             state.selection = state.selection.filter((id) => id !== tableId)
           })
@@ -316,6 +343,34 @@ export const useListEditorStoreBase = create<ListEditorState & ListEditorActions
           )
         },
 
+        addVenueItem: (kind, label) => {
+          const item = newVenueItem(kind, label)
+          set((state) =>
+            edit(state, null, (doc) => {
+              if (doc.content.venue.length < MAX_VENUE_ITEMS) doc.content.venue.push(item)
+            })
+          )
+          return item.id
+        },
+        renameVenueItem: (itemId, label) => {
+          set((state) =>
+            edit(state, `${itemId}.label`, (doc) => {
+              const item = doc.content.venue.find((entry) => entry.id === itemId)
+              if (item) item.label = label
+            })
+          )
+        },
+        removeVenueItems: (itemIds) => {
+          const ids = new Set(itemIds)
+          set((state) => {
+            edit(state, null, (doc) => {
+              doc.content.venue = doc.content.venue.filter((item) => !ids.has(item.id))
+              forgetBlocks(doc.design, ids)
+            })
+            if (state.selection.some((id) => ids.has(id))) state.selection = state.selection.filter((id) => !ids.has(id))
+          })
+        },
+
         setDesign: (patch) => {
           set((state) =>
             edit(state, `design.${Object.keys(patch).join(',')}`, (doc) => {
@@ -326,6 +381,9 @@ export const useListEditorStoreBase = create<ListEditorState & ListEditorActions
                 // in columns of names, cards edge to edge. Dragged and resized blocks belong to the old one.
                 Object.assign(doc.design.layout, KIND_LAYOUT[patch.kind], { mode: 'grid', positions: {}, sizes: {} })
                 for (const role of TEXT_ROLES) doc.design.type[role].align = KIND_ALIGN[patch.kind][role]
+                // A hall is wider than it is deep: the plan turns the page, the others turn it back.
+                const orientation = patch.kind === 'plan' ? 'landscape' : 'portrait'
+                if (doc.design.paper.orientation !== orientation) applyPaperPatch(doc.design, { orientation })
               }
             })
           )
@@ -361,8 +419,18 @@ export const useListEditorStoreBase = create<ListEditorState & ListEditorActions
           set((state) =>
             edit(state, null, (doc) => {
               doc.design.textScale = textScale
+              // The hall plan is fitted as the app arranges it, with no grid of its own.
+              if (doc.design.kind === 'plan') doc.design.plan.positions = {}
               // Fitted on the grid: blocks dragged by hand would sit on top of it.
-              Object.assign(doc.design.layout, { columns, mode: 'grid', positions: {} })
+              else Object.assign(doc.design.layout, { columns, mode: 'grid', positions: {} })
+            })
+          )
+        },
+        setArrangement: (arrangement, textScale) => {
+          set((state) =>
+            edit(state, null, (doc) => {
+              arrange(doc, arrangement)
+              if (textScale !== undefined) doc.design.textScale = textScale
             })
           )
         },
@@ -391,37 +459,41 @@ export const useListEditorStoreBase = create<ListEditorState & ListEditorActions
         setPositions: (positions) => {
           set((state) =>
             edit(state, null, (doc) => {
-              Object.assign(doc.design.layout.positions, positions)
-              doc.design.layout.mode = 'free'
+              Object.assign(placementOf(doc.design).positions, positions)
+              if (doc.design.kind !== 'plan') doc.design.layout.mode = 'free'
             })
           )
         },
         resetPositions: (blockIds) => {
           set((state) =>
             edit(state, null, (doc) => {
+              const placement = placementOf(doc.design)
               if (!blockIds) {
-                doc.design.layout.positions = {}
-                doc.design.layout.mode = 'grid'
-              } else for (const id of blockIds) delete doc.design.layout.positions[id]
+                placement.positions = {}
+                if (doc.design.kind !== 'plan') doc.design.layout.mode = 'grid'
+              } else for (const id of blockIds) delete placement.positions[id]
             })
           )
         },
-        setSize: (blockId, size) => {
+        setSize: (blockId, size, pin) => {
           set((state) =>
             // Every frame of one resize lands in one undo step.
             edit(state, `size.${blockId}`, (doc) => {
-              doc.design.layout.sizes[blockId] = {
+              const placement = placementOf(doc.design)
+              placement.sizes[blockId] = {
                 w: Math.max(MIN_BLOCK_SIZE.w, size.w),
                 h: Math.max(MIN_BLOCK_SIZE.h, size.h),
               }
+              if (pin) Object.assign(placement.positions, pin)
             })
           )
         },
         resetSizes: (blockIds) => {
           set((state) =>
             edit(state, null, (doc) => {
-              if (!blockIds) doc.design.layout.sizes = {}
-              else for (const id of blockIds) delete doc.design.layout.sizes[id]
+              const placement = placementOf(doc.design)
+              if (!blockIds) placement.sizes = {}
+              else for (const id of blockIds) delete placement.sizes[id]
             })
           )
         },

@@ -7,6 +7,20 @@ import { type SessionPayload, verifySession } from '../lib/session.js'
 
 const readToken = (req: Request): string | undefined => req.cookies?.[config.cookieName] as string | undefined
 
+/** How stale `User.lastActiveAt` may get before a request refreshes it: one write a day at most. */
+const ACTIVE_STAMP_MS = 24 * 60 * 60 * 1000
+
+/**
+ * Records that the account is in use, for the one-year retention sweep (services/retention.ts).
+ * Never awaited by the request, never fails it.
+ */
+const stampActive = (userId: string, lastActiveAt: Date): void => {
+  if (Date.now() - lastActiveAt.getTime() < ACTIVE_STAMP_MS) return
+  prisma.user.update({ where: { id: userId }, data: { lastActiveAt: new Date() } }).catch((error: unknown) => {
+    console.error('[auth] stamping lastActiveAt failed', error instanceof Error ? error.message : error)
+  })
+}
+
 /**
  * The one place a cookie becomes a trusted identity. The JWT proves we minted it;
  * `User.tokenVersion` is the database's veto (password reset/change, account delete).
@@ -19,9 +33,10 @@ const authenticate = async (req: Request): Promise<SessionPayload | null> => {
   const session = verifySession(token)
   if (!session) return null
 
-  const user = await prisma.user.findUnique({ where: { id: session.userId }, select: { tokenVersion: true } })
+  const user = await prisma.user.findUnique({ where: { id: session.userId }, select: { tokenVersion: true, lastActiveAt: true } })
   if (!user || user.tokenVersion !== session.tokenVersion) return null
 
+  stampActive(session.userId, user.lastActiveAt)
   return session
 }
 

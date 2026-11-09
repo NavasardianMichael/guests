@@ -1,6 +1,6 @@
 'use client'
 
-import { type CSSProperties, type FC, type KeyboardEvent, type MouseEvent, type PointerEvent, type ReactNode, useMemo } from 'react'
+import { type CSSProperties, type FC, type KeyboardEvent, memo, type MouseEvent, type PointerEvent, type ReactNode, useMemo } from 'react'
 import type { ListDesign, TextStyle } from '@store/lists/single/types'
 import { sheetFontStack } from '@constants/fonts'
 import { TEMPLATE_FRAMES } from '@constants/templateFrames'
@@ -13,9 +13,11 @@ import {
   type HeaderBlock,
   LINE_HEIGHT,
   type Lines,
+  type PlanTableBlock,
   type SheetBlock,
   type SheetLayout,
   type TableBlock,
+  type VenueBlock,
 } from '@helpers/sheetLayout'
 import { type ShapeArt, shapeArt, SQUARE_CORNERS } from '@helpers/sheetShape'
 import { type EditTarget, sameTarget, type SheetInteraction, useSheetInteraction } from './SheetInteraction'
@@ -291,7 +293,82 @@ const CardView: FC<BlockProps<CardBlock>> = ({ block, design, interaction }) =>
     <CardFace block={block} design={design} interaction={interaction} />
   )
 
-const BlockView: FC<{ block: SheetBlock; design: ListDesign; interaction: SheetInteraction | null }> = ({ block, design, interaction }) => {
+/** Placed in mm from its block's corner, as the layout computed it. */
+const at = (x: number, y: number, w?: number, h?: number): CSSProperties => ({
+  left: mm(x),
+  top: mm(y),
+  width: w === undefined ? undefined : mm(w),
+  height: h === undefined ? undefined : mm(h),
+})
+
+/** A table on the hall plan: chairs around its top, its name and its guests inside. */
+const PlanTableView: FC<BlockProps<PlanTableBlock>> = ({ block, design, interaction }) => {
+  const { type, textScale } = design
+  const { top, chair } = block
+  return (
+    <>
+      {block.chairs.map((seat, index) => (
+        <span key={index} className='sh-chair' style={at(seat.x - chair / 2, seat.y - chair / 2, chair, chair)} aria-hidden='true' />
+      ))}
+      <div className={cn('sh-plan-top', `sh-plan-${block.shape}`)} style={at(top.x, top.y, top.w, top.h)} />
+      {block.head.lines.length > 0 && (
+        <EditableText
+          target={{ kind: 'table', id: block.table.id }}
+          interaction={interaction}
+          uppercase={type.group.uppercase}
+          className='sh-plan-head'
+          style={{ ...textCss(type.group, textScale), color: tableLabelColor(design), textAlign: 'center', ...at(block.head.x, block.head.y, block.head.w) }}
+        >
+          <TextLines lines={block.head.lines} />
+        </EditableText>
+      )}
+      {block.guests.map(({ guest, lines, x, y, w }) => (
+        <div
+          key={guest.id}
+          className={cn(
+            'sh-name sh-plan-name',
+            interaction?.selection.has(guest.id) && 'sh-selected',
+            interaction?.dropTarget === guest.id && 'sh-drop-target'
+          )}
+          style={at(x, y, w)}
+          data-guest-id={guest.id}
+          onPointerDown={interaction ? (event: PointerEvent) => interaction.onNamePointerDown(event, guest.id) : undefined}
+        >
+          <EditableText target={{ kind: 'guest', id: guest.id }} interaction={interaction} uppercase={type.name.uppercase} style={textCss(type.name, textScale)}>
+            <TextLines lines={lines} />
+          </EditableText>
+        </div>
+      ))}
+    </>
+  )
+}
+
+/** A stage, dance floor or entrance, its label in the middle. */
+const VenueView: FC<BlockProps<VenueBlock>> = ({ block, design, interaction }) => (
+  <div className={cn('sh-venue-face', `sh-venue-${block.item.kind}`)}>
+    <EditableText
+      target={{ kind: 'item', id: block.item.id }}
+      interaction={interaction}
+      uppercase={design.type.group.uppercase}
+      className='sh-venue-label'
+      style={{ ...textCss(design.type.group, design.textScale), color: tableLabelColor(design), textAlign: 'center', top: mm(block.textY) }}
+    >
+      <TextLines lines={block.lines} />
+    </EditableText>
+  </div>
+)
+
+/** Blocks the corner handle resizes; names, cards and texts are moved, not sized. */
+const RESIZABLE: ReadonlySet<SheetBlock['type']> = new Set(['table', 'plantable', 'venue'])
+
+type BlockViewProps = { block: SheetBlock; design: ListDesign; interaction: SheetInteraction | null }
+
+/**
+ * One block. Memoised: the editor re-renders the sheet for its own marks (snap guides, the
+ * selection rectangle) many times a drag, and a block redraws only when it, the design or the
+ * interaction (selection, drop target, open text) changes.
+ */
+const BlockView: FC<BlockViewProps> = memo(function BlockView({ block, design, interaction }) {
   const style: CSSProperties = { left: mm(block.x), top: mm(block.y), width: mm(block.w), height: mm(block.h) }
   const selected = interaction?.selection.has(block.id)
   return (
@@ -306,6 +383,8 @@ const BlockView: FC<{ block: SheetBlock; design: ListDesign; interaction: SheetI
       style={style}
       data-block-id={block.id}
       data-block-type={block.type}
+      // A table on either sheet: a guest's name dropped on it seats the guest there.
+      data-seats={block.type === 'table' || block.type === 'plantable' ? '' : undefined}
       onPointerDown={interaction ? (event: PointerEvent) => interaction.onBlockPointerDown(event, block) : undefined}
     >
       {block.type === 'header' && <HeaderView block={block} design={design} interaction={interaction} />}
@@ -313,8 +392,9 @@ const BlockView: FC<{ block: SheetBlock; design: ListDesign; interaction: SheetI
       {block.type === 'guest' && <GuestView block={block} design={design} interaction={interaction} />}
       {block.type === 'table' && <TableView block={block} design={design} interaction={interaction} />}
       {block.type === 'card' && <CardView block={block} design={design} interaction={interaction} />}
-      {/* Only a table is resized by hand; names, cards and texts are moved, not sized. */}
-      {interaction && block.type === 'table' && (
+      {block.type === 'plantable' && <PlanTableView block={block} design={design} interaction={interaction} />}
+      {block.type === 'venue' && <VenueView block={block} design={design} interaction={interaction} />}
+      {interaction && RESIZABLE.has(block.type) && (
         <span
           className='sh-resize'
           aria-hidden='true'
@@ -323,7 +403,7 @@ const BlockView: FC<{ block: SheetBlock; design: ListDesign; interaction: SheetI
       )}
     </div>
   )
-}
+})
 
 /**
  * What the template paints under the blocks: its background and decor. On a shaped sheet it

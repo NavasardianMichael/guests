@@ -667,11 +667,10 @@ export const DEFAULT_TEMPLATE_ID: TemplateId = 'memorial'
 export const FREE_TEMPLATE_ID: TemplateId = 'memorial'
 
 /**
- * May a list in this template download? The free template always; a premium one once its owner
- * has bought it (`owned`, the bought templates). Twin: `printTerms` on the server.
+ * May a list in this template download? The free template always; any template while the
+ * owner's access pass runs (`active`). Twin: `printTerms` on the server.
  */
-export const isPrintable = (templateId: TemplateId, owned: readonly TemplateId[] | null): boolean =>
-  TEMPLATES[templateId].free || Boolean(owned?.includes(templateId))
+export const isPrintable = (templateId: TemplateId, active: boolean): boolean => TEMPLATES[templateId].free || active
 
 export const isTemplateId = (value: unknown): value is TemplateId =>
   typeof value === 'string' && (TEMPLATE_IDS as readonly string[]).includes(value)

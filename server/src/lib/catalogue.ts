@@ -64,7 +64,13 @@ export const DEFAULT_TEMPLATE_ID: TemplateId = 'memorial'
 
 export const TABLE_STYLES = ['plain', 'underline', 'boxed', 'filled', 'ribbon', 'badge'] as const
 
-export const PRINT_KINDS = ['seating', 'list', 'cards'] as const
+export const PRINT_KINDS = ['seating', 'list', 'cards', 'plan'] as const
+
+export const TABLE_SHAPES = ['round', 'rect'] as const
+
+export const VENUE_KINDS = ['stage', 'dancefloor', 'entrance'] as const
+
+export const PLAN_ARRANGEMENTS = ['rows', 'around', 'sides', 'banquet'] as const
 
 export const SHEET_SHAPES = ['rectangle', 'rounded', 'ticket', 'arch', 'pointed', 'oval', 'circle', 'hexagon', 'octagon', 'wavy', 'scalloped'] as const
 

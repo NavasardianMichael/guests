@@ -217,6 +217,89 @@
   border-radius: 99mm;
 }
 
+/* ---------------------------------------------------------------- hall plan */
+
+/*
+ * A table on the plan: its top (a circle or a rounded rectangle) and chairs, placed in mm by
+ * the layout; texts are absolutely placed over it. Colours are the palette's, so every
+ * template recolours the plan; table styles that fill their tables fill the tops.
+ */
+.sh-plan-top,
+.sh-chair,
+.sh-plan-head,
+/* Above the editor's `position: relative` for names (its grip is placed against it). */
+.sh-plantable > .sh-name.sh-plan-name {
+  position: absolute;
+  box-sizing: border-box;
+}
+
+.sh-plan-top {
+  border: 0.35mm solid var(--sh-accent);
+  background: var(--sh-bg);
+}
+
+.sh-plan-round {
+  border-radius: 50%;
+}
+
+.sh-plan-rect {
+  border-radius: 1.8mm;
+}
+
+.sh-ts-filled .sh-plan-top,
+.sh-ts-ribbon .sh-plan-top,
+.sh-ts-badge .sh-plan-top {
+  background: var(--sh-panel);
+}
+
+.sh-ts-plain .sh-plan-top {
+  border-width: 0.25mm;
+}
+
+.sh-chair {
+  border: 0.3mm solid var(--sh-accent);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--sh-accent) 14%, var(--sh-bg));
+}
+
+/* A stage, a dance floor (a chequered floor), an entrance (an arrow pointing in). */
+.sh-venue-face {
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  border: 0.35mm solid var(--sh-accent);
+  border-radius: 1.6mm;
+  background: color-mix(in srgb, var(--sh-accent) 14%, var(--sh-bg));
+}
+
+.sh-venue-dancefloor {
+  border-style: dashed;
+  background: repeating-conic-gradient(color-mix(in srgb, var(--sh-accent) 12%, var(--sh-bg)) 0 25%, var(--sh-bg) 0 50%) 0 0 / 8mm 8mm;
+}
+
+.sh-venue-entrance {
+  border-width: 0.6mm;
+  background: var(--sh-bg);
+}
+
+.sh-venue-entrance::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -3.2mm;
+  width: 4.4mm;
+  height: 2.6mm;
+  translate: -50% 0;
+  background: var(--sh-accent);
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+}
+
+.sh-venue-label {
+  position: absolute;
+  left: 0;
+  right: 0;
+}
+
 /* ---------------------------------------------------------------- place cards */
 
 .sh-card {
@@ -398,6 +481,8 @@
 
 /* What the pointer is carrying. */
 .sh-interactive .sh-dragging {
+  /* On a layer of its own: each frame of a drag only moves it, nothing is repainted. */
+  will-change: translate;
   cursor: grabbing;
   box-shadow: 0 2mm 6mm color-mix(in srgb, #000 18%, transparent);
 }

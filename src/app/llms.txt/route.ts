@@ -1,7 +1,7 @@
 import { getTranslations } from 'next-intl/server'
 import { APP_DESCRIPTION, APP_NAME, APP_NAME_LATIN } from '@constants/app'
 import { FONT_SLUGS, FONTS } from '@constants/fonts'
-import { formatAmount, TEMPLATE_PRICE_AMD } from '@constants/pricing'
+import { formatAmount, PASS_DAYS, PASS_PRICE_AMD } from '@constants/pricing'
 import { ROUTES, templatePath } from '@constants/routes'
 import { KEYWORDS_EN, KEYWORDS_RU } from '@constants/seo'
 import { TEMPLATE_LIST } from '@constants/templates'
@@ -14,15 +14,24 @@ import { absoluteUrl } from '@helpers/url'
  */
 export const dynamic = 'force-static'
 
+/** "21 день", "22 дня", "25 дней". */
+const ruDays = (count: number): string => {
+  const ten = count % 10
+  const hundred = count % 100
+  if (ten === 1 && hundred !== 11) return `${count} день`
+  if (ten >= 2 && ten <= 4 && (hundred < 12 || hundred > 14)) return `${count} дня`
+  return `${count} дней`
+}
+
 export async function GET(): Promise<Response> {
   const t = await getTranslations({ locale: 'hy', namespace: 'Templates' })
-  const price = formatAmount(TEMPLATE_PRICE_AMD)
+  const price = formatAmount(PASS_PRICE_AMD)
   const body = buildLlmsTxt({
     title: `${APP_NAME} (${APP_NAME_LATIN})`,
-    summary: `${APP_DESCRIPTION} Ցուցակը կազմելը և անվճար ձևանմուշով տպելը անվճար է. մնացած ձևանմուշներից յուրաքանչյուրը՝ ${price} դրամ, մեկանգամյա վճարով, գնողի բոլոր ցուցակների համար (առանց բաժանորդագրության)։`,
+    summary: `${APP_DESCRIPTION} Ցուցակը կազմելը, նախադիտելը և անվճար ձևանմուշով տպելը անվճար է. լիարժեք հասանելիությունը՝ բոլոր ձևանմուշները, առանց կայքի նշման, անսահմանափակ ներբեռնում, արժե ${price} դրամ ${PASS_DAYS} օրով (մեկ վճարում, առանց բաժանորդագրության). ավարտից հետո ցուցակները մնում են պահպանված։`,
     details: [
-      `In English: ${APP_NAME} (${APP_NAME_LATIN}) is an online tool for Armenian events — weddings, christenings, birthdays — to make a guest list and print it: a seating board (guests under their tables), a plain guest list for the entrance, or place cards. Import the list from Excel, CSV, pasted text or a photo of a handwritten list (read by AI), arrange guests by dragging them, in columns or rows, on any paper (A5 to A2 or a custom size), in ${TEMPLATE_LIST.length} classic and creative templates with ${FONT_SLUGS.length} Armenian fonts, then download a PDF or print on the spot. The interface is in Armenian, Russian and English. Building is free and needs no account; each premium template is bought once (${price} AMD) and then prints on all of the buyer's lists. Also searched as: ${KEYWORDS_EN.join(', ')}.`,
-      `По-русски: ${APP_NAME} (${APP_NAME_LATIN}) — онлайн-сервис для армянских торжеств (свадьба, крестины, день рождения): составить список гостей и распечатать его — план рассадки по столам, список гостей для входа или карточки рассадки. Импорт из Excel, CSV, текста или фото рукописного списка (распознаёт ИИ), расстановка гостей перетаскиванием, по столбцам или строкам, на бумаге любого формата (от A5 до A2 или свой размер), ${TEMPLATE_LIST.length} классических и креативных шаблонов, ${FONT_SLUGS.length} армянских шрифтов, PDF или печать на месте. Интерфейс на армянском, русском и английском. Составление бесплатно и без регистрации; каждый премиум-шаблон покупается один раз (${price} драмов) и печатается на всех списках покупателя. Также ищут как: ${KEYWORDS_RU.join(', ')}.`,
+      `In English: ${APP_NAME} (${APP_NAME_LATIN}) is an online tool for Armenian events — weddings, christenings, birthdays — to make a guest list and print it: a seating board (guests under their tables), a plain guest list for the entrance, place cards, or the hall plan (tables with their guests, chairs, stage and dance floor). Import the list from Excel, CSV, pasted text or a photo of a handwritten list (read by AI), arrange guests by dragging them, in columns or rows, on any paper (A5 to A2 or a custom size), in ${TEMPLATE_LIST.length} classic and creative templates with ${FONT_SLUGS.length} Armenian fonts, then download a PDF or print on the spot. The interface is in Armenian, Russian and English. Building and previewing are free and need no account; full access — every template, no “made with” line, unlimited downloads — is ${price} AMD for ${PASS_DAYS} days, one payment, no subscription, and the lists stay saved after it ends. Also searched as: ${KEYWORDS_EN.join(', ')}.`,
+      `По-русски: ${APP_NAME} (${APP_NAME_LATIN}) — онлайн-сервис для армянских торжеств (свадьба, крестины, день рождения): составить список гостей и распечатать его — план рассадки по столам, список гостей для входа, карточки рассадки или план зала (столы с гостями, стулья, сцена и танцпол). Импорт из Excel, CSV, текста или фото рукописного списка (распознаёт ИИ), расстановка гостей перетаскиванием, по столбцам или строкам, на бумаге любого формата (от A5 до A2 или свой размер), ${TEMPLATE_LIST.length} классических и креативных шаблонов, ${FONT_SLUGS.length} армянских шрифтов, PDF или печать на месте. Интерфейс на армянском, русском и английском. Составление и просмотр бесплатны и без регистрации; полный доступ — все шаблоны, без подписи сайта, неограниченное скачивание — ${price} драмов на ${ruDays(PASS_DAYS)}, один платёж, без подписки, а списки после окончания остаются сохранёнными. Также ищут как: ${KEYWORDS_RU.join(', ')}.`,
     ],
     sections: [
       {

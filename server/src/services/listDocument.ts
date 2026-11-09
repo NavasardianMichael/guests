@@ -6,12 +6,15 @@ import {
   PAPER_FORMATS,
   PAPER_LIMITS,
   PAPER_SIZES,
+  PLAN_ARRANGEMENTS,
   PRINT_KINDS,
   SHEET_SHAPES,
+  TABLE_SHAPES,
   TABLE_STYLES,
   TEMPLATE_IDS,
   type TemplateId,
   TEXT_ROLES,
+  VENUE_KINDS,
 } from '../lib/catalogue.js'
 
 /**
@@ -34,6 +37,11 @@ export const LIST_LIMITS = {
   name: 120,
   note: 120,
   tableName: 60,
+  /** Chairs drawn around one table on the hall plan. */
+  seats: 40,
+  /** Stage, dance floor, entrances on the hall plan. */
+  venue: 30,
+  venueLabel: 60,
   text: 200,
   positions: 2500,
   pages: 200,
@@ -62,7 +70,8 @@ export type ListContent = {
   subheading: string
   footer: string
   guests: { id: string; name: string; tableId: string; note: string }[]
-  tables: { id: string; name: string }[]
+  tables: { id: string; name: string; shape: (typeof TABLE_SHAPES)[number]; seats: number }[]
+  venue: { id: string; kind: (typeof VENUE_KINDS)[number]; label: string }[]
 }
 
 export type ListDesign = {
@@ -94,6 +103,7 @@ export type ListDesign = {
     positions: Record<string, Position>
     sizes: Record<string, Size>
   }
+  plan: { arrangement: (typeof PLAN_ARRANGEMENTS)[number]; positions: Record<string, Position>; sizes: Record<string, Size> }
 }
 
 const ID_PATTERN = /^[A-Za-z0-9_-]{1,40}$/
@@ -136,7 +146,12 @@ export const coerceContent = (value: unknown): ListContent => {
   const tables = (Array.isArray(source.tables) ? source.tables : [])
     .filter(isObject)
     .slice(0, LIST_LIMITS.tables)
-    .map((table) => ({ id: uniqueId(table.id), name: text(table.name, LIST_LIMITS.tableName) }))
+    .map((table) => ({
+      id: uniqueId(table.id),
+      name: text(table.name, LIST_LIMITS.tableName),
+      shape: oneOf(table.shape, TABLE_SHAPES, 'round'),
+      seats: int(table.seats, 0, LIST_LIMITS.seats, 0),
+    }))
   const tableIds = new Set(tables.map((table) => table.id))
 
   const guests = (Array.isArray(source.guests) ? source.guests : [])
@@ -149,12 +164,22 @@ export const coerceContent = (value: unknown): ListContent => {
       note: text(guest.note, LIST_LIMITS.note),
     }))
 
+  const venue = (Array.isArray(source.venue) ? source.venue : [])
+    .filter(isObject)
+    .slice(0, LIST_LIMITS.venue)
+    .map((item) => ({
+      id: uniqueId(item.id),
+      kind: oneOf(item.kind, VENUE_KINDS, 'stage'),
+      label: text(item.label, LIST_LIMITS.venueLabel),
+    }))
+
   return {
     heading: text(source.heading, LIST_LIMITS.text),
     subheading: text(source.subheading, LIST_LIMITS.text),
     footer: text(source.footer, LIST_LIMITS.text),
     guests,
     tables,
+    venue,
   }
 }
 
@@ -221,6 +246,7 @@ export const coerceDesign = (value: unknown): ListDesign => {
   const paletteSource = isObject(source.palette) ? source.palette : {}
   const typeSource = isObject(source.type) ? source.type : {}
   const layoutSource = isObject(source.layout) ? source.layout : {}
+  const planSource = isObject(source.plan) ? source.plan : {}
 
   return {
     kind: oneOf(source.kind, PRINT_KINDS, 'seating'),
@@ -260,6 +286,11 @@ export const coerceDesign = (value: unknown): ListDesign => {
       cutMarks: bool(layoutSource.cutMarks, true),
       positions: coercePositions(layoutSource.positions),
       sizes: coerceSizes(layoutSource.sizes),
+    },
+    plan: {
+      arrangement: oneOf(planSource.arrangement, PLAN_ARRANGEMENTS, 'rows'),
+      positions: coercePositions(planSource.positions),
+      sizes: coerceSizes(planSource.sizes),
     },
   }
 }

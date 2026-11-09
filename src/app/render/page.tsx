@@ -32,7 +32,10 @@ export default function RenderPage() {
     <>
       <SheetFontsLink />
       <style>{PRINT_CSS}</style>
-      <RenderClient />
+      {/* The one page browser printing is not blocked on (globals.css): the API prints it. */}
+      <div data-print-target>
+        <RenderClient />
+      </div>
     </>
   )
 }

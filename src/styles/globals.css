@@ -122,8 +122,7 @@
    three classes outrank its rule. */
 .ant-form-item .ant-form-item-additional .ant-form-item-extra,
 .ant-form-item .ant-form-item-additional .ant-form-item-explain {
-  margin-top: 0.25rem;
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
 }
 
 /* A scroll container's scrollbar, a step thinner than the platform default. Not inherited:
@@ -136,8 +135,30 @@
 @utility mesh-bg {
   background:
     radial-gradient(60rem 30rem at 85% -10%, var(--brand-accent-soft), transparent 60%),
-    radial-gradient(50rem 30rem at -10% 10%, var(--brand-ink-soft), transparent 60%),
-    var(--brand-canvas);
+    radial-gradient(50rem 30rem at -10% 10%, var(--brand-ink-soft), transparent 60%), var(--brand-canvas);
+}
+
+/*
+ * Browser printing is off: a print of any page is only the note below (the root layout's
+ * `.print-note`). Lists print as the API's PDF, which is the one page exempt — `/render`, marked
+ * `data-print-target`, is what the API's headless Chrome prints. Ctrl/Cmd+P is caught as well
+ * (`PrintGuard`).
+ */
+.print-note {
+  display: none;
+}
+
+@media print {
+  html:not(:has([data-print-target])) body > :not(.print-note) {
+    display: none !important;
+  }
+
+  html:not(:has([data-print-target])) .print-note {
+    display: block;
+    margin: 20mm;
+    font-size: 14pt;
+    color: #000;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

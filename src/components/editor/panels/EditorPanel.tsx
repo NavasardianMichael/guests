@@ -64,7 +64,8 @@ export const EditorPanel: FC = () => {
       {/* Keyed by step, so a new step opens scrolled to its top. */}
       <div key={tab} className='min-h-0 flex-1 scrollbar-thin overflow-y-auto px-4 pt-4 pb-8'>
         <header className='mb-4'>
-          <div className='flex items-center justify-between gap-2'>
+          {/* Clear of the fold button pinned at the column's corner (`EditorSidebar`). */}
+          <div className='flex min-h-6 items-center justify-between gap-2 pr-8'>
             <p className='m-0 text-[11px] font-semibold tracking-wider text-accent-strong uppercase'>
               {t('steps.step', { number: index + 1, count: EDITOR_TABS.length })}
             </p>

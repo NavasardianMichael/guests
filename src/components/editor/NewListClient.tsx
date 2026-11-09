@@ -9,11 +9,14 @@ import { createListAPI } from '@api/lists/main'
 import { useAuthStore } from '@store/auth/store'
 import { useEditorUiStore } from '@store/editorUi/store'
 import { DRAFT_ID, type ListDocument, type PrintKind, type SheetShape } from '@store/lists/single/types'
+import { useSampleTexts } from '@hooks/useSampleTexts'
 import { editorPath, ROUTES } from '@constants/routes'
 import type { TemplateId } from '@constants/templates'
 import { dedupe } from '@helpers/dedupe'
+import { startingPlanScale } from '@helpers/fitSheet'
 import { newListDocument } from '@helpers/listFactory'
 import { readLocalDraft, writeLocalDraft } from '@helpers/localDraft'
+import { measureText } from '@helpers/measureText'
 import { ErrorState } from '@components/ui/ErrorState'
 
 type Props = { templateId: TemplateId; kind: PrintKind; shape: SheetShape }
@@ -26,27 +29,19 @@ type Props = { templateId: TemplateId; kind: PrintKind; shape: SheetShape }
 export const NewListClient: FC<Props> = ({ templateId, kind, shape }) => {
   const t = useTranslations('Editor')
   const tCommon = useTranslations('Common')
-  const tSamples = useTranslations('Samples')
+  const texts = useSampleTexts()
   const router = useRouter()
   const user = useAuthStore.use.user()
   const isResolved = useAuthStore.use.isResolved()
   const [askReplace, setAskReplace] = useState(false)
   const [error, setError] = useState<unknown>(null)
 
-  const build = useCallback(
-    (): ListDocument =>
-      newListDocument(templateId, kind, {
-        title: t('untitled'),
-        shape,
-        texts: {
-          heading: tSamples('heading'),
-          subheading: tSamples('subheading'),
-          footer: tSamples('footer'),
-          table: (number) => tSamples('table', { number }),
-        },
-      }),
-    [kind, shape, t, tSamples, templateId]
-  )
+  const build = useCallback((): ListDocument => {
+    const doc = newListDocument(templateId, kind, { title: t('untitled'), shape, texts })
+    // A hall plan starts on one page, as when it is picked in the editor (KindPanel).
+    const textScale = startingPlanScale(doc, measureText)
+    return textScale === null ? doc : { ...doc, design: { ...doc.design, textScale } }
+  }, [kind, shape, t, texts, templateId])
 
   const startDraft = useCallback(() => {
     writeLocalDraft(build())

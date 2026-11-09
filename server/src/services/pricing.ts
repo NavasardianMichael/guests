@@ -1,7 +1,9 @@
 /**
- * The price of one premium template, in whole drams: paid once, it prints that template on
- * every list its buyer has or makes (docs/PAYMENTS.md). The web's `TEMPLATE_PRICE_AMD`
- * (`src/constants/pricing.ts`) is what pages print, pinned equal by
- * `tests/unit/server/twins.spec.ts`.
+ * The one product (docs/PAYMENTS.md): an **access pass** — `PASS_DAYS` of everything (every
+ * template and kind, clean pages, unlimited downloads) for `PASS_PRICE_AMD` whole drams. A pass
+ * bought while one is running adds its days on top. The web's twins (`src/constants/pricing.ts`)
+ * are what pages print, pinned equal by `tests/unit/server/twins.spec.ts`.
  */
-export const TEMPLATE_PRICE_AMD = 2000
+export const PASS_PRICE_AMD = 2000
+
+export const PASS_DAYS = 21

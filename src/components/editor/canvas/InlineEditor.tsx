@@ -10,13 +10,15 @@ import type { EditTarget } from '@components/sheet/SheetInteraction'
 export const targetText = (doc: ListDocument, target: EditTarget): string => {
   if (target.kind === 'guest') return doc.content.guests.find((guest) => guest.id === target.id)?.name ?? ''
   if (target.kind === 'table') return doc.content.tables.find((table) => table.id === target.id)?.name ?? ''
+  if (target.kind === 'item') return doc.content.venue.find((item) => item.id === target.id)?.label ?? ''
   return doc.content[target.kind]
 }
 
 export const writeTarget = (target: EditTarget, value: string): void => {
-  const { updateGuest, renameTable, setHeaderText } = useListEditorStoreBase.getState()
+  const { updateGuest, renameTable, renameVenueItem, setHeaderText } = useListEditorStoreBase.getState()
   if (target.kind === 'guest') updateGuest(target.id, { name: value })
   else if (target.kind === 'table') renameTable(target.id, value)
+  else if (target.kind === 'item') renameVenueItem(target.id, value)
   else setHeaderText(target.kind, value)
 }
 
@@ -54,7 +56,7 @@ export const InlineEditor: FC<Props> = ({ target, caret, onDone }) => {
       ref={inputRef}
       className='sh-inline-input'
       value={value}
-      maxLength={target.kind === 'guest' || target.kind === 'table' ? 120 : 200}
+      maxLength={target.kind === 'item' ? 60 : target.kind === 'guest' || target.kind === 'table' ? 120 : 200}
       aria-label={t(`edit.${target.kind}`)}
       onChange={(event) => writeTarget(target, event.target.value)}
       onPointerDown={(event) => event.stopPropagation()}

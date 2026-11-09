@@ -29,6 +29,9 @@ model User {
   tokenVersion           Int       @default(0)
   passwordResetTokenHash String?   @unique
   passwordResetExpiresAt DateTime?
+  /// Last request made with this account's session, kept to the day (middleware/auth.ts). An
+  /// account unused for a year is deleted with its lists (services/retention.ts).
+  lastActiveAt           DateTime  @default(now())
   createdAt              DateTime  @default(now())
   updatedAt              DateTime  @updatedAt
 
@@ -63,14 +66,15 @@ model GuestList {
 
   @@index([userId, updatedAt])
   @@index([guestKeyHash, updatedAt])
+  /// For the retention sweep over guest lists (services/retention.ts).
+  @@index([updatedAt])
 }
 
 enum PaymentStatus {
   pending
   succeeded
   failed
-  /// Was `succeeded`, then refunded or voided in the bank's panel: the template is no longer
-  /// its owner's, unless another payment for it is still `succeeded`.
+  /// Was `succeeded`, then refunded or voided in the bank's panel: its days no longer count.
   refunded
 }
 
@@ -79,10 +83,11 @@ enum PaymentGateway {
   mock
 }
 
-/// One checkout attempt for one **template** (docs/PAYMENTS.md). A `succeeded` row is the
-/// licence: its owner — an account, or a browser's guest key until they sign in — prints that
-/// template on every list they have or make (services/payments.ts#ownedTemplateIds). There is
-/// no other record of who bought what.
+/// One checkout attempt for one **access pass** (docs/PAYMENTS.md): `PASS_DAYS` of everything —
+/// every template and kind, clean pages, unlimited downloads — for its owner, an account or a
+/// browser's guest key until they sign in. A `succeeded` row is the pass; the window is computed
+/// from the rows' `paidAt` (services/entitlement.ts#accessWindow), a pass bought while one runs
+/// adding its days on top. There is no other record of who may print what.
 ///
 /// Kept when the account or the list is deleted: it is the accounting record, so the links
 /// are nullable. `listId` is only the list the purchase was started from (where the buyer
@@ -95,7 +100,6 @@ model Payment {
   user             User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
   /// A guest buyer's key (lib/guest.ts), hashed; moved to `userId` when they sign in.
   guestKeyHash     String?
-  templateId       String
   listId           String?
   list             GuestList?     @relation(fields: [listId], references: [id], onDelete: SetNull)
   /// Whole drams.
@@ -111,21 +115,21 @@ model Payment {
 
   downloads PdfDownload[]
 
-  @@index([userId, templateId, status])
-  @@index([guestKeyHash, templateId, status])
+  @@index([userId, status])
+  @@index([guestKeyHash, status])
 }
 
-/// One PDF in a bought template the server sent in full (routes/lists.ts, routes/pdf.ts): the
-/// proof, next to the payment's, that what was paid for was delivered — what the refund
-/// policy's "could not download it" claim is checked against. Written once the last byte is
-/// handed to the connection. Free-template PDFs are not recorded. Kept, like `Payment`, when
-/// the list or account goes. `listId` is null for a guest's local draft.
+/// One PDF printed under an access pass that the server sent in full (routes/lists.ts,
+/// routes/pdf.ts): the proof, next to the payment's, that what was paid for was delivered —
+/// what the refund policy's "could not download it" claim is checked against. Written once the
+/// last byte is handed to the connection. PDFs printed without a pass are not recorded. Kept,
+/// like `Payment`, when the list or account goes. `listId` is null for a guest's local draft.
 model PdfDownload {
   id         String     @id @default(cuid())
   listId     String?
   list       GuestList? @relation(fields: [listId], references: [id], onDelete: SetNull)
   templateId String
-  /// The `succeeded` payment for that template the download was served under.
+  /// The `succeeded` payment (the latest of the running pass) the download was served under.
   paymentId  String?
   payment    Payment?   @relation(fields: [paymentId], references: [id], onDelete: SetNull)
   bytes      Int

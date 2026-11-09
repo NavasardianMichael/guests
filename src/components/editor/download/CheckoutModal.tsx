@@ -1,38 +1,34 @@
 'use client'
 
 import { type FC, useEffect, useState } from 'react'
-import { CheckOutlined, LockOutlined } from '@ant-design/icons'
+import { CheckOutlined, ClockCircleOutlined, LockOutlined } from '@ant-design/icons'
 import { Alert, Button, Modal } from 'antd'
 import Link from 'next/link'
-import { useTranslations } from 'next-intl'
-import { checkoutTemplateAPI } from '@api/purchases/main'
+import { useFormatter, useTranslations } from 'next-intl'
+import { checkoutAPI } from '@api/purchases/main'
 import { useAuthStore } from '@store/auth/store'
 import { useEditorUiStore, useEditorUiStoreBase } from '@store/editorUi/store'
 import { useListEditorStore, useListEditorStoreBase } from '@store/lists/single/store'
 import { DRAFT_ID } from '@store/lists/single/types'
-import { usePurchasesStoreBase } from '@store/purchases/store'
+import { useAccessUntil, useNow } from '@hooks/useAccess'
 import { useCapabilities } from '@hooks/useCapabilities'
-import { useOwnedTemplates } from '@hooks/useOwnedTemplates'
-import { usePdfDownload } from '@hooks/usePdfDownload'
-import { ERROR_CODES } from '@constants/errors'
-import { CURRENCY, formatAmount, TEMPLATE_PRICE_AMD } from '@constants/pricing'
+import { accessAfterPurchase, CURRENCY, formatAmount, isAccessActive, PASS_DAYS, PASS_PRICE_AMD } from '@constants/pricing'
 import { CHECKOUT_QUERY, ROUTES } from '@constants/routes'
-import { FREE_TEMPLATE_ID, isPrintable } from '@constants/templates'
+import { FREE_TEMPLATE_ID, isPrintable, TEMPLATES } from '@constants/templates'
 import { trackEvent } from '@helpers/analytics'
-import { classifyError } from '@helpers/error'
 import { SheetPreview } from '@components/sheet/SheetPreview'
 import { ErrorAlert } from '@components/ui/ErrorAlert'
 import { SignInToBuyModal } from './SignInToBuyModal'
 import { flushSave } from '../useAutosave'
 
-/** The sheet as it will print once bought. Reads the document itself, mounted only while open. */
+/** The sheet as it will print with access. Reads the document itself, mounted only while open. */
 const SheetThumb: FC = () => {
   const doc = useListEditorStore.use.doc()
   if (!doc) return null
   return <SheetPreview doc={doc} />
 }
 
-/** What buying without an account means, said before the bank page — not after. */
+/** What paying without an account means, said before the bank page — not after. */
 const GuestWarning: FC<{ redirecting: boolean; onContinue: () => void; onSignIn: () => void }> = ({
   redirecting,
   onContinue,
@@ -53,45 +49,51 @@ const GuestWarning: FC<{ redirecting: boolean; onContinue: () => void; onSignIn:
 }
 
 /**
- * Buying the list's template (docs/PAYMENTS.md): one payment, and the template is the buyer's
- * for every list they make. The list is saved first, so what prints after is what is on screen;
- * the buyer is told before paying that this list then keeps its template. The way out is the
- * free template, with the "made with" line. Neither path needs an account; buying without one
- * is warned about once, on the way to the bank. Opened by either Download button, or by
- * `?checkout=1` (back from signing in to buy).
+ * Buying full access (docs/PAYMENTS.md): one payment opens every template and kind, clean, for
+ * `PASS_DAYS`; bought while a pass runs, the days go on top. Before paying the buyer is told
+ * when the days start and end, what stays when they end (everything: the lists, editable and
+ * printable in the free template) and how long unused lists are kept. The list is saved first,
+ * so what prints after is what is on screen. The way out is the free template, with the "made
+ * with" line. Neither path needs an account; paying without one is warned about once, on the
+ * way to the bank. Opened by either Download button, the access chip (to add days), or
+ * `?checkout=1` (back from signing in to pay).
  */
 export const CheckoutModal: FC = () => {
   const t = useTranslations('Editor.download')
   const tTemplates = useTranslations('Templates')
   const tCommon = useTranslations('Common')
+  const format = useFormatter()
   const open = useEditorUiStore.use.checkoutOpen()
   const setOpen = useEditorUiStore.use.setCheckoutOpen()
   const listId = useListEditorStore.use.listId()
   const templateId = useListEditorStoreBase((state) => state.doc?.design.templateId)
   const applyTemplate = useListEditorStore.use.applyTemplate()
   const isGuest = !useAuthStore.use.user()
-  const owned = useOwnedTemplates()
+  const until = useAccessUntil()
+  const now = useNow()
   const capabilities = useCapabilities()
-  const { run } = usePdfDownload()
   const [redirecting, setRedirecting] = useState(false)
   const [error, setError] = useState<unknown>(null)
   const [confirmingGuest, setConfirmingGuest] = useState(false)
   const [signingIn, setSigningIn] = useState(false)
 
-  // Back from signing in to buy: open once the bought templates are known, unless this one is
-  // among them by now (it may have been bought as a guest and moved to the account).
+  // Back from signing in to pay: open once the access is known, unless it runs by now (it may
+  // have been bought as a guest and moved to the account).
   useEffect(() => {
-    if (owned === null || !templateId) return
+    if (until === undefined || !templateId) return
     if (new URLSearchParams(window.location.search).get(CHECKOUT_QUERY) !== '1') return
     window.history.replaceState(null, '', window.location.pathname)
-    if (!isPrintable(templateId, owned)) useEditorUiStoreBase.getState().setCheckoutOpen(true)
-  }, [owned, templateId])
+    if (!isPrintable(templateId, isAccessActive(until, Date.now()))) useEditorUiStoreBase.getState().setCheckoutOpen(true)
+  }, [until, templateId])
 
   if (!templateId || !listId) return null
 
-  const template = tTemplates(`names.${templateId}`)
   const free = tTemplates(`names.${FREE_TEMPLATE_ID}`)
-  const price = tCommon('amount', { amount: formatAmount(TEMPLATE_PRICE_AMD) })
+  const price = tCommon('amount', { amount: formatAmount(PASS_PRICE_AMD) })
+  const known = until ?? null
+  const active = isAccessActive(known, now)
+  const longDate = (ms: number) => format.dateTime(new Date(ms), { dateStyle: 'long' })
+  const ends = longDate(accessAfterPurchase(known, now))
 
   const close = () => {
     setConfirmingGuest(false)
@@ -104,19 +106,11 @@ export const CheckoutModal: FC = () => {
     setRedirecting(true)
     try {
       if (listId !== DRAFT_ID) await flushSave()
-      const checkoutUrl = await checkoutTemplateAPI({ templateId, ...(listId !== DRAFT_ID ? { listId } : {}) })
-      trackEvent('begin_checkout', { currency: CURRENCY, value: TEMPLATE_PRICE_AMD, template: templateId })
+      const checkoutUrl = await checkoutAPI(listId !== DRAFT_ID ? { listId } : {})
+      trackEvent('begin_checkout', { currency: CURRENCY, value: PASS_PRICE_AMD, days: PASS_DAYS, extend: active })
       window.location.assign(checkoutUrl)
     } catch (failure) {
       setRedirecting(false)
-      if (classifyError(failure).code === ERROR_CODES.templateAlreadyOwned) {
-        // Bought meanwhile (another tab, a payment settled late): it prints now.
-        await usePurchasesStoreBase.getState().refresh()
-        close()
-        const { doc } = useListEditorStoreBase.getState()
-        if (doc) await run(listId, doc)
-        return
-      }
       setError(failure)
     }
   }
@@ -130,13 +124,13 @@ export const CheckoutModal: FC = () => {
 
   return (
     <>
-      <Modal open={open} onCancel={close} footer={null} width={720} centered title={t('checkoutTitle', { template })} destroyOnHidden>
+      <Modal open={open} onCancel={close} footer={null} width={720} centered title={t('checkoutTitle', { days: PASS_DAYS })} destroyOnHidden>
         <div className='grid gap-5 md:grid-cols-[200px_1fr]'>
           <div className='hidden overflow-hidden rounded-lg shadow-md ring-1 ring-black/5 md:block md:self-start'>
             <SheetThumb />
           </div>
           <section className='flex flex-col'>
-            <p className='m-0 text-sm text-muted'>{t('checkoutLead')}</p>
+            <p className='m-0 text-sm text-muted'>{t('checkoutLead', { days: PASS_DAYS })}</p>
             <p className='mt-3 mb-0 font-display text-3xl font-extrabold text-ink'>{price}</p>
             <ul className='m-0 my-4 flex list-none flex-col gap-2 p-0'>
               {(t.raw('includes') as string[]).map((item) => (
@@ -148,7 +142,21 @@ export const CheckoutModal: FC = () => {
             </ul>
             {/* Margin on a wrapper: antd's Alert styles are unlayered and reset `margin`. */}
             <div className='mb-4'>
-              <Alert type='info' showIcon title={t('lockNote', { template })} />
+              <Alert
+                type='info'
+                showIcon
+                icon={<ClockCircleOutlined />}
+                title={
+                  active
+                    ? t('extendNote', { until: longDate(known!), days: PASS_DAYS, date: ends })
+                    : t('startsNow', { days: PASS_DAYS, date: ends })
+                }
+              />
+            </div>
+            <div className='mb-4 rounded-lg bg-canvas p-3 ring-1 ring-line'>
+              <p className='m-0 text-sm font-semibold text-ink'>{t('afterTitle', { days: PASS_DAYS })}</p>
+              <p className='mt-1 mb-0 text-sm text-muted'>{t('afterText', { free, days: PASS_DAYS })}</p>
+              <p className='mt-2 mb-0 text-xs text-muted'>{t('keptText')}</p>
             </div>
             {unavailable && (
               <div className='mb-4'>
@@ -171,13 +179,15 @@ export const CheckoutModal: FC = () => {
                 {redirecting ? t('redirecting') : t('pay', { price })}
               </Button>
             )}
-            <div className='mt-5 border-t border-line pt-4'>
-              <p className='m-0 text-sm font-semibold text-ink'>{t('freeTitle')}</p>
-              <p className='mt-1 mb-3 text-sm text-muted'>{t('freeText', { free })}</p>
-              <Button block disabled={redirecting} onClick={switchToFree}>
-                {t('freeSwitch', { free })}
-              </Button>
-            </div>
+            {!active && !TEMPLATES[templateId].free && (
+              <div className='mt-5 border-t border-line pt-4'>
+                <p className='m-0 text-sm font-semibold text-ink'>{t('freeTitle')}</p>
+                <p className='mt-1 mb-3 text-sm text-muted'>{t('freeText', { free })}</p>
+                <Button block disabled={redirecting} onClick={switchToFree}>
+                  {t('freeSwitch', { free })}
+                </Button>
+              </div>
+            )}
           </section>
         </div>
         <p className='mt-5 mb-0 text-xs leading-relaxed'>{t('secure')}</p>

@@ -60,9 +60,12 @@ type Props = { children: ReactNode }
 
 export default async function RootLayout({ children }: Props) {
   const locale = await getLocale()
+  const t = await getTranslations('Common')
   return (
     <html lang={locale} className={cn(fontUi.variable, CSS_VAR_SCOPE)} style={BRAND_CSS_VARS as CSSProperties}>
       <body>
+        {/* All that a browser print of a page shows (globals.css): lists print as the PDF. */}
+        <p className='print-note'>{t('printBlocked')}</p>
         <AntdRegistry>
           <NextIntlClientProvider>
             <App>{children}</App>

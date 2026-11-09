@@ -17,7 +17,8 @@
     "unsavedTitle": "Leave this page?",
     "unsavedBody": "Some changes haven’t been saved yet and will be lost.",
     "stay": "Stay",
-    "leave": "Leave"
+    "leave": "Leave",
+    "printBlocked": "This page doesn’t print. To print, download the PDF with the “Download PDF” button."
   },
   "Nav": {
     "templates": "Templates",
@@ -114,7 +115,11 @@
   "Faq": {
     "price": {
       "q": "How much does it cost?",
-      "a": "Making a list and downloading it as a PDF in the “Classic” template is free. Each other template costs {price} — once, no subscription — and once bought it’s yours for all your lists."
+      "a": "Making a list, previewing it in any template and downloading it in “Classic” is free. Full access — every template and kind, no “made with” line, unlimited downloads — costs {price} for {days} days: one payment, no subscription."
+    },
+    "after": {
+      "q": "What happens when the access ends?",
+      "a": "Nothing is deleted. Your lists stay saved and editable, and you can still print them in “Classic” for free. To download in other templates again, pay for another {days} days the same way. Lists are kept for a year after you last use the site; after a year without use they are deleted."
     },
     "account": {
       "q": "Do I need an account?",
@@ -141,7 +146,12 @@
     "heading": "Welcome",
     "subheading": "Aram & Ani · 12 June 2027",
     "footer": "Thank you for celebrating with us",
-    "table": "Table {number}"
+    "table": "Table {number}",
+    "venue": {
+      "stage": "Stage",
+      "dancefloor": "Dance floor",
+      "entrance": "Entrance"
+    }
   },
   "Templates": {
     "metaTitle": "Seating chart and guest list templates",
@@ -150,9 +160,7 @@
     "subtitle": "Every template works for a seating chart, a list and place cards. Colours, fonts and ornaments can be changed after you fill it in.",
     "free": "Free",
     "premium": "Premium",
-    "premiumPrice": "{price}, once — for all your lists",
-    "bought": "Bought",
-    "boughtNote": "This template is yours: every new list you make in it prints without limits.",
+    "premiumPrice": "With full access: {price} for {days} days",
     "names": {
       "classic": "Traditional",
       "minimal": "Minimal",
@@ -262,7 +270,7 @@
     "otherTemplates": "Other templates",
     "detailTitle": "“{name}” template",
     "detailDescription": "The “{name}” template for seating charts, guest lists and place cards: {tagline}.",
-    "detailText": "One template, three ways: a seating chart by table, a guest list for the entrance and place cards to cut out. Every colour, font and position can be changed.",
+    "detailText": "One template, four ways: a seating chart by table, a guest list for the entrance, place cards to cut out and the hall plan with every table. Every colour, font and position can be changed.",
     "cardFacts": {
       "seating": "Seating chart",
       "list": "Guest list",
@@ -291,42 +299,45 @@
   },
   "Pricing": {
     "metaTitle": "Pricing",
-    "metaDescription": "Making a list and printing in the “Classic” template costs nothing. Each other template is {price}, once — for all your lists.",
-    "title": "One price, once",
-    "subtitle": "No subscription. Making a list is always free; a template is bought once and used for all your lists.",
+    "metaDescription": "Making a list and printing in the “Classic” template costs nothing. Full access — every template, clean downloads — is {price} for {days} days.",
+    "title": "Free to build, pay when you print",
+    "subtitle": "No subscription. Make and preview your lists for free; when you’re ready to print, one payment opens everything for {days} days.",
     "free": "Free",
     "freePrice": "0 AMD",
     "freeItems": [
       "Unlimited lists and guests",
       "Import from Excel, CSV and photos",
-      "The “Classic” template",
-      "Any paper size, PDF download"
+      "Every template to try and preview",
+      "PDF in “Classic”, with a small “made with” line"
     ],
-    "paid": "One template",
-    "perTemplate": "per template, once",
+    "paid": "Full access",
+    "perPass": "for {days} days, one payment",
     "paidItems": [
-      "Any one of the 46 templates",
-      "For all your lists, now and later",
-      "Seating chart, list and place cards",
-      "No “made with” line, unlimited downloads"
+      "All 46 templates, for all your lists",
+      "Seating board, list, place cards and hall plan",
+      "No “made with” line, unlimited downloads",
+      "Pay again while it runs and the days add up"
     ],
-    "cta": "Create a list"
+    "cta": "Create a list",
+    "afterTitle": "When the {days} days end",
+    "keptText": "Lists and accounts are kept for a year after you last use the site. After a year without use they are deleted; payment records are kept as accounting documents."
   },
   "Payment": {
     "metaTitle": "Payment result",
     "succeeded": "Payment successful",
-    "succeededText": "Thank you. The “{template}” template is now yours, for all your lists.",
+    "succeededText": "Thank you. You have full access until {date}: every template and kind, clean downloads.",
+    "afterText": "When it ends, nothing is deleted: your lists stay saved and editable, and you can print them in “{free}” for free or pay for another {days} days.",
     "failed": "Payment failed",
     "failedText": "Nothing was charged. You can try again or use another card.",
     "pending": "Payment is being processed",
     "pendingText": "The bank hasn’t confirmed the payment yet. This page will refresh in a few seconds.",
     "toEditor": "Back to the editor",
-    "newList": "New list in this template",
+    "newList": "New list",
     "toDashboard": "My lists",
     "toTemplates": "Templates",
     "tryAgain": "Try again",
-    "guestTitle": "Keep your purchase",
-    "guestText": "You bought without an account, so the template is only available in this browser. Sign in to keep it in your account and use it on any device.",
+    "guestTitle": "Keep your access",
+    "guestText": "You paid without an account, so the access works only in this browser. Sign in to keep it in your account and use it on any device.",
     "guestSignIn": "Sign in"
   },
   "Contact": {
@@ -401,7 +412,7 @@
   "Dashboard": {
     "metaTitle": "My lists",
     "title": "My lists",
-    "subtitle": "Every list is saved automatically.",
+    "subtitle": "Every list is saved automatically and kept while you use the site; after a year without use, it is deleted.",
     "new": "New list",
     "emptyTitle": "No lists yet",
     "emptyText": "Start a new list or import one from Excel or a photo.",
@@ -414,7 +425,11 @@
     "deleted": "List deleted",
     "duplicated": "Copy created",
     "guests": "{count, plural, one {# guest} other {# guests}}",
-    "actions": "Actions"
+    "actions": "Actions",
+    "accessActiveTitle": "Full access until {date}",
+    "accessActiveText": "{left, plural, one {# day left} other {# days left}}: every template, clean downloads. When it ends your lists stay here, and a new payment adds {days} days.",
+    "accessEndedTitle": "Full access ended on {date}",
+    "accessEndedText": "Your lists are all still here: edit them and print in “{free}” for free, or open one and pay for another {days} days to download in any template."
   },
   "Account": {
     "metaTitle": "Account",
@@ -459,6 +474,8 @@
     "pages": "{count, plural, one {# page} other {# pages}}",
     "mm": "mm",
     "panelOpen": "Settings",
+    "panelHide": "Hide the panel",
+    "panelShow": "Show the panel",
     "tabs": {
       "kind": "Type",
       "template": "Template",
@@ -508,7 +525,8 @@
         "subheading": "Subtitle",
         "footer": "Closing line",
         "guest": "Guest name",
-        "table": "Table name"
+        "table": "Table name",
+        "item": "Label"
       },
       "fit": "Fit to the page",
       "fitHint": "Fit to the page: picks the text size and the number of columns so everything fits. Nobody changes tables.",
@@ -537,7 +555,13 @@
       "distributeY": "Space evenly down",
       "resetPosition": "Back to its grid place",
       "resetSize": "Original size",
-      "remove": "Delete"
+      "remove": "Delete",
+      "shape": "Table shape",
+      "round": "Round",
+      "rect": "Long",
+      "seats": "Chairs",
+      "seatsHint": "0: a chair per guest",
+      "placeAuto": "Let the app place it"
     },
     "guests": {
       "namePlaceholder": "First and last name",
@@ -591,12 +615,14 @@
       "kindHint": {
         "seating": "Guests under their tables — placed at the entrance so everyone finds their seat.",
         "list": "Names in columns — for the entrance or the check-in desk.",
-        "cards": "Each guest’s name on its own card, to cut out and set on the table."
+        "cards": "Each guest’s name on its own card, to cut out and set on the table.",
+        "plan": "The hall from above: tables where they stand, each with its guests, plus the stage and dance floor. Add tables and drag them into place."
       },
       "kinds": {
         "seating": "Seating chart",
         "list": "Guest list",
-        "cards": "Place cards"
+        "cards": "Place cards",
+        "plan": "Hall plan"
       },
       "arrangement": "Arrangement",
       "grid": "Grid",
@@ -736,15 +762,14 @@
       "button": "Download PDF",
       "preparing": "Preparing the PDF…",
       "done": "PDF downloaded",
-      "checkoutTitle": "Buy the “{template}” template",
-      "checkoutLead": "Pay once and the template is yours — for every list you make, now and later.",
+      "checkoutTitle": "Full access for {days} days",
+      "checkoutLead": "One payment opens everything for {days} days: every template, the seating board, guest list, place cards and hall plan, without the “made with” line.",
       "includes": [
-        "This template for all your lists",
-        "Seating chart, guest list and place cards",
+        "Every template, for all your lists",
+        "Seating board, guest list, place cards and hall plan",
         "No “made with” line on the pages",
         "Unlimited editing and downloads"
       ],
-      "lockNote": "Once bought, this list stays in “{template}”. For another template, start a new list.",
       "pay": "Pay {price}",
       "redirecting": "Taking you to the payment page…",
       "secure": "Payment is made on Ameriabank’s secure page. Your card details never reach us.",
@@ -753,18 +778,27 @@
       "freeTitle": "Or print for free",
       "freeText": "Switch to “{free}”: it’s free, with a small “made with” line on each page. Your guests and layout stay as they are.",
       "freeSwitch": "Switch to “{free}”",
-      "guestWarningTitle": "Buying without an account",
-      "guestWarningText": "The template will belong to this browser only. It won’t be available on other devices, and if this browser’s data is ever cleared (we never clear it), you’ll lose it. Sign in and it’s kept in your account.",
+      "guestWarningTitle": "Paying without an account",
+      "guestWarningText": "The access will belong to this browser only. It won’t work on other devices, and if this browser’s data is ever cleared (we never clear it), you’ll lose it. Sign in and it’s kept in your account.",
       "guestContinue": "Continue without an account",
-      "guestSignIn": "Sign in and buy",
-      "signInTitle": "Sign in to buy",
-      "signInText": "Your list is saved to your account, and the template you buy stays yours on any device.",
-      "signInEmail": "Sign in with email"
+      "guestSignIn": "Sign in and pay",
+      "signInTitle": "Sign in to pay",
+      "signInText": "Your list is saved to your account, and your full access works on any device.",
+      "signInEmail": "Sign in with email",
+      "startsNow": "The {days} days start when the payment goes through: access runs until {date}. Until you’re ready to print, build and preview for free.",
+      "extendNote": "Your access runs until {until}. A new payment adds {days} more days: until {date}.",
+      "afterTitle": "When the {days} days end",
+      "afterText": "Nothing is deleted. Your lists stay saved and editable, and you can still print them in “{free}” with a small “made with” line. To download in other templates or without the line again, pay for another {days} days the same way.",
+      "keptText": "Lists are kept for a year after you last use the site. An account and its lists unused for a year are deleted."
+    },
+    "access": {
+      "label": "Full access",
+      "left": "{days, plural, one {# day left} other {# days left}}",
+      "tooltip": "Full access until {date}: every template, clean downloads. When it ends, your lists stay saved. Click to add {passDays} more days."
     },
     "template": {
-      "lockedText": "This list is in “{template}”, a template you bought, and stays in it. You can still change the shape here, and colours and fonts in the Design step. For another template, start a new list.",
-      "newInThis": "New list in this template",
-      "otherTemplates": "Other templates"
+      "premiumHint": "Every template is free to try and preview. Downloading in any template other than “{free}” needs full access: {price} for {days} days.",
+      "accessHint": "Full access runs until {date}: every template downloads without the “made with” line."
     },
     "tabsShort": {
       "kind": "Type",
@@ -801,6 +835,39 @@
       "moveRight": "Move right",
       "keys": "Enter moves down, Tab moves right, Escape puts the text back; a block copied from Excel pastes into the cells.",
       "hint": "Each column is a table: rename it in its header, type a guest’s name in a cell, empty a cell to remove the guest. Drag a guest or a table by its grip to move it. Changes reach the list when you press Save."
+    },
+    "plan": {
+      "hall": "Hall",
+      "hint": "Drag tables, the stage and the rest anywhere, and a guest’s name to another table. Drag a corner to resize.",
+      "add": "Add",
+      "round": "Round table",
+      "rect": "Long table",
+      "arrange": "Arrange automatically",
+      "resetSizes": "Original sizes ({count})",
+      "gap": "Space between tables",
+      "toolbar": "Add to the hall",
+      "venue": {
+        "stage": "Stage",
+        "dancefloor": "Dance floor",
+        "entrance": "Entrance"
+      },
+      "arrangement": {
+        "title": "Hall arrangement",
+        "hint": "How the app sets out the tables, stage, dance floor and entrance. You can still move anything by hand afterwards.",
+        "pinned": "Arranged by hand. Picking an arrangement sets the hall out again.",
+        "names": {
+          "rows": "Rows",
+          "around": "Around the dance floor",
+          "sides": "Two sides",
+          "banquet": "Long tables"
+        },
+        "hints": {
+          "rows": "Tables in even rows under the stage and dance floor.",
+          "around": "Round tables in a ring around the dance floor.",
+          "sides": "Tables down both sides of the dance floor.",
+          "banquet": "Rows of long tables facing the stage."
+        }
+      }
     }
   },
   "Errors": {
@@ -826,8 +893,7 @@
       "4006": "Your email isn’t confirmed yet. Follow the link in the email we sent.",
       "4007": "The confirmation link is invalid or expired. Sign in to get a new one.",
       "4010": "You have reached the maximum number of lists. Delete old ones.",
-      "4020": "You already own this template.",
-      "4021": "To print in this template, buy it first.",
+      "4021": "To download in this template, get full access first.",
       "4022": "Payments aren’t available right now. Try again a little later.",
       "4023": "Couldn’t open the payment page. Try again.",
       "4030": "Couldn’t create the PDF. Try again.",

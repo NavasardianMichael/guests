@@ -1,5 +1,5 @@
 import type { Layout, ListDesign } from '@store/lists/single/types'
-import { defaultPaper, templateDesign } from '@helpers/listFactory'
+import { defaultPaper, emptyPlan, templateDesign } from '@helpers/listFactory'
 import { applyPaperPatch, defaultTextScale } from '@helpers/paperChange'
 
 /**
@@ -15,6 +15,7 @@ export const RESET_SCOPES = [
   'layout.grid',
   'layout.cards',
   'layout.content',
+  'layout.plan',
   'sizing',
   'design',
   'design.colors',
@@ -46,6 +47,11 @@ const resetPart = (design: ListDesign, scope: ResetScope): void => {
       return
     case 'layout':
       design.layout = defaults.layout
+      // The hall plan's arrangement is its layout.
+      if (design.kind === 'plan') resetPart(design, 'layout.plan')
+      return
+    case 'layout.plan':
+      design.plan = emptyPlan(design.plan.arrangement)
       return
     case 'layout.arrangement':
       Object.assign(layout, { mode: 'grid', positions: {}, sizes: {} })
@@ -66,6 +72,8 @@ const resetPart = (design: ListDesign, scope: ResetScope): void => {
       layout.columns = defaults.layout.columns
       layout.sizes = {}
       if (layout.mode === 'grid') layout.positions = {}
+      // The hall plan's tables too, and the app arranges it again.
+      if (design.kind === 'plan') design.plan = emptyPlan(design.plan.arrangement)
       return
     case 'design':
       resetPart(design, 'design.colors')
@@ -88,12 +96,12 @@ const resetPart = (design: ListDesign, scope: ResetScope): void => {
       resetPart(design, 'paper.margin')
       return
     case 'paper.format': {
-      const { format, orientation } = defaultPaper()
+      const { format, orientation } = defaultPaper(design.kind)
       applyPaperPatch(design, { format, orientation })
       return
     }
     case 'paper.margin':
-      design.paper.margin = defaultPaper().margin
+      design.paper.margin = defaultPaper(design.kind).margin
       return
   }
 }

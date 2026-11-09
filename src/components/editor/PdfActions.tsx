@@ -7,8 +7,7 @@ import { useTranslations } from 'next-intl'
 import { useEditorUiStore } from '@store/editorUi/store'
 import { useListEditorStoreBase } from '@store/lists/single/store'
 import { DRAFT_ID } from '@store/lists/single/types'
-import { usePurchasesStoreBase } from '@store/purchases/store'
-import { useOwnedTemplates } from '@hooks/useOwnedTemplates'
+import { accessActiveNow, useAccessUntil } from '@hooks/useAccess'
 import { usePdfDownload } from '@hooks/usePdfDownload'
 import { isPrintable } from '@constants/templates'
 import { flushSave } from './useAutosave'
@@ -16,8 +15,8 @@ import { flushSave } from './useAutosave'
 /**
  * Download PDF. It goes through the API's PDF (headless Chrome printing `/render`), so the
  * file is exactly what the venue's printer will print — sized to the chosen paper, fonts
- * embedded. A saved list is saved first: the server prints its copy. A premium template not
- * bought opens the checkout (`CheckoutModal`), which also offers the free template.
+ * embedded. A saved list is saved first: the server prints its copy. A premium template without
+ * a running access pass opens the checkout (`CheckoutModal`), which also offers the free template.
  */
 type Props = {
   /** The word beside the icon at every width; the editor's top bar hides it on phones. */
@@ -29,15 +28,15 @@ export const PdfActions: FC<Props> = ({ label = false }) => {
   const tErrors = useTranslations('Errors')
   const { message } = App.useApp()
   const setCheckoutOpen = useEditorUiStore.use.setCheckoutOpen()
-  // Loads the bought templates for whoever is signed in, so the check below is ready by the click.
-  useOwnedTemplates()
+  // Loads the access pass for whoever is signed in, so the check below is ready by the click.
+  useAccessUntil()
   const { run, isWorking } = usePdfDownload()
 
   const download = async () => {
     const { listId, doc } = useListEditorStoreBase.getState()
     if (!listId || !doc) return
-    const owned = usePurchasesStoreBase.getState().templates
-    if (owned !== null && !isPrintable(doc.design.templateId, owned)) return setCheckoutOpen(true)
+    const active = accessActiveNow()
+    if (active !== null && !isPrintable(doc.design.templateId, active)) return setCheckoutOpen(true)
     if (listId !== DRAFT_ID && !(await flushSave())) {
       void message.error(tErrors('kinds.server'))
       return

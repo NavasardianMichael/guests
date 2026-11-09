@@ -3,6 +3,7 @@
 import { type PointerEvent as ReactPointerEvent, type RefObject, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { produce } from 'immer'
+import { useEditorUiStoreBase } from '@store/editorUi/store'
 import { MIN_BLOCK_SIZE, moveBefore, useListEditorStore, useListEditorStoreBase } from '@store/lists/single/store'
 import { FOOTER_ID, HEADER_ID, type ListDocument, type Position, type Size } from '@store/lists/single/types'
 import { measureText } from '@helpers/measureText'
@@ -13,15 +14,16 @@ import { InlineEditor } from './InlineEditor'
 
 /** The space between stacked pages on the canvas, mm. */
 export const PAGE_GAP_MM = 12
-/** How close an edge must come to another to snap to it, mm. */
-const SNAP_MM = 1.6
+/** How close an edge must come to another object's line to snap to it, screen px. */
+const SNAP_PX = 4
 /** A press that moves less than this is a click, px. */
 const DRAG_THRESHOLD_PX = 4
 /** How blocks glide into place once dropped (the in-drag shuffle is in `sheet.css`). */
 const SETTLE_MS = 200
 const SETTLE = `translate ${SETTLE_MS}ms cubic-bezier(0.2, 0, 0, 1)`
 
-export type Guide = { page: number; axis: 'x' | 'y'; at: number }
+/** A line two objects share: at `at` across the `axis`, drawn from `from` to `to` along it, mm. */
+export type Guide = { page: number; axis: 'x' | 'y'; at: number; from: number; to: number }
 export type Marquee = { page: number; x0: number; y0: number; x1: number; y1: number }
 
 type BlockDrag = {
@@ -73,8 +75,8 @@ type NameDrag = {
   /** The pointer's travel so far, mm. */
   lastDx: number
   lastDy: number
-  /** Tables given a preview height, and the height they had. */
-  heights: Map<HTMLElement, string>
+  /** Tables given a preview size, and the size they had. */
+  sizes: Map<HTMLElement, { width: string; height: string }>
 }
 
 type MarqueeDrag = { type: 'marquee'; additive: boolean }
@@ -128,22 +130,51 @@ const reseated = (doc: ListDocument, guestId: string, seat: Seat): ListDocument 
     moveBefore(draft.content.guests, guestId, seat.beforeId)
   })
 
+/** A table a guest's name can be dropped on: on a seating board, or on the hall plan. */
+const isSeatBlock = (block: SheetBlock): boolean => block.type === 'table' || block.type === 'plantable'
+
 /** Each table's names, in order: what a seat change shows. */
 const seatingOf = (sheet: SheetLayout): string =>
-  sheet.blocks.map((block) => (block.type === 'table' ? `${block.id}:${block.guests.map(({ guest }) => guest.id).join(',')}` : '')).join('|')
+  sheet.blocks
+    .map((block) =>
+      block.type === 'table' || block.type === 'plantable' ? `${block.id}:${block.guests.map(({ guest }) => guest.id).join(',')}` : ''
+    )
+    .join('|')
 
-/** Where each name starts inside its table, mm: under the head, one after the other. */
-const nameTops = (sheet: SheetLayout, nameLH: number): Map<string, number> => {
-  const tops = new Map<string, number>()
+/**
+ * Where each name sits inside its table, mm: on a board under the head, one after the other;
+ * on the hall plan where the layout put it.
+ */
+const nameSpots = (sheet: SheetLayout, nameLH: number): Map<string, { x: number; y: number }> => {
+  const spots = new Map<string, { x: number; y: number }>()
   for (const block of sheet.blocks) {
+    if (block.type === 'plantable') {
+      for (const { guest, x, y } of block.guests) spots.set(guest.id, { x, y })
+      continue
+    }
     if (block.type !== 'table') continue
     let y = block.pad + block.headH + block.headGap
     for (const { guest, lines } of block.guests) {
-      tops.set(guest.id, y)
+      spots.set(guest.id, { x: 0, y })
       y += Math.max(1, lines.length) * nameLH
     }
   }
-  return tops
+  return spots
+}
+
+/**
+ * The hall plan pins every table and hall item where it stands the first time one is moved or
+ * sized, so what the app placed stays put once the user arranges by hand: the places of those
+ * not pinned yet (nothing, off the plan).
+ */
+const unpinnedPlan = (doc: ListDocument, sheet: SheetLayout): Record<string, Position> => {
+  const positions: Record<string, Position> = {}
+  if (doc.design.kind !== 'plan') return positions
+  for (const block of sheet.blocks) {
+    if ((block.type === 'plantable' || block.type === 'venue') && !doc.design.plan.positions[block.id])
+      positions[block.id] = { page: block.page, x: round(block.x), y: round(block.y) }
+  }
+  return positions
 }
 
 /** A block or a table's name, as one element across a re-render (a header repeats per page). */
@@ -156,7 +187,7 @@ const flipKey = (element: HTMLElement): string => {
 }
 
 const sameGuides = (a: Guide[], b: Guide[]): boolean =>
-  a.length === b.length && a.every((guide, i) => guide.page === b[i].page && guide.axis === b[i].axis && guide.at === b[i].at)
+  a.length === b.length && a.every((guide, i) => guide.page === b[i].page && guide.axis === b[i].axis && guide.at === b[i].at && guide.from === b[i].from && guide.to === b[i].to)
 
 /** First instance of each block (a header repeated on every page counts once). */
 const blockIndex = (layout: SheetLayout): Map<string, SheetBlock> => {
@@ -183,6 +214,7 @@ type Options = {
  *   is recomputed once per change of target, not per frame).
  * - **Free mode:** blocks go where they are dropped, on any page, snapping to the edges and
  *   centres of the blocks around them (Alt turns snapping off). A selection moves together.
+ * - **The hall plan** is always free; its first move or resize pins every table and hall item.
  * - **A name inside a table** is dragged on its own, in any mode: over a table, the names there
  *   make room where it would go (those it left close up, the tables resize and move), and the
  *   drop seats the guest there — at another table, or elsewhere in its own.
@@ -192,7 +224,8 @@ type Options = {
  */
 export const useCanvasInteraction = ({ layout, scale, sheetRef }: Options) => {
   const selection = useListEditorStore.use.selection()
-  const mode = useListEditorStoreBase((state) => state.doc?.design.layout.mode ?? 'grid')
+  // Everything on the hall plan goes where it is dropped.
+  const mode = useListEditorStoreBase((state) => (state.doc?.design.kind === 'plan' ? 'free' : (state.doc?.design.layout.mode ?? 'grid')))
   const [editing, setEditing] = useState<EditTarget | null>(null)
   const [dropTarget, setDropTarget] = useState<string | null>(null)
   const [guides, setGuides] = useState<Guide[]>([])
@@ -304,7 +337,7 @@ export const useCanvasInteraction = ({ layout, scale, sheetRef }: Options) => {
       }
     }
     return {
-      tables: [...root.querySelectorAll<HTMLElement>('[data-block-type="table"]')].map((element) => ({
+      tables: [...root.querySelectorAll<HTMLElement>('[data-seats]')].map((element) => ({
         id: element.dataset.blockId ?? '',
         box: boxOf(element),
       })),
@@ -337,10 +370,10 @@ export const useCanvasInteraction = ({ layout, scale, sheetRef }: Options) => {
     return { tableId: table.id, beforeId: next?.id ?? null }
   }
 
-  /** Puts back the heights a preview gave the tables. */
-  const restoreHeights = (drag: NameDrag) => {
-    for (const [element, height] of drag.heights) element.style.height = height
-    drag.heights.clear()
+  /** Puts back the sizes a preview gave the tables. */
+  const restoreSizes = (drag: NameDrag) => {
+    for (const [element, size] of drag.sizes) Object.assign(element.style, size)
+    drag.sizes.clear()
   }
 
   /**
@@ -359,34 +392,37 @@ export const useCanvasInteraction = ({ layout, scale, sheetRef }: Options) => {
     const target = drag.changes ? preview : sheet
     const to = blockIndex(target)
     const nameLH = lineHeight(doc.design.type.name, doc.design.textScale)
-    const fromTops = nameTops(sheet, nameLH)
-    const toTops = nameTops(target, nameLH)
+    const fromSpots = nameSpots(sheet, nameLH)
+    const toSpots = nameSpots(target, nameLH)
     const stride = sheet.height + PAGE_GAP_MM
     const ownTable = drag.table?.dataset.blockId
     drag.tableShift = { dx: 0, dy: 0 }
-    restoreHeights(drag)
+    restoreSizes(drag)
 
     for (const block of blockIndex(sheet).values()) {
-      if (block.type !== 'table') continue
+      if (!isSeatBlock(block)) continue
       const next = to.get(block.id)
       const dx = next ? next.x - block.x : 0
       const dy = next ? next.y - block.y + (next.page - block.page) * stride : 0
       if (block.id === ownTable) drag.tableShift = { dx, dy }
       for (const element of elementsOf([block.id])) {
         element.style.translate = Math.abs(dx) < 0.01 && Math.abs(dy) < 0.01 ? '' : `${dx}mm ${dy}mm`
-        if (next && Math.abs(next.h - block.h) >= 0.01) {
-          drag.heights.set(element, element.style.height)
+        if (next && (Math.abs(next.h - block.h) >= 0.01 || Math.abs(next.w - block.w) >= 0.01)) {
+          drag.sizes.set(element, { width: element.style.width, height: element.style.height })
           element.style.height = `${next.h}mm`
+          element.style.width = `${next.w}mm`
         }
       }
     }
-    // A name moves within its own table (the table carries it): only from one top to the other.
+    // A name moves within its own table (the table carries it): from one spot to the other.
     for (const element of root.querySelectorAll<HTMLElement>('[data-guest-id]')) {
       const id = element.dataset.guestId ?? ''
       if (id === drag.guestId) continue
-      const from = fromTops.get(id)
-      const dy = from === undefined ? 0 : (toTops.get(id) ?? from) - from
-      element.style.translate = Math.abs(dy) < 0.01 ? '' : `0mm ${dy}mm`
+      const from = fromSpots.get(id)
+      const spot = from ? (toSpots.get(id) ?? from) : null
+      const dx = from && spot ? spot.x - from.x : 0
+      const dy = from && spot ? spot.y - from.y : 0
+      element.style.translate = Math.abs(dx) < 0.01 && Math.abs(dy) < 0.01 ? '' : `${dx}mm ${dy}mm`
     }
     // Its own table may have slid: the name stays under the pointer.
     lift(drag.element, drag.lastDx - drag.tableShift.dx, drag.lastDy - drag.tableShift.dy)
@@ -418,7 +454,7 @@ export const useCanvasInteraction = ({ layout, scale, sheetRef }: Options) => {
     const lifted = all.filter((element) => element.classList.contains('sh-dragging'))
     // A name is lifted with its table, or it would glide home under the tables around.
     for (const element of [...lifted]) {
-      const table = element.dataset.guestId ? element.closest<HTMLElement>('[data-block-type="table"]') : null
+      const table = element.dataset.guestId ? element.closest<HTMLElement>('[data-seats]') : null
       if (table) lifted.push(table)
     }
     for (const element of all) {
@@ -465,22 +501,47 @@ export const useCanvasInteraction = ({ layout, scale, sheetRef }: Options) => {
     const found: Guide[] = []
     if (snap) {
       const others = sheet.blocks.filter((block) => block.page === at.page && !drag.ids.includes(block.id))
-      const xs = [sheet.width / 2, sheet.area.x, sheet.area.x + sheet.area.w, ...others.flatMap((b) => [b.x, b.x + b.w / 2, b.x + b.w])]
-      const ys = [sheet.area.y, sheet.area.y + sheet.area.h, ...others.flatMap((b) => [b.y, b.y + b.h / 2, b.y + b.h])]
-      const snapAxis = (start: number, size: number, candidates: number[], axis: 'x' | 'y'): number => {
+      // The same few screen pixels at any zoom.
+      const reach = SNAP_PX / pxPerMm()
+      /**
+       * One axis: each of the dragged block's edges against the same edge of another block, its
+       * centre against their centres — the line of another object it meets, nearest first; null,
+       * none in reach.
+       */
+      const snapAxis = (start: number, size: number, axis: 'x' | 'y') => {
+        const near = (b: SheetBlock) => (axis === 'x' ? [b.x, b.w] : [b.y, b.h])
         let best: { delta: number; at: number } | null = null
-        for (const edge of [start, start + size / 2, start + size]) {
-          for (const candidate of candidates) {
-            const delta = candidate - edge
-            if (Math.abs(delta) <= SNAP_MM && (!best || Math.abs(delta) < Math.abs(best.delta))) best = { delta, at: candidate }
+        for (const block of others) {
+          const [from, length] = near(block)
+          // Left to left, centre to centre, right to right (top, middle, bottom on the other axis).
+          const pairs: [number, number][] = [
+            [start, from],
+            [start + size / 2, from + length / 2],
+            [start + size, from + length],
+          ]
+          for (const [edge, line] of pairs) {
+            const delta = line - edge
+            if (Math.abs(delta) <= reach && (!best || Math.abs(delta) < Math.abs(best.delta))) best = { delta, at: line }
           }
         }
-        if (!best) return start
-        found.push({ page: at.page, axis, at: best.at })
-        return start + best.delta
+        return best
       }
-      x = snapAxis(x, primary.w, xs, 'x')
-      y = snapAxis(y, primary.h, ys, 'y')
+      const sx = snapAxis(x, primary.w, 'x')
+      const sy = snapAxis(y, primary.h, 'y')
+      if (sx) x += sx.delta
+      if (sy) y += sy.delta
+      /** The guide along `line`: from the dragged block to the farthest block on that line. */
+      const guideAlong = (axis: 'x' | 'y', line: number) => {
+        const lines = (b: { x: number; y: number; w: number; h: number }) =>
+          axis === 'x' ? [b.x, b.x + b.w / 2, b.x + b.w] : [b.y, b.y + b.h / 2, b.y + b.h]
+        const span = (b: { x: number; y: number; w: number; h: number }) => (axis === 'x' ? [b.y, b.y + b.h] : [b.x, b.x + b.w])
+        const moved = { x, y, w: primary.w, h: primary.h }
+        const met = [moved, ...others.filter((b) => lines(b).some((value) => Math.abs(value - line) < 0.05))]
+        const ends = met.flatMap(span)
+        found.push({ page: at.page, axis, at: line, from: Math.min(...ends), to: Math.max(...ends) })
+      }
+      if (sx) guideAlong('x', sx.at)
+      if (sy) guideAlong('y', sy.at)
     }
     return { position: clampToPage({ page: at.page, x, y }, primary, sheet), guides: found }
   }
@@ -505,6 +566,7 @@ export const useCanvasInteraction = ({ layout, scale, sheetRef }: Options) => {
     const size = drag.next
     const store = useListEditorStoreBase.getState()
     if (!size || !store.doc) return
+    const pin = unpinnedPlan(store.doc, layoutRef.current)
     if (drag.block.type === 'card') {
       // Cards are cut from one sheet: they share a size. A tent card's block is two faces.
       const faces = store.doc.design.layout.cardFold ? 2 : 1
@@ -512,7 +574,7 @@ export const useCanvasInteraction = ({ layout, scale, sheetRef }: Options) => {
       store.setLayout({ cardWidth: round(size.w, 0.5), cardHeight: round(cardHeight, 0.5) })
       return
     }
-    store.setSize(drag.block.id, { w: round(size.w), h: round(size.h) })
+    store.setSize(drag.block.id, { w: round(size.w), h: round(size.h) }, Object.keys(pin).length ? pin : undefined)
   }
 
   const onMove = (event: PointerEvent) => {
@@ -552,7 +614,7 @@ export const useCanvasInteraction = ({ layout, scale, sheetRef }: Options) => {
       if (!drag.boxes) {
         drag.boxes = nameBoxes()
         // Its table above the rest, so the name it carries passes over the other tables.
-        drag.table = drag.element.closest<HTMLElement>('[data-block-type="table"]')
+        drag.table = drag.element.closest<HTMLElement>('[data-seats]')
         if (drag.table) drag.table.style.zIndex = '20'
       }
       drag.lastDx = dx
@@ -587,6 +649,17 @@ export const useCanvasInteraction = ({ layout, scale, sheetRef }: Options) => {
     drag.target = target
     shuffle(drag)
   }
+
+  /**
+   * A drop, committed: the store and the sheet re-render before this returns, the sheet from the
+   * new document itself, not its deferred copy, so `settle` glides from the dropped place to
+   * the new layout with nothing drawn in between.
+   */
+  const commit = (change: () => void) =>
+    flushSync(() => {
+      useEditorUiStoreBase.getState().setDrawNow(true)
+      change()
+    })
 
   const onFinish = (event: PointerEvent) => {
     const drag = dragRef.current
@@ -630,10 +703,10 @@ export const useCanvasInteraction = ({ layout, scale, sheetRef }: Options) => {
     const before = capture()
 
     if (drag.type === 'name') {
-      // The tables take their heights from the store again (the same ones, once it has the drop).
-      restoreHeights(drag)
+      // The tables take their sizes from the store again (the same ones, once it has the drop).
+      restoreSizes(drag)
       const seat = drag.seat
-      flushSync(() => {
+      commit(() => {
         if (!drag.moved || cancelled || !seat || !drag.changes) return
         // A guest placed by hand: the printed order is the list's own from now on.
         if (doc.design.layout.sort !== 'manual') store.sortGuests(doc.design.layout.sort)
@@ -650,7 +723,7 @@ export const useCanvasInteraction = ({ layout, scale, sheetRef }: Options) => {
 
     if (drag.free) {
       const index = blockIndex(layoutRef.current)
-      const positions: Record<string, Position> = {}
+      const positions: Record<string, Position> = unpinnedPlan(doc, layoutRef.current)
       for (const id of drag.ids) {
         const block = index.get(id)
         if (!block) continue
@@ -661,13 +734,13 @@ export const useCanvasInteraction = ({ layout, scale, sheetRef }: Options) => {
         )
         positions[id] = { page: next.page, x: round(next.x), y: round(next.y) }
       }
-      flushSync(() => store.setPositions(positions))
+      commit(() => store.setPositions(positions))
       settle(before)
       return
     }
 
     const sortTo = drag.target
-    flushSync(() => {
+    commit(() => {
       if (!sortTo) return
       if (drag.primary.type === 'table') {
         store.moveTable(drag.primary.id, beforeFor(doc.content.tables, drag.primary.id, sortTo))
@@ -694,15 +767,38 @@ export const useCanvasInteraction = ({ layout, scale, sheetRef }: Options) => {
     stopRef.current?.()
     const controller = new AbortController()
     const { signal } = controller
+    // Pointer moves come faster than the screen draws: only the latest one is handled, once a frame.
+    let pending: PointerEvent | null = null
+    let frame = 0
+    const flush = () => {
+      cancelAnimationFrame(frame)
+      frame = 0
+      const event = pending
+      pending = null
+      if (event) moveRef.current(event)
+    }
     const finish = (event: PointerEvent) => {
       controller.abort()
       stopRef.current = null
+      // The last move first: the drop lands where the pointer was let go.
+      if (event.type !== 'pointercancel') flush()
+      else cancelAnimationFrame(frame)
       finishRef.current(event)
     }
-    window.addEventListener('pointermove', (event) => moveRef.current(event), { signal })
+    window.addEventListener(
+      'pointermove',
+      (event) => {
+        pending = event
+        if (!frame) frame = requestAnimationFrame(flush)
+      },
+      { signal }
+    )
     window.addEventListener('pointerup', finish, { signal })
     window.addEventListener('pointercancel', finish, { signal })
-    stopRef.current = () => controller.abort()
+    stopRef.current = () => {
+      cancelAnimationFrame(frame)
+      controller.abort()
+    }
   }
   // Unmounting mid-drag leaves no listeners behind.
   useEffect(
@@ -743,8 +839,8 @@ export const useCanvasInteraction = ({ layout, scale, sheetRef }: Options) => {
   }
 
   const onResizePointerDown = (event: ReactPointerEvent, block: SheetBlock) => {
-    // Tables only (the only blocks with a handle); every other block is moved, not sized.
-    if (event.button !== 0 || block.type !== 'table') return
+    // Tables and hall items only (the blocks with a handle); every other block is moved, not sized.
+    if (event.button !== 0 || !(block.type === 'table' || block.type === 'plantable' || block.type === 'venue')) return
     event.stopPropagation()
     event.preventDefault()
     const store = useListEditorStoreBase.getState()
@@ -785,7 +881,7 @@ export const useCanvasInteraction = ({ layout, scale, sheetRef }: Options) => {
       tableShift: { dx: 0, dy: 0 },
       lastDx: 0,
       lastDy: 0,
-      heights: new Map(),
+      sizes: new Map(),
     }
     startListening()
   }

@@ -12,8 +12,8 @@ const ARROWS: Record<string, [number, number]> = { ArrowLeft: [-1, 0], ArrowRigh
 
 /**
  * The editor's keys, outside text fields (there the browser's own undo and caret keys run):
- * Ctrl/Cmd+Z / Y undo and redo; Delete removes the selected guests and tables; arrows nudge
- * the selection 1mm (Shift: 5mm) in free mode; Escape clears it; Ctrl/Cmd+A selects every block.
+ * Ctrl/Cmd+Z / Y undo and redo; Delete removes the selected guests, tables and hall items; arrows
+ * nudge the selection 1mm (Shift: 5mm) in free mode and on the hall plan; Escape clears it; Ctrl/Cmd+A selects every block.
  */
 export const useCanvasShortcuts = ({ layout, enabled }: { layout: SheetLayout; enabled: boolean }): void => {
   const layoutRef = useRef(layout)
@@ -46,10 +46,12 @@ export const useCanvasShortcuts = ({ layout, enabled }: { layout: SheetLayout; e
         event.preventDefault()
         const guests = store.selection.filter((id) => doc.content.guests.some((guest) => guest.id === id))
         const tables = store.selection.filter((id) => doc.content.tables.some((table) => table.id === id))
+        const items = store.selection.filter((id) => doc.content.venue.some((item) => item.id === id))
         if (guests.length) store.removeGuests(guests)
         for (const id of tables) store.removeTable(id)
+        if (items.length) store.removeVenueItems(items)
         store.select([])
-      } else if (ARROWS[event.key] && store.selection.length && doc.design.layout.mode === 'free') {
+      } else if (ARROWS[event.key] && store.selection.length && (doc.design.kind === 'plan' || doc.design.layout.mode === 'free')) {
         event.preventDefault()
         const [dx, dy] = ARROWS[event.key]
         const step = event.shiftKey ? 5 : 1

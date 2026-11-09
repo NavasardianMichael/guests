@@ -25,6 +25,7 @@ import { BrandMark } from '@components/layout/BrandMark'
 import { HintTooltip } from '@components/ui/HintTooltip'
 import { LiveInput } from './controls/LiveFields'
 import { ResetButton } from './controls/ResetButton'
+import { AccessChip } from './download/AccessChip'
 import { PdfActions } from './PdfActions'
 
 type Props = {
@@ -123,6 +124,7 @@ export const EditorTopBar: FC<Props> = ({ zoom, fitZoom, pages, onZoomChange, on
             <Button icon={<EyeOutlined />} aria-label={t('preview')} onClick={onPreview} />
           </HintTooltip>
         </span>
+        <AccessChip />
         <PdfActions />
       </div>
     </header>

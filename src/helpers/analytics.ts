@@ -12,10 +12,10 @@ type AnalyticsEvents = {
   list_pdf: { kind: string; template: string }
   /** A list imported: from where, and how many guests came in. */
   guests_import: { source: 'paste' | 'file' | 'photo'; count: number; mode: 'append' | 'replace' }
-  /** The buyer left for the bank to buy `template`. */
-  begin_checkout: { currency: string; value: number; template: string }
+  /** The buyer left for the bank to buy a pass of `days`; `extend`: one was still running. */
+  begin_checkout: { currency: string; value: number; days: number; extend: boolean }
   /** `transaction_id` is our payment's id: GA counts a repeated one once. */
-  purchase: { currency: string; value: number; transaction_id: string; template: string }
+  purchase: { currency: string; value: number; transaction_id: string; days: number }
   sign_up: { method: 'password' }
   login: { method: 'password' }
 }

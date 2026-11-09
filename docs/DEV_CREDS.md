@@ -6,7 +6,8 @@ never seeded into production. Every account uses the password **`guests-dev-1234
 | Email | State | Use it to test |
 |---|---|---|
 | `demo@guests.local` | No lists | First run: empty dashboard, creating a list |
-| `ani@guests.local` | A wedding seating board (4 tables, Armenian/Russian/English names) in the **bought** “ivory” template, and a short christening list in the unbought “pastel” | Editing a saved list, autosave, duplicate/delete, PDF of a saved list; a bought template (Template step locked, “Bought” badges, clean PDF) next to one that opens checkout |
+| `ani@guests.local` | A wedding seating board (4 tables, Armenian/Russian/English names) in the premium “ivory” template and a short christening list in “pastel”, with a **running** 21-day access pass | Editing a saved list, autosave, duplicate/delete, PDF of a saved list; full access (days-left chip in the editor, dashboard banner, clean PDFs in any template, checkout adding days on top) |
+| `gor@guests.local` | The same two lists, with a pass that **ran out** (paid 30 days ago) | What stays after access ends: the dashboard's "ended" banner, editing as usual, Download opening the checkout for a premium template, “Classic” printing with the “made with” line |
 
 Password-reset and verification links print to the API console instead of being emailed.
 Checkout uses the mock bank (`PAYMENT_GATEWAY=mock`, the dev default): a page served by the API

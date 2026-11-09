@@ -9,12 +9,12 @@ import { useTranslations } from 'next-intl'
 import { useAuthStore } from '@store/auth/store'
 import { useListsStore } from '@store/lists/list/store'
 import type { GuestList } from '@store/lists/single/types'
-import { useOwnedTemplates } from '@hooks/useOwnedTemplates'
 import { usePdfDownload } from '@hooks/usePdfDownload'
 import { CHECKOUT_QUERY, editorPath, newListPath, RETURN_TO_QUERY, ROUTES } from '@constants/routes'
 import { classifyError, errorCopyKey } from '@helpers/error'
 import { reportError } from '@helpers/reportError'
 import { ErrorState } from '@components/ui/ErrorState'
+import { AccessBanner } from './AccessBanner'
 import { ListCard } from './ListCard'
 
 export const DashboardClient: FC = () => {
@@ -33,8 +33,7 @@ export const DashboardClient: FC = () => {
   const { message, modal } = App.useApp()
   const { run } = usePdfDownload()
   const router = useRouter()
-  const owned = useOwnedTemplates()
-  /** A list in a template not bought opens in the editor with the checkout, which shows what it buys. */
+  /** A premium list without a running pass opens in the editor with the checkout, which shows what it buys. */
   const onDownload = async (item: GuestList) => {
     if ((await run(item.id, item)) === 'locked') router.push(`${editorPath(item.id)}?${CHECKOUT_QUERY}=1`)
   }
@@ -115,7 +114,6 @@ export const DashboardClient: FC = () => {
           <ListCard
             key={item.id}
             list={item}
-            bought={Boolean(owned?.includes(item.design.templateId))}
             onDuplicate={onDuplicate}
             onDelete={onDelete}
             onDownload={(target) => void onDownload(target)}
@@ -157,6 +155,7 @@ export const DashboardClient: FC = () => {
           />
         </div>
       )}
+      <AccessBanner className='mt-6' />
       {body()}
     </div>
   )

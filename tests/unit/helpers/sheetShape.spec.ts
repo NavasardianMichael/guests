@@ -47,6 +47,7 @@ const seatingDoc = (shape: SheetShape, tables = 8, patch: (doc: ListDocument) =>
       subheading: '12 June',
       footer: 'With love',
       tables: tableList,
+      venue: [],
       guests: Array.from({ length: tables * 5 }, (_, index) => newGuest(`Guest ${index + 1}`, tableList[index % tables].id)),
     },
     design: templateDesign('classic', 'seating', shape),

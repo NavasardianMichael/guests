@@ -11,6 +11,8 @@ export type EditTarget =
   | { kind: 'footer' }
   | { kind: 'guest'; id: string }
   | { kind: 'table'; id: string }
+  /** A stage, dance floor or entrance on the hall plan. */
+  | { kind: 'item'; id: string }
 
 export const sameTarget = (a: EditTarget | null, b: EditTarget | null): boolean =>
   Boolean(a && b && a.kind === b.kind && ('id' in a ? a.id : '') === ('id' in b ? b.id : ''))
@@ -30,7 +32,7 @@ export type SheetInteraction = {
   dropTarget: string | null
   editing: EditTarget | null
   onBlockPointerDown: (event: PointerEvent, block: SheetBlock) => void
-  /** A guest's name inside a table block: dragged on its own, to another table. */
+  /** A guest's name inside a table block (or a table on the hall plan): dragged on its own, to another table. */
   onNamePointerDown: (event: PointerEvent, guestId: string) => void
   /** The handle at a block's bottom-right corner: resizes it. */
   onResizePointerDown: (event: PointerEvent, block: SheetBlock) => void

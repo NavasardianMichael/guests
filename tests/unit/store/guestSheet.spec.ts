@@ -18,9 +18,10 @@ const listDoc = (): ListDocument => {
       footer: '',
       guests: [guest('a', 'Արամ', 't1'), guest('b', 'Անի', 't2')],
       tables: [
-        { id: 't1', name: 'Սեղան 1' },
-        { id: 't2', name: 'Սեղան 2' },
+        { id: 't1', name: 'Սեղան 1', shape: 'round', seats: 0 },
+        { id: 't2', name: 'Սեղան 2', shape: 'round', seats: 0 },
       ],
+      venue: [],
     },
     design,
   }

@@ -1,28 +1,29 @@
 import type { Payment, PaymentStatus, Prisma } from '@prisma/client'
-import { type PrintTerms, printTerms } from './entitlement.js'
+import { accessWindow, type PaidPass, type PrintTerms, printTerms } from './entitlement.js'
 import { GATEWAYS } from './gateways/index.js'
-import { TEMPLATE_PRICE_AMD } from './pricing.js'
+import { PASS_DAYS, PASS_PRICE_AMD } from './pricing.js'
 import { config } from '../config.js'
-import { FREE_TEMPLATE_IDS, isTemplateId, type TemplateId } from '../lib/catalogue.js'
+import type { TemplateId } from '../lib/catalogue.js'
 import { ERROR_CODE } from '../lib/error-codes.js'
 import { prisma } from '../lib/prisma.js'
 import type { ListOwner } from '../middleware/auth.js'
 import { HttpError } from '../middleware/error.js'
 
 /**
- * One-time template purchases (docs/PAYMENTS.md). cv-builder's flow, with one difference: what
- * is bought is a **template**, not a document. A `succeeded` payment is its owner's licence to
- * print that template on every list they have or make; nothing else records it.
+ * Access passes (docs/PAYMENTS.md). cv-builder's flow, with one difference: what is bought is
+ * **time** — `PASS_DAYS` of everything for the buyer — not a document or a template. Succeeded
+ * payments are the passes; nothing else records them.
  *
  * - `startCheckout` writes a `pending` Payment, asks the gateway for a payment page, and
- *   returns its URL. Nothing is unlocked here.
+ *   returns its URL. Nothing is unlocked here. Buying while a pass runs is allowed: the new
+ *   days go on top (`accessWindow`).
  * - `settlePayment` is the **only** writer of `succeeded`. It asks the gateway, server to
  *   server, and moves the row out of `pending` by compare-and-set, so the return redirect, a
  *   page reload and a reconcile racing each other settle it once.
  * - `reconcileOwnerPayments` covers the buyer who paid and closed the tab before the redirect:
- *   reading the owner's templates, or printing, re-checks their recent pending payments.
+ *   reading the owner's access, or printing, re-checks their recent pending payments.
  *   Computed on read, no background job.
- * - `revalidateLicence` takes a refunded template back before it prints again.
+ * - `revalidatePass` drops a refunded payment's days before the next clean print.
  */
 
 const RECONCILE_WINDOW_MS = 3 * 24 * 60 * 60 * 1000
@@ -30,52 +31,43 @@ const RECONCILE_WINDOW_MS = 3 * 24 * 60 * 60 * 1000
 /** A payment owned by this account or guest key: `ListOwner` is that `where` fragment as it is. */
 const ownedBy = (owner: ListOwner): Prisma.PaymentWhereInput => owner
 
-/** The premium templates this owner holds. Free templates need no purchase and are not listed. */
-export const ownedTemplateIds = async (owner: ListOwner): Promise<TemplateId[]> => {
+const paidPasses = async (owner: ListOwner): Promise<PaidPass[]> => {
   const rows = await prisma.payment.findMany({
     where: { ...ownedBy(owner), status: 'succeeded' },
-    select: { templateId: true },
-    distinct: ['templateId'],
+    select: { id: true, paidAt: true, createdAt: true },
   })
-  return rows.map((row) => row.templateId).filter(isTemplateId)
+  // `paidAt` is set by `settlePayment`; a row without it (written by hand) counts from creation.
+  return rows.map((row) => ({ id: row.id, paidAt: row.paidAt ?? row.createdAt }))
 }
 
-const holds = async (owner: ListOwner, templateId: TemplateId): Promise<boolean> =>
-  (await prisma.payment.count({ where: { ...ownedBy(owner), templateId, status: 'succeeded' } })) > 0
+const windowOf = async (owner: ListOwner): Promise<ReturnType<typeof accessWindow>> => accessWindow(await paidPasses(owner), PASS_DAYS)
 
 /**
- * Starts buying `templateId` for this owner and returns the bank page's URL. `listId` is only
- * where the buyer started (the result page links back to it) and must already be the owner's.
+ * When this owner's access ends — in the past once it has run out, null if they never bought.
+ * Pending payments from the last days are settled first.
  */
-export const startCheckout = async (
-  owner: ListOwner,
-  input: { templateId: TemplateId; listId: string | null }
-): Promise<string> => {
-  if (FREE_TEMPLATE_IDS.includes(input.templateId)) {
-    throw new HttpError(409, 'This template is free', ERROR_CODE.templateAlreadyOwned)
-  }
-  if (await holds(owner, input.templateId)) {
-    throw new HttpError(409, 'This template is already bought', ERROR_CODE.templateAlreadyOwned)
-  }
+export const accessUntil = async (owner: ListOwner): Promise<Date | null> => {
+  await reconcileOwnerPayments(owner)
+  return (await windowOf(owner)).until
+}
 
+/**
+ * Starts buying a pass for this owner and returns the bank page's URL. `listId` is only where
+ * the buyer started (the result page links back to it) and must already be the owner's.
+ */
+export const startCheckout = async (owner: ListOwner, input: { listId: string | null }): Promise<string> => {
   const gatewayId = config.payments.gateway
   const gateway = GATEWAYS[gatewayId]
 
   const payment = await prisma.payment.create({
-    data: {
-      ...owner,
-      templateId: input.templateId,
-      listId: input.listId,
-      amount: TEMPLATE_PRICE_AMD,
-      gateway: gatewayId,
-    },
+    data: { ...owner, listId: input.listId, amount: PASS_PRICE_AMD, gateway: gatewayId },
   })
 
   try {
     const { gatewayPaymentId, redirectUrl } = await gateway.init({
       orderNumber: payment.orderNumber,
       amount: payment.amount,
-      description: `Իմ հյուրերը — ձևանմուշ «${input.templateId}»`,
+      description: `Իմ հյուրերը — լիարժեք հասանելիություն ${PASS_DAYS} օրով`,
       backUrl: `${config.apiPublicUrl}/payments/return/${gatewayId}`,
       opaque: payment.id,
     })
@@ -113,15 +105,11 @@ export const settlePayment = async (payment: Payment): Promise<PaymentStatus> =>
   return 'succeeded'
 }
 
-/**
- * Re-checks this owner's recent pending payments — of one template, or of all. Gateway
- * failures are logged, never thrown at a reader.
- */
-export const reconcileOwnerPayments = async (owner: ListOwner, templateId?: TemplateId): Promise<void> => {
+/** Re-checks this owner's recent pending payments. Gateway failures are logged, never thrown at a reader. */
+export const reconcileOwnerPayments = async (owner: ListOwner): Promise<void> => {
   const pending = await prisma.payment.findMany({
     where: {
       ...ownedBy(owner),
-      ...(templateId ? { templateId } : {}),
       status: 'pending',
       gatewayPaymentId: { not: null },
       createdAt: { gte: new Date(Date.now() - RECONCILE_WINDOW_MS) },
@@ -140,15 +128,14 @@ export const reconcileOwnerPayments = async (owner: ListOwner, templateId?: Temp
 }
 
 /**
- * Whether a bought template is still bought, asked before it prints: a refund or void made
- * later in the bank's panel takes the template back. Each `succeeded` payment for it is
- * re-read from its gateway, and a reversed one becomes `refunded`; the template stays the
- * owner's while one is left (bought twice, refunded once). A gateway that cannot answer counts
- * as still paid — an outage must not lock a buyer out.
+ * The running pass, re-checked before it prints: a refund or void made later in the bank's
+ * panel takes its days back. Each payment of the running window is re-read from its gateway,
+ * and a reversed one becomes `refunded`; the caller then computes the window again. A gateway
+ * that cannot answer counts as still paid — an outage must not lock a buyer out.
  */
-const revalidateLicence = async (owner: ListOwner, templateId: TemplateId): Promise<boolean> => {
+const revalidatePass = async (chain: readonly PaidPass[]): Promise<void> => {
   const payments = await prisma.payment.findMany({
-    where: { ...ownedBy(owner), templateId, status: 'succeeded', gatewayPaymentId: { not: null } },
+    where: { id: { in: chain.map((payment) => payment.id) }, status: 'succeeded', gatewayPaymentId: { not: null } },
   })
 
   const reversed: string[] = []
@@ -161,42 +148,36 @@ const revalidateLicence = async (owner: ListOwner, templateId: TemplateId): Prom
   }
   if (reversed.length > 0) {
     await prisma.payment.updateMany({ where: { id: { in: reversed }, status: 'succeeded' }, data: { status: 'refunded' } })
-    console.info(`[payments] ${reversed.length} payment(s) for template ${templateId} were refunded at the bank`)
+    console.info(`[payments] ${reversed.length} payment(s) were refunded at the bank: ${reversed.join(', ')}`)
   }
-  return holds(owner, templateId)
 }
 
+const isRunning = (until: Date | null): until is Date => Boolean(until && until.getTime() > Date.now())
+
 /**
- * Whether this owner may print `templateId` clean, asked by every PDF route before printing a
- * premium template: a pending payment is settled first (a tab closed mid-redirect), a held
- * one is re-checked for a refund. Returns the payment a download counts against, or null.
+ * Whether this owner's pass is running, asked by every PDF route: pending payments are settled
+ * first (a tab closed mid-redirect), a running pass is re-checked for a refund. Returns the
+ * payment a download counts against — the latest of the running window — or null.
  */
-const printLicence = async (owner: ListOwner | null, templateId: TemplateId): Promise<{ paymentId: string } | null> => {
+const runningPass = async (owner: ListOwner | null): Promise<{ paymentId: string } | null> => {
   if (!owner) return null
-  if (await holds(owner, templateId)) {
-    if (!(await revalidateLicence(owner, templateId))) return null
-  } else {
-    await reconcileOwnerPayments(owner, templateId)
-  }
-  // Two succeeded payments are a double charge; a download counts against the latest.
-  const payment = await prisma.payment.findFirst({
-    where: { ...ownedBy(owner), templateId, status: 'succeeded' },
-    orderBy: { paidAt: 'desc' },
-    select: { id: true },
-  })
-  return payment ? { paymentId: payment.id } : null
+  await reconcileOwnerPayments(owner)
+  const before = await windowOf(owner)
+  if (!isRunning(before.until)) return null
+  await revalidatePass(before.chain)
+  const after = await windowOf(owner)
+  if (!isRunning(after.until)) return null
+  return { paymentId: after.chain[after.chain.length - 1].id }
 }
 
 /**
  * The print terms for this owner (null: a visitor with neither session nor guest key), and the
- * payment a clean print counts against — recorded as delivery evidence. The free template
- * never asks the bank.
+ * payment a clean print counts against — recorded as delivery evidence.
  */
 export const printTermsFor = async (
   owner: ListOwner | null,
   templateId: TemplateId
 ): Promise<PrintTerms & { paymentId: string | null }> => {
-  if (FREE_TEMPLATE_IDS.includes(templateId)) return { ...printTerms({ templateId, owned: false }), paymentId: null }
-  const licence = await printLicence(owner, templateId)
-  return { ...printTerms({ templateId, owned: Boolean(licence) }), paymentId: licence?.paymentId ?? null }
+  const pass = await runningPass(owner)
+  return { ...printTerms({ templateId, active: Boolean(pass) }), paymentId: pass?.paymentId ?? null }
 }

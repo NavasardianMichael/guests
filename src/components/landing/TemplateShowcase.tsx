@@ -31,6 +31,14 @@ export const TemplateShowcase: FC = async () => {
           <TemplateCard key={id} template={TEMPLATES[id]} texts={texts} />
         ))}
       </div>
+      <div className='mt-10 flex justify-center sm:mt-12'>
+        <Link
+          href={ROUTES.templates}
+          className='inline-flex items-center gap-2 rounded-full bg-surface px-5 py-3 text-base font-semibold text-ink no-underline ring-1 ring-line transition hover:-translate-y-0.5 hover:ring-ink/30 sm:px-6 sm:py-3.5'
+        >
+          {t('templatesAll')} <ArrowRightOutlined />
+        </Link>
+      </div>
     </section>
   )
 }

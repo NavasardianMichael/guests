@@ -4,36 +4,44 @@ import { type FC, useEffect, useState } from 'react'
 import { ArrowLeftOutlined, CheckCircleFilled, ClockCircleFilled, CloseCircleFilled, PlusOutlined } from '@ant-design/icons'
 import { Alert, Button, Spin } from 'antd'
 import Link from 'next/link'
-import { useTranslations } from 'next-intl'
+import { useFormatter, useTranslations } from 'next-intl'
+import type { PaymentStatus } from '@api/purchases/types'
 import { useAuthStore } from '@store/auth/store'
 import { DRAFT_ID } from '@store/lists/single/types'
 import { usePurchasesStoreBase } from '@store/purchases/store'
-import { useOwnedTemplates } from '@hooks/useOwnedTemplates'
-import { CURRENCY, TEMPLATE_PRICE_AMD } from '@constants/pricing'
+import { useAccessUntil } from '@hooks/useAccess'
+import { CURRENCY, PASS_DAYS, PASS_PRICE_AMD } from '@constants/pricing'
 import { CHECKOUT_QUERY, editorPath, newListPath, RETURN_TO_QUERY, ROUTES } from '@constants/routes'
-import type { TemplateId } from '@constants/templates'
+import { FREE_TEMPLATE_ID } from '@constants/templates'
 import { trackEvent } from '@helpers/analytics'
 import { readLocalDraft } from '@helpers/localDraft'
 
-type Props = { status: 'succeeded' | 'failed' | 'pending'; templateId?: TemplateId; listId?: string; paymentId?: string }
+type Status = 'succeeded' | 'failed' | 'pending'
+
+type Props = { status: Status; listId?: string; paymentId?: string }
 
 const PENDING_POLL_MS = 4000
 const PENDING_MAX_POLLS = 8
 
+/** The payment's own status as the page shows it: a refund since reads as failed. */
+const shown = (status: PaymentStatus): Status => (status === 'refunded' ? 'failed' : status)
+
 /**
  * Where the bank's return trip lands (via the API, which has already asked the bank). The
- * bought templates are re-read rather than trusting `status`: reading them reconciles a
- * pending payment, so "pending" polls a few times until the bank has answered. A guest reads
- * them through the guest cookie, and is reminded that what they bought lives only in this
- * browser until they sign in.
+ * payment is re-read rather than trusting `status`: reading it reconciles a pending payment, so
+ * "pending" polls a few times until the bank has answered. On success it says until when the
+ * access runs and what stays after it ends. A guest reads it through the guest cookie, and is
+ * reminded that the access lives only in this browser until they sign in.
  */
-export const PaymentResultClient: FC<Props> = ({ status, templateId, listId, paymentId }) => {
+export const PaymentResultClient: FC<Props> = ({ status, listId, paymentId }) => {
   const t = useTranslations('Payment')
   const tTemplates = useTranslations('Templates')
+  const format = useFormatter()
   const user = useAuthStore.use.user()
   const isResolved = useAuthStore.use.isResolved()
-  const owned = useOwnedTemplates()
+  const until = useAccessUntil()
   const [polls, setPolls] = useState(0)
+  const [confirmed, setConfirmed] = useState<Status | null>(null)
   // The editor this purchase started from: a saved list, or this browser's draft.
   const [backTo, setBackTo] = useState<string | null>(listId ? editorPath(listId) : null)
 
@@ -43,25 +51,32 @@ export const PaymentResultClient: FC<Props> = ({ status, templateId, listId, pay
     if (!listId && readLocalDraft()) setBackTo(editorPath(DRAFT_ID))
   }, [listId])
 
-  // A poll asks again; the first read is `useOwnedTemplates`' own.
+  // Each read (the first once the owner is known, then each poll) settles a pending payment and
+  // answers its status, refreshing the access with it. A payment that is not this visitor's (opened
+  // in another browser) has no status to answer: the bank's word from the redirect stands.
+  const ownerKnown = until !== undefined
   useEffect(() => {
-    if (polls > 0) void usePurchasesStoreBase.getState().refresh()
-  }, [polls])
+    if (!ownerKnown || !paymentId) return
+    let cancelled = false
+    void usePurchasesStoreBase
+      .getState()
+      .refresh(paymentId)
+      .then((access) => {
+        if (!cancelled) setConfirmed(access.payment ? shown(access.payment) : status)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [ownerKnown, paymentId, polls, status])
 
-  const bought = Boolean(templateId && owned?.includes(templateId))
-  const effective = bought ? 'succeeded' : status === 'succeeded' && owned ? 'pending' : status
+  const effective: Status = confirmed ?? status
 
   // Revisiting this page repeats the event; GA counts one purchase per transaction_id.
   useEffect(() => {
-    if (bought && templateId) {
-      trackEvent('purchase', {
-        currency: CURRENCY,
-        value: TEMPLATE_PRICE_AMD,
-        transaction_id: paymentId ?? templateId,
-        template: templateId,
-      })
+    if (effective === 'succeeded' && paymentId) {
+      trackEvent('purchase', { currency: CURRENCY, value: PASS_PRICE_AMD, transaction_id: paymentId, days: PASS_DAYS })
     }
-  }, [bought, paymentId, templateId])
+  }, [effective, paymentId])
 
   useEffect(() => {
     if (effective !== 'pending' || polls >= PENDING_MAX_POLLS) return
@@ -69,7 +84,7 @@ export const PaymentResultClient: FC<Props> = ({ status, templateId, listId, pay
     return () => clearTimeout(timer)
   }, [effective, polls])
 
-  if (templateId && owned === null && status !== 'failed') {
+  if (paymentId && confirmed === null && status !== 'failed') {
     return (
       <div className='grid flex-1 place-items-center'>
         <Spin size='large' />
@@ -77,9 +92,10 @@ export const PaymentResultClient: FC<Props> = ({ status, templateId, listId, pay
     )
   }
 
-  const template = templateId ? tTemplates(`names.${templateId}`) : ''
+  const date = until ? format.dateTime(new Date(until), { dateStyle: 'long' }) : ''
+  const free = tTemplates(`names.${FREE_TEMPLATE_ID}`)
   const view = {
-    succeeded: { icon: <CheckCircleFilled className='text-success' />, title: t('succeeded'), text: t('succeededText', { template }) },
+    succeeded: { icon: <CheckCircleFilled className='text-success' />, title: t('succeeded'), text: t('succeededText', { date }) },
     failed: { icon: <CloseCircleFilled className='text-danger' />, title: t('failed'), text: t('failedText') },
     pending: { icon: <ClockCircleFilled className='text-accent' />, title: t('pending'), text: t('pendingText') },
   }[effective]
@@ -91,6 +107,7 @@ export const PaymentResultClient: FC<Props> = ({ status, templateId, listId, pay
       </div>
       <h1 className='mt-6 font-display text-title font-extrabold text-ink sm:text-3xl'>{view.title}</h1>
       <p className='mt-3 text-lg text-muted'>{view.text}</p>
+      {effective === 'succeeded' && <p className='mt-3 text-sm text-muted'>{t('afterText', { free, days: PASS_DAYS })}</p>}
       {/* Margin on a wrapper: antd's Alert styles are unlayered and reset `margin`. */}
       {isResolved && !user && effective === 'succeeded' && (
         <div className='mt-6 text-left'>
@@ -115,8 +132,8 @@ export const PaymentResultClient: FC<Props> = ({ status, templateId, listId, pay
             </Button>
           </Link>
         )}
-        {effective === 'succeeded' && templateId && (
-          <Link href={newListPath({ template: templateId })}>
+        {effective === 'succeeded' && (
+          <Link href={newListPath()}>
             <Button size='large' icon={<PlusOutlined />}>
               {t('newList')}
             </Button>

@@ -13,7 +13,7 @@ import { listsRouter } from './routes/lists.js'
 import { paymentsRouter } from './routes/payments.js'
 import { pdfRouter } from './routes/pdf.js'
 import { purchasesRouter } from './routes/purchases.js'
-import { TEMPLATE_PRICE_AMD } from './services/pricing.js'
+import { PASS_PRICE_AMD } from './services/pricing.js'
 
 export function createApp() {
   const app = express()
@@ -42,7 +42,7 @@ export function createApp() {
       google: isGoogleOAuthConfigured(),
       ai: isAiConfigured(),
       payments: isPaymentConfigured(),
-      priceAmd: TEMPLATE_PRICE_AMD,
+      priceAmd: PASS_PRICE_AMD,
     })
   })
 

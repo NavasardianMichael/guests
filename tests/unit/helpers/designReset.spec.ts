@@ -16,6 +16,7 @@ const tweaked = (): ListDesign => {
   Object.assign(design.layout, { mode: 'free', columns: 5, gapX: 20, numbering: true, cardWidth: 120, sort: 'az' })
   design.layout.positions = { g1: { page: 0, x: 10, y: 10 } }
   design.layout.sizes = { g1: { w: 40, h: 10 } }
+  design.plan = { arrangement: 'around', positions: { t1: { page: 0, x: 30, y: 40 } }, sizes: { t1: { w: 60, h: 60 } } }
   return design
 }
 
@@ -33,7 +34,17 @@ describe('resetDesign', () => {
   })
 
   it('all: the template’s design, keeping the kind and the template', () => {
-    expect(resetDesign(tweaked(), 'all')).toEqual(templateDesign('ornament', 'seating'))
+    const next = resetDesign(tweaked(), 'all')
+    expect({ ...next, plan: null }).toEqual({ ...templateDesign('ornament', 'seating'), plan: null })
+    // The hall plan's arrangement is the plan's: kept while a seating board shows (scaled with the paper).
+    expect(Object.keys(next.plan.positions)).toEqual(['t1'])
+  })
+
+  it('keeps the hall plan arranged while another kind shows, and clears it on the plan', () => {
+    const design = tweaked()
+    expect(resetDesign(design, 'layout').plan).toEqual(design.plan)
+    expect(resetDesign({ ...design, kind: 'plan' }, 'layout').plan).toEqual({ arrangement: 'around', positions: {}, sizes: {} })
+    expect(resetDesign({ ...design, kind: 'plan' }, 'sizing').plan).toEqual({ arrangement: 'around', positions: {}, sizes: {} })
   })
 
   it('a section leaves the rest of its tab alone', () => {

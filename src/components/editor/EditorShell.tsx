@@ -21,10 +21,11 @@ import { CanvasZoomControl } from './canvas/CanvasZoomControl'
 import { EditorCanvas } from './canvas/EditorCanvas'
 import { CheckoutModal } from './download/CheckoutModal'
 import { EditorBottomBar } from './EditorBottomBar'
+import { EditorSidebar } from './EditorSidebar'
 import { EditorSteps } from './EditorSteps'
 import { EditorTopBar } from './EditorTopBar'
 import { ImportModal } from './import/ImportModal'
-import { EditorPanel, PanelBody, TabResetButton } from './panels/EditorPanel'
+import { PanelBody, TabResetButton } from './panels/EditorPanel'
 import { PreviewModal } from './PreviewModal'
 import { SpreadsheetModal } from './spreadsheet/SpreadsheetModal'
 import { Autosave } from './useAutosave'
@@ -72,7 +73,14 @@ export const EditorShell: FC<Props> = ({ listId }) => {
   // The sheet draws the document at a lower priority than the controls: while a colour, a
   // slider or a name is changing, the control answers at once and the sheet follows when it
   // can (an interrupted render of it is dropped for the newer document).
-  const sheetDoc = useDeferredValue(doc)
+  const deferredDoc = useDeferredValue(doc)
+  // A drop on the canvas is drawn at once: its glide starts from the layout it leaves.
+  const drawNow = useEditorUiStore.use.drawNow()
+  const setDrawNow = useEditorUiStore.use.setDrawNow()
+  const sheetDoc = drawNow ? doc : deferredDoc
+  useEffect(() => {
+    if (drawNow && deferredDoc === doc) setDrawNow(false)
+  }, [deferredDoc, doc, drawNow, setDrawNow])
   const openListId = useListEditorStore.use.listId()
   const select = useListEditorStore.use.select()
   const tab = useEditorUiStore.use.tab()
@@ -204,12 +212,7 @@ export const EditorShell: FC<Props> = ({ listId }) => {
         </div>
       )}
       <div className='flex min-h-0 flex-1'>
-        <aside
-          className='hidden w-96 shrink-0 border-r border-line bg-surface lg:flex lg:flex-col'
-          aria-label={t('panelOpen')}
-        >
-          <EditorPanel />
-        </aside>
+        <EditorSidebar />
         <div className='relative flex min-w-0 flex-1'>
           <EditorCanvas
             doc={sheetDoc ?? doc}

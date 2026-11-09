@@ -87,15 +87,16 @@ export const ContactForm: FC = () => {
           placeholder={t('messagePlaceholder')}
           maxLength={MAX_CONTACT_MESSAGE_LENGTH}
           showCount
+          style={{ resize: 'none' }}
         />
       </Form.Item>
-      <div className='absolute -left-[10000px] h-px w-px overflow-hidden' aria-hidden='true'>
+      <div className='absolute left-[-10000px] h-px w-px overflow-hidden' aria-hidden='true'>
         <Form.Item name='website' label='Website'>
           <Input tabIndex={-1} autoComplete='off' />
         </Form.Item>
       </div>
       {Boolean(error) && <ErrorAlert error={error} className='mb-4' />}
-      <Button type='primary' htmlType='submit' size='large' block loading={state === 'sending'}>
+      <Button type='primary' className='mt-4' htmlType='submit' size='large' block loading={state === 'sending'}>
         {t('submit')}
       </Button>
     </Form>

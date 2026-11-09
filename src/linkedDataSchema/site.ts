@@ -9,7 +9,7 @@ import {
   SUPPORT_POSTAL_ADDRESS,
 } from '@constants/app'
 import { FONT_SLUGS } from '@constants/fonts'
-import { CURRENCY, TEMPLATE_PRICE_AMD } from '@constants/pricing'
+import { CURRENCY, PASS_DAYS, PASS_PRICE_AMD } from '@constants/pricing'
 import { ROUTES, templatePath } from '@constants/routes'
 import { ALTERNATE_NAMES, SEARCH_KEYWORDS } from '@constants/seo'
 import { TEMPLATE_LIST, type TemplateId } from '@constants/templates'
@@ -92,14 +92,14 @@ export const webApplicationSchema = (): WithContext<WebApplication> => ({
       '@type': 'Offer',
       price: 0,
       priceCurrency: CURRENCY,
-      description: 'Ցուցակի կազմում և տպում անվճար ձևանմուշներով',
+      description: 'Ցուցակի կազմում, նախադիտում և տպում անվճար ձևանմուշով',
       availability: 'https://schema.org/InStock',
     },
     {
       '@type': 'Offer',
-      price: TEMPLATE_PRICE_AMD,
+      price: PASS_PRICE_AMD,
       priceCurrency: CURRENCY,
-      description: 'Մեկ ձևանմուշ՝ գնողի բոլոր ցուցակների համար, մեկանգամյա վճար',
+      description: `Լիարժեք հասանելիություն ${PASS_DAYS} օրով՝ բոլոր ձևանմուշները, առանց կայքի նշման, մեկ վճարում`,
       availability: 'https://schema.org/InStock',
     },
   ],

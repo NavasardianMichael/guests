@@ -1,41 +1,37 @@
 'use client'
 
 import { type FC, memo, type ReactNode, useMemo } from 'react'
-import { CheckCircleFilled, IdcardOutlined, TableOutlined, UnorderedListOutlined } from '@ant-design/icons'
+import { CheckCircleFilled, IdcardOutlined, LayoutOutlined, TableOutlined, UnorderedListOutlined } from '@ant-design/icons'
 import { useTranslations } from 'next-intl'
 import { useListEditorStore, useListEditorStoreBase } from '@store/lists/single/store'
 import { PRINT_KINDS, type PrintKind, type SheetShape } from '@store/lists/single/types'
+import { useSampleTexts } from '@hooks/useSampleTexts'
 import type { TemplateId } from '@constants/templates'
 import { cn } from '@helpers/cn'
+import { startingPlanScale } from '@helpers/fitSheet'
 import { sampleContent, templateDesign } from '@helpers/listFactory'
+import { measureText } from '@helpers/measureText'
 import { SheetPreview } from '@components/sheet/SheetPreview'
 
 export const KIND_ICONS: Record<PrintKind, ReactNode> = {
   seating: <TableOutlined />,
   list: <UnorderedListOutlined />,
   cards: <IdcardOutlined />,
+  plan: <LayoutOutlined />,
 }
 
 /** One kind as a choice: what it looks like in the sheet's template and shape, its name and what it is for. */
 const KindOption: FC<{ kind: PrintKind; templateId: TemplateId; shape: SheetShape; active: boolean; onPick: () => void }> = memo(
   function KindOption({ kind, templateId, shape, active, onPick }) {
     const t = useTranslations('Editor.layout')
-    const tSamples = useTranslations('Samples')
+    const texts = useSampleTexts()
     const doc = useMemo(
       () => ({
         title: '',
-        content: sampleContent(
-          {
-            heading: tSamples('heading'),
-            subheading: tSamples('subheading'),
-            footer: tSamples('footer'),
-            table: (number) => tSamples('table', { number }),
-          },
-          kind === 'cards' ? 2 : 6
-        ),
+        content: sampleContent(texts, kind === 'cards' ? 2 : 6),
         design: templateDesign(templateId, kind, kind === 'cards' ? 'rectangle' : shape),
       }),
-      [kind, shape, templateId, tSamples]
+      [kind, shape, templateId, texts]
     )
 
     return (
@@ -67,14 +63,26 @@ const KindOption: FC<{ kind: PrintKind; templateId: TemplateId; shape: SheetShap
   }
 )
 
-/** The first step: what is being made — a seating chart, a guest list or place cards. */
+/** The first step: what is being made — a seating chart, a guest list, place cards or the hall plan. */
 export const KindPanel: FC = () => {
   const t = useTranslations('Editor.layout')
   const kind = useListEditorStoreBase((state) => state.doc?.design.kind)
   const templateId = useListEditorStoreBase((state) => state.doc?.design.templateId)
   const shape = useListEditorStoreBase((state) => state.doc?.design.shape)
   const setDesign = useListEditorStore.use.setDesign()
+  const fitToPage = useListEditorStore.use.fitToPage()
   if (!kind || !templateId || !shape) return null
+
+  /**
+   * A hall arranged by the app that runs onto a second page starts fitted to one (smaller
+   * letters), as the canvas's "fit to the page" would: a plan is read at a glance.
+   */
+  const pick = (value: PrintKind) => {
+    setDesign({ kind: value })
+    const doc = useListEditorStoreBase.getState().doc
+    const textScale = doc ? startingPlanScale(doc, measureText) : null
+    if (textScale !== null) fitToPage({ columns: 0, textScale })
+  }
 
   return (
     <div role='radiogroup' aria-label={t('kind')} className='flex flex-col gap-2.5'>
@@ -85,7 +93,7 @@ export const KindPanel: FC = () => {
           templateId={templateId}
           shape={shape}
           active={kind === value}
-          onPick={() => setDesign({ kind: value })}
+          onPick={() => pick(value)}
         />
       ))}
     </div>

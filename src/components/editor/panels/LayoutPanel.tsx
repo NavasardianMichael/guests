@@ -9,6 +9,7 @@ import type { Flow, LayoutMode, SortOrder } from '@store/lists/single/types'
 import type { ResetScope } from '@helpers/designReset'
 import { LiveInputNumber, LiveSlider } from '../controls/LiveFields'
 import { ResetButton } from '../controls/ResetButton'
+import { PlanAddTiles } from '../plan/PlanAdd'
 import { SpreadsheetButton } from '../spreadsheet/SpreadsheetModal'
 
 /** A panel's section; `reset` puts a reset button for that part of the design in its header. */
@@ -38,6 +39,54 @@ const CARD_PRESETS: { width: number; height: number }[] = [
   { width: 120, height: 60 },
 ]
 
+/**
+ * The hall plan's arrangement: tables and hall items to add, the app's arrangement back
+ * (everything the user placed or sized forgotten), and, while the app arranges, the spacing.
+ */
+const PlanSection: FC = () => {
+  const t = useTranslations('Editor.plan')
+  const tEditor = useTranslations('Editor')
+  const plan = useListEditorStoreBase((state) => state.doc?.design.plan)
+  const gap = useListEditorStoreBase((state) => state.doc?.design.layout.gapX ?? 0)
+  const setLayout = useListEditorStore.use.setLayout()
+  const resetPositions = useListEditorStore.use.resetPositions()
+  const resetSizes = useListEditorStore.use.resetSizes()
+  if (!plan) return null
+  const pinned = Object.keys(plan.positions).length
+  const resized = Object.keys(plan.sizes).length
+
+  return (
+    <PanelSection title={t('hall')} reset='layout.plan' hint={t('hint')}>
+      <PlanAddTiles />
+      {pinned > 0 && (
+        <Button icon={<RollbackOutlined />} onClick={() => resetPositions()}>
+          {t('arrange')}
+        </Button>
+      )}
+      {resized > 0 && (
+        <Button icon={<CompressOutlined />} onClick={() => resetSizes()}>
+          {t('resetSizes', { count: resized })}
+        </Button>
+      )}
+      {/* Only the app's arrangement is spaced by it: blocks placed by hand stay where they are. */}
+      {pinned === 0 && (
+        <Row label={t('gap')}>
+          <LiveInputNumber
+            size='small'
+            className='w-36'
+            min={0}
+            max={60}
+            step={1}
+            value={gap}
+            suffix={tEditor('mm')}
+            onChange={(value) => value !== null && setLayout({ gapX: value, gapY: value })}
+          />
+        </Row>
+      )}
+    </PanelSection>
+  )
+}
+
 /** How the sheet's blocks are arranged (what the sheet is, is the first step: `KindPanel`). */
 export const LayoutPanel: FC = () => {
   const t = useTranslations('Editor.layout')
@@ -56,6 +105,9 @@ export const LayoutPanel: FC = () => {
       <div className='pb-3'>
         <SpreadsheetButton />
       </div>
+      {kind === 'plan' ? (
+        <PlanSection />
+      ) : (
       <PanelSection title={t('arrangement')} reset='layout.arrangement' hint={t(layout.mode === 'free' ? 'freeHint' : 'gridHint')}>
         <Segmented<LayoutMode>
           block
@@ -77,8 +129,9 @@ export const LayoutPanel: FC = () => {
           </Button>
         )}
       </PanelSection>
+      )}
 
-      {kind !== 'cards' && (
+      {kind !== 'cards' && kind !== 'plan' && (
         <PanelSection title={t('grid')} reset='layout.grid'>
           <Row label={t('columns')}>
             <LiveInputNumber
@@ -170,7 +223,7 @@ export const LayoutPanel: FC = () => {
             <Switch size='small' checked={layout.numbering} onChange={(numbering) => setLayout({ numbering })} />
           </Row>
         )}
-        {kind !== 'seating' && (
+        {(kind === 'list' || kind === 'cards') && (
           <Row label={t('showTable')}>
             <Switch size='small' checked={layout.showTable} onChange={(showTable) => setLayout({ showTable })} />
           </Row>
@@ -187,7 +240,7 @@ export const LayoutPanel: FC = () => {
         )}
       </PanelSection>
 
-      {layout.mode === 'free' && <Alert type='info' showIcon className='mt-2 text-xs' title={t('freeTips')} />}
+      {(layout.mode === 'free' || kind === 'plan') && <Alert type='info' showIcon className='mt-2 text-xs' title={t('freeTips')} />}
     </div>
   )
 }

@@ -1,11 +1,11 @@
 import type { FC } from 'react'
 import { getTranslations } from 'next-intl/server'
-import { formatAmount, TEMPLATE_PRICE_AMD } from '@constants/pricing'
+import { formatAmount, PASS_DAYS, PASS_PRICE_AMD } from '@constants/pricing'
 import { faqSchema } from '@linkedDataSchema/site'
 import { JsonLd } from '@components/seo/JsonLd'
 import { PlusOutlined } from '@components/ui/icons'
 
-const FAQ_KEYS = ['price', 'account', 'photo', 'print', 'paper', 'languages'] as const
+const FAQ_KEYS = ['price', 'after', 'account', 'photo', 'print', 'paper', 'languages'] as const
 
 /**
  * Questions people (and answer engines) actually ask, as native `<details>` — readable with
@@ -15,8 +15,8 @@ export const Faq: FC<{ title?: string }> = async ({ title }) => {
   const t = await getTranslations('Faq')
   const tHome = await getTranslations('Home')
   const tCommon = await getTranslations('Common')
-  const price = tCommon('amount', { amount: formatAmount(TEMPLATE_PRICE_AMD) })
-  const items = FAQ_KEYS.map((key) => ({ key, question: t(`${key}.q`), answer: t(`${key}.a`, { price }) }))
+  const price = tCommon('amount', { amount: formatAmount(PASS_PRICE_AMD) })
+  const items = FAQ_KEYS.map((key) => ({ key, question: t(`${key}.q`), answer: t(`${key}.a`, { price, days: PASS_DAYS }) }))
 
   return (
     <section className='mx-auto max-w-3xl px-4 py-14 sm:py-20 md:px-6' aria-labelledby='faq-title'>

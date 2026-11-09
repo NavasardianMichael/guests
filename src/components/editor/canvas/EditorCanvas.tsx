@@ -25,6 +25,7 @@ import { MM_TO_PX } from '@components/sheet/SheetPreview'
 import { SelectionBar } from './SelectionBar'
 import { PAGE_GAP_MM, useCanvasInteraction } from './useCanvasInteraction'
 import { useCanvasShortcuts } from './useCanvasShortcuts'
+import { PlanToolbar } from '../plan/PlanAdd'
 
 type Props = {
   doc: ListDocument
@@ -69,8 +70,11 @@ export const EditorCanvas: FC<Props> = memo(function EditorCanvas({ doc, zoom, o
   // Something to fit: tables on a seating board, names on a list (cards are sized by the card).
   const canFit = useListEditorStoreBase((state) => {
     const current = state.doc
+    // Cards are sized by the card.
     if (!current || current.design.kind === 'cards') return false
-    return (current.design.kind === 'seating' ? current.content.tables.length : current.content.guests.length) > 0
+    const { content, design } = current
+    if (design.kind === 'plan') return content.tables.length + content.venue.length > 0
+    return (design.kind === 'seating' ? content.tables.length : content.guests.length) > 0
   })
   const layout = useSheetLayout(doc)
   const scrollerRef = useRef<HTMLDivElement>(null)
@@ -175,7 +179,8 @@ export const EditorCanvas: FC<Props> = memo(function EditorCanvas({ doc, zoom, o
     if (!result) return
     fitToPage(result)
     const summary = [
-      t('fitColumns', { count: result.columns }),
+      // The hall plan has no columns (`columns: 0`).
+      result.columns ? t('fitColumns', { count: result.columns }) : '',
       result.rows ? t('fitRows', { count: result.rows }) : '',
       t('fitText', { percent: Math.round(result.textScale * 100) }),
       result.pages > 1 ? t('fitPages', { count: result.pages }) : '',
@@ -255,8 +260,8 @@ export const EditorCanvas: FC<Props> = memo(function EditorCanvas({ doc, zoom, o
             className='pointer-events-none absolute z-30 bg-accent'
             style={
               guide.axis === 'x'
-                ? { left: `${guide.at}mm`, top: 0, bottom: 0, width: '0.3mm' }
-                : { top: `${guide.at}mm`, left: 0, right: 0, height: '0.3mm' }
+                ? { left: `${guide.at - 0.15}mm`, top: `${guide.from}mm`, height: `${guide.to - guide.from}mm`, width: '0.3mm' }
+                : { top: `${guide.at - 0.15}mm`, left: `${guide.from}mm`, width: `${guide.to - guide.from}mm`, height: '0.3mm' }
             }
             aria-hidden='true'
           />
@@ -277,7 +282,7 @@ export const EditorCanvas: FC<Props> = memo(function EditorCanvas({ doc, zoom, o
   )
 
   const empty = doc.content.guests.length === 0
-  const unseated = doc.design.kind === 'seating' ? layout.unseated : 0
+  const unseated = doc.design.kind === 'seating' || doc.design.kind === 'plan' ? layout.unseated : 0
 
   return (
     <div className='relative flex min-w-0 flex-1 flex-col'>
@@ -327,6 +332,11 @@ export const EditorCanvas: FC<Props> = memo(function EditorCanvas({ doc, zoom, o
                   </Button>
                 </div>
               )}
+            </div>
+          )}
+          {doc.design.kind === 'plan' && (
+            <div className='mx-auto mb-5 flex max-w-2xl justify-center'>
+              <PlanToolbar />
             </div>
           )}
           <div className='mx-auto' style={{ width: pageWidthPx * scale, height: stackHeightMm * MM_TO_PX * scale }}>

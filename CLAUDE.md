@@ -1,11 +1,14 @@
 # guests (Իմ հյուրերը)
 
 Guest lists for Armenian events, printed. Users build a list (typed, pasted, Excel/CSV, or a
-photo read by Gemini), arrange it on a sheet and print one of three **kinds**: a seating board
-(guests under their tables), a plain guest list, or place cards. Any paper size, 46 templates,
-40 Armenian fonts, interface in hy (default) / ru / en. No account needed. A premium template
-is **bought once** (Ameriabank vPOS, as cv-builder) and then prints on every list its buyer
-makes; a list in a bought template keeps it (`docs/PAYMENTS.md`). Built from `../cv-builder` —
+photo read by Gemini), arrange it on a sheet and print one of four **kinds**: a seating board
+(guests under their tables), a plain guest list, place cards, or the hall plan (round and long
+tables with their guests inside, chairs around, plus stage / dance floor / entrance, placed
+by hand). Any paper size, 46 templates,
+40 Armenian fonts, interface in hy (default) / ru / en. No account needed. Building, previewing
+and printing in the free template are free; **full access** — every template and kind, clean —
+is a 21-day pass (Ameriabank vPOS, as cv-builder), days adding up when bought while one runs.
+Nothing is deleted when it ends; what is unused for a year is (`docs/PAYMENTS.md`). Built from `../cv-builder` —
 same stack, conventions, auth, guest mode, PDF printing, payments and deploy.
 
 **Stack:** Next.js 16 · React 19 · TypeScript · Ant Design 6 · Tailwind 4 · Zustand (immer) ·
@@ -48,17 +51,19 @@ cv-builder's notes: under `concurrently` on Windows `tsx watch` never starts the
 | **Layout engine** (where every block sits, mm; text wrapping) | `src/helpers/sheetLayout.ts` · browser text metrics `src/helpers/measureText.ts` · re-layout when fonts load `src/hooks/useSheetLayout.ts` |
 | "Fit to the page" (button at the first page's top-right corner): columns + text size, fewest pages, names whole | `src/helpers/fitSheet.ts` · store `fitToPage` · button in `EditorCanvas` page extras |
 | The renderer (editor, previews, PDF) | `src/components/sheet/SheetDocument.tsx` + `sheet.css`; scaled previews `SheetPreview.tsx` |
+| Hall plan (tables, chairs, stage / dance floor / entrance) | layout `PLAN`, `placePlan`, `roundDiameter` in `src/helpers/sheetLayout.ts` · views `PlanTableView` / `VenueView` in `SheetDocument.tsx`, `.sh-plan-*` / `.sh-venue-*` in `sheet.css` · arrangement presets (rows, around the dance floor, two sides, long tables) `src/helpers/planArrangement.ts`, picked in the Template step (`components/editor/plan/ArrangementPicker.tsx`, `setArrangement`) · add buttons `components/editor/plan/PlanAdd.tsx` (canvas toolbar + Layout step) · shape and chairs in `SelectionBar` |
 | Editor interactions (drag, drop, snap, marquee, inline edit) | `src/components/editor/canvas/useCanvasInteraction.tsx`, given to the sheet through `SheetInteraction.tsx`; selection actions `SelectionBar.tsx`; keys `useCanvasShortcuts.ts` |
 | Editor state, undo/redo | `src/store/lists/single/store.ts` · autosave `src/components/editor/useAutosave.ts` · chrome state `src/store/editorUi/store.ts` |
-| Panels = the editor's steps, in order (`EDITOR_TABS`) | `src/components/editor/panels/` — Kind, Template (shape + template), Design, Guests (quick add, by-table view, rows sorted with @dnd-kit across tables), Layout, Paper. A new list starts with the sample wedding as its own, editable guests and opens at Kind (`newListDocument`, `markJustCreated`) |
+| Panels = the editor's steps, in order (`EDITOR_TABS`) | `src/components/editor/panels/` — Kind, Template (shape + template), Design, Guests (quick add, by-table view, rows sorted with @dnd-kit across tables), Layout, Paper. A new list starts with the sample wedding as its own, editable guests and opens at Kind (`newListDocument`, `markJustCreated`). On desktop the column folds to a rail by the button at its top-right corner (`EditorSidebar`, remembered in localStorage; a step click unfolds it) |
 | Reset buttons (top bar: all; tab header; section header) | what each scope puts back `src/helpers/designReset.ts` · button + confirm `src/components/editor/controls/ResetButton.tsx` · paper change maths `src/helpers/paperChange.ts` |
 | "Leave this page?" while unsaved | `src/components/LeaveGuard.tsx` (tab close/reload, links, Back) · register with `useLeaveGuard` (`src/hooks/`) — the editor's autosave does |
 | Print preview (fullscreen modal) | `src/components/editor/PreviewModal.tsx` |
 | Import | `src/components/editor/import/` · parsing `src/helpers/guestImport.ts` · photo → `server/src/routes/ai.ts` → `services/guestReader.ts` (Gemini) |
 | Guest drafts (localStorage) | `src/helpers/localDraft.ts` — imported on sign-in by `EditorShell` |
 | PDF | `server/src/services/pdf.ts` prints the web's `/render` page (`src/app/render/`); the editor and dashboard only download it (`src/hooks/usePdfDownload.ts`, `PdfActions`) — no browser printing |
-| Who may print what | `server/src/services/entitlement.ts` (pure rule): the free template (`memorial`, shown as “Classic”) for anyone, a premium one once its owner bought it — `printTermsFor` in `services/payments.ts`; web twin `isPrintable` |
-| Payments (buy a template) | `docs/PAYMENTS.md` · server `services/payments.ts`, `services/gateways/` (Ameria + dev mock, as cv-builder), `routes/purchases.ts` (owned, checkout), `routes/payments.ts` (bank return) · web `store/purchases/` + `hooks/useOwnedTemplates.ts`, `components/editor/download/CheckoutModal.tsx`, `/payment/result`, `/refund-policy` |
+| Who may print what | `server/src/services/entitlement.ts` (pure: `printTerms`, `accessWindow`): the free template (`memorial`, shown as “Classic”) for anyone, everything while the owner's pass runs — `printTermsFor` in `services/payments.ts`; web twin `isPrintable` |
+| Payments (21-day access pass) | `docs/PAYMENTS.md` · server `services/pricing.ts`, `services/payments.ts`, `services/gateways/` (Ameria + dev mock, as cv-builder), `routes/purchases.ts` (access, checkout), `routes/payments.ts` (bank return) · web `constants/pricing.ts`, `store/purchases/` + `hooks/useAccess.ts`, `components/editor/download/{CheckoutModal,AccessChip}.tsx`, `dashboard/AccessBanner.tsx`, `/payment/result`, `/pricing`, `/refund-policy` |
+| Retention (unused for a year → deleted) | policy `server/src/services/retention.ts`, daily sweep `retentionSweep.ts`, `User.lastActiveAt` stamped in `middleware/auth.ts` |
 | Languages | `src/i18n/request.ts` (cookie `NEXT_LOCALE`, default hy) · `src/messages/{hy,ru,en}.json` · switcher `components/layout/LanguageSwitcher.tsx` |
 | Auth (password + Google), guest key | as cv-builder: `server/src/routes/identity*.ts`, `lib/guest.ts`, `services/guestLists.ts` |
 | CI/CD, production | `.github/workflows/{ci,deploy}.yml` · `docs/DEPLOYMENT.md` · `docs/PRODUCTION_SETUP.md` · `deployment/` |
@@ -91,6 +96,17 @@ cv-builder's notes: under `concurrently` on Windows `tsx watch` never starts the
   another table re-seats the guest. In free mode `layout.positions` pins blocks; a block never
   dragged keeps its grid place. Changing the grid (columns, gaps, cards) clears positions in
   grid mode; changing the paper scales them.
+- **The hall plan (`kind: 'plan'`) keeps its own arrangement** in `design.plan`
+  (`arrangement`/`positions`/`sizes`), not `layout`, so switching kinds never loses it (`placementOf` in the
+  store picks the record; `forgetBlocks` cleans both). Every block on it is free. Blocks with
+  no position are placed by `placePlan` in `sheetLayout.ts` — set out by `plan.arrangement`
+  while nothing is pinned (centred rows, or a preset in `arrangeHall`, which flags `overflow`
+  when it does not fit so the text is fitted smaller), else the first free spot — and the first drag or resize pins *every* table and hall
+  item (`unpinnedPlan` in `useCanvasInteraction`), so the app's arrangement never jumps.
+  Table shape and chairs live on `GuestTable` (`shape`, `seats`); hall items in
+  `content.venue`. Names drop on any block marked `data-seats` (board or plan tables).
+  Picking the plan turns the page landscape (other kinds turn it back) and, if it runs
+  onto a second page, fits the text (`startingPlanScale` in `fitSheet.ts`).
 - **Resizing** is for tables only (the handle at a table's bottom-right corner); guests, cards,
   header and footer are moved by grabbing, not sized. It writes `layout.sizes[id]` in any
   mode: `w` re-wraps the text (capped at the column in a grid, at the sheet when free), `h` is
@@ -103,7 +119,7 @@ cv-builder's notes: under `concurrently` on Windows `tsx watch` never starts the
 - **The API coerces, it does not reject**, every list write (`coerceContent`/`coerceDesign`):
   colours `#rrggbb`, fonts/templates/paper from the catalogue, ids short tokens, limits capped.
 - **Twins, pinned by `tests/unit/server/twins.spec.ts`:** template ids and which are free,
-  fonts, table styles, kinds, text roles, paper formats/sizes/limits, list limits, price,
+  fonts, table styles, kinds, text roles, paper formats/sizes/limits, list limits, price, pass days, retention days,
   default title, guest cookie, error codes, server-built paths — and every template's design
   survives the server's coercion unchanged.
 - **Interface language is a cookie, not a URL.** Pages are indexed in Armenian. Calls with an
@@ -111,10 +127,14 @@ cv-builder's notes: under `concurrently` on Windows `tsx watch` never starts the
   must stay explicit so those routes stay static. Legal pages are Armenian in every language.
 - **A list is owned by an account or a guest key**, never both (CHECK constraint); every
   `/lists` route scopes by `listOwnerOf(req)`.
-- **What is bought is a template, not a list.** A `succeeded` `Payment` (owner + `templateId`)
-  is the licence; there is no `paidAt` on a list. A list in a bought template keeps it: the
-  Template step shows only the shape picker and a note. A guest's purchases follow the guest
-  key and move to the account on sign-in with the lists (`services/guestLists.ts`).
+- **What is bought is time, not a template or a list.** The owner's `succeeded` `Payment`
+  rows are their passes; `accessWindow` folds them by `paidAt` (21 days each, on top of a
+  running one). Nothing is locked to a template. A guest's payments follow the guest key and
+  move to the account on sign-in with the lists (`services/guestLists.ts`). Every place money
+  is asked for also says when the days end and that nothing is deleted then — keep it so.
+- **Nothing is deleted for not paying; a year unused is.** The daily sweep
+  (`services/retentionSweep.ts`) removes accounts whose `lastActiveAt` is a year old (with their
+  lists) and guest lists unchanged for a year. Payments and download records stay.
 - **Server Components cannot import `@ant-design/icons`**: import from `@components/ui/icons`.
 - **antd styles are unlayered and beat Tailwind utilities** — override antd's own
   `display`/`height`/`white-space` inline or on a wrapper. Hide or show an antd control at a

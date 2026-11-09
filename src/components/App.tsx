@@ -10,6 +10,7 @@ import { useAuthStoreBase } from '@store/auth/store'
 import { DEFAULT_LOCALE, isLocale, type Locale } from '@constants/app'
 import { antdTheme } from '@styles/theme'
 import { LeaveGuard } from './LeaveGuard'
+import { PrintGuard } from './PrintGuard'
 
 const ANTD_LOCALES: Record<Locale, typeof hyAM> = { hy: hyAM, ru: ruRU, en: enUS }
 
@@ -37,6 +38,7 @@ export const App: FC<PropsWithChildren> = ({ children }) => {
         <AuthBootstrap />
         {children}
         <LeaveGuard />
+        <PrintGuard />
       </AntApp>
     </ConfigProvider>
   )

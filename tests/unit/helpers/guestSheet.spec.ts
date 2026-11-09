@@ -5,8 +5,8 @@ import { guestDrop, isBlock, parseClipboard, pasteIntoColumns, tableColumns, tab
 const guest = (id: string, name: string, tableId = ''): Guest => ({ id, name, tableId, note: '' })
 
 const tables: GuestTable[] = [
-  { id: 't1', name: 'Սեղան 1' },
-  { id: 't2', name: 'Սեղան 2' },
+  { id: 't1', name: 'Սեղան 1', shape: 'round', seats: 0 },
+  { id: 't2', name: 'Սեղան 2', shape: 'round', seats: 0 },
 ]
 const guests: Guest[] = [
   guest('a', 'Արամ', 't2'),
@@ -103,7 +103,7 @@ describe('guestDrop', () => {
   })
 
   it('keeps its place in the list when the table is empty', () => {
-    const empty = { guests, tables: [...tables, { id: 't3', name: 'Սեղան 3' }] }
+    const empty = { guests, tables: [...tables, { id: 't3', name: 'Սեղան 3', shape: 'round' as const, seats: 0 }] }
     expect(guestDrop(empty, 'b', 2, 0)).toEqual({ tableId: 't3', beforeId: 'c' })
   })
 })

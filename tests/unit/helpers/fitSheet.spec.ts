@@ -20,6 +20,7 @@ const seating = (
       subheading: '',
       footer: '',
       tables: tableList,
+      venue: [],
       guests: tableList.flatMap((table, t) =>
         Array.from({ length: perTable }, (_, g) => newGuest(`Guest ${t + 1}.${g + 1}`, table.id))
       ),

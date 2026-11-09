@@ -3,7 +3,7 @@ import { clearGuestKey, readGuestKeyHash } from '../lib/guest.js'
 import { prisma } from '../lib/prisma.js'
 
 /**
- * Moves this browser's guest-owned lists — and the templates it bought (its payments) — to the
+ * Moves this browser's guest-owned lists — and the passes it bought (its payments) — to the
  * account that has just signed in, then forgets the guest key. Called on sign-in, sign-up,
  * Google sign-in and `GET /identity/me`, so a guest who signs in by any route keeps what they
  * made and bought.
