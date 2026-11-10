@@ -3,9 +3,8 @@ import { create } from 'zustand'
 import { combine } from 'zustand/middleware'
 import { immer } from 'zustand/middleware/immer'
 import { appendSelectors } from '@store/appendSelectors'
-import { TEMPLATES } from '@constants/templates'
 import { resetDesign } from '@helpers/designReset'
-import { arrange, KIND_ALIGN, KIND_LAYOUT, newGuest, newTable, newVenueItem, templateTypography, withPlanFields } from '@helpers/listFactory'
+import { arrange, designInTemplate, KIND_ALIGN, KIND_LAYOUT, newGuest, newTable, newVenueItem, withPlanFields } from '@helpers/listFactory'
 import { applyPaperPatch, MIN_BLOCK_SIZE } from '@helpers/paperChange'
 import { compareNames } from '@helpers/sheetLayout'
 import type { GuestTable, ListDesign, ListDocument, ListEditorActions, ListEditorState, Plan } from './types'
@@ -437,14 +436,7 @@ export const useListEditorStoreBase = create<ListEditorState & ListEditorActions
         applyTemplate: (templateId) => {
           set((state) =>
             edit(state, null, (doc) => {
-              const kind = doc.design.kind
-              const type = templateTypography(templateId, kind)
-              for (const role of TEXT_ROLES) type[role].align = doc.design.type[role].align
-              doc.design.templateId = templateId
-              doc.design.palette = { ...TEMPLATES[templateId].palette }
-              doc.design.type = type
-              doc.design.tableStyle = TEMPLATES[templateId].tableStyle
-              doc.design.decor = true
+              doc.design = designInTemplate(doc.design, templateId)
             })
           )
         },

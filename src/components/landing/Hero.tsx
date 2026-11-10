@@ -1,7 +1,7 @@
 import type { CSSProperties, FC } from 'react'
 import Link from 'next/link'
 import { getTranslations } from 'next-intl/server'
-import type { PrintKind } from '@store/lists/single/types'
+import { PRINT_KINDS, type PrintKind } from '@store/lists/single/types'
 import { sampleTexts } from '@i18n/sampleTexts'
 import { FONT_SLUGS } from '@constants/fonts'
 import { newListPath, ROUTES } from '@constants/routes'
@@ -12,8 +12,9 @@ import { ArrowRightOutlined } from '@components/ui/icons'
 
 /**
  * Three real sheets, laid out live from the sample wedding, fanned out like papers on a desk:
- * a seating board, a guest list, place cards. Delays are negative: the tilt lives in the
- * keyframes, so a positive delay would draw the card untilted until its animation starts.
+ * a guest list and two seating boards, all portrait (a landscape hall plan does not sit well
+ * among them). Delays are negative: the tilt lives in the keyframes, so a positive delay would
+ * draw the card untilted until its animation starts.
  */
 const STACK: { id: TemplateId; kind: PrintKind; className: string; tilt: string; delay: string }[] = [
   { id: 'botanical', kind: 'list', className: 'left-0 top-10 w-[44%] z-10', tilt: '-7deg', delay: '0s' },
@@ -56,7 +57,7 @@ export const Hero: FC = async () => {
             {[
               { value: String(TEMPLATE_IDS.length), label: t('stats.templates') },
               { value: String(FONT_SLUGS.length), label: t('stats.fonts') },
-              { value: '3', label: t('stats.kinds') },
+              { value: String(PRINT_KINDS.length), label: t('stats.kinds') },
             ].map((stat) => (
               <div key={stat.label}>
                 <dt className='sr-only'>{stat.label}</dt>

@@ -335,7 +335,7 @@ export const EditorCanvas: FC<Props> = memo(function EditorCanvas({ doc, zoom, o
             </div>
           )}
           {doc.design.kind === 'plan' && (
-            <div className='mx-auto mb-5 flex max-w-2xl justify-center'>
+            <div className='mx-auto mb-5 flex max-w-4xl justify-center'>
               <PlanToolbar />
             </div>
           )}

@@ -4,12 +4,13 @@ import { type FC, useEffect, useState } from 'react'
 import { ArrowLeftOutlined, CheckCircleFilled, ClockCircleFilled, CloseCircleFilled, PlusOutlined } from '@ant-design/icons'
 import { Alert, Button, Spin } from 'antd'
 import Link from 'next/link'
-import { useFormatter, useTranslations } from 'next-intl'
+import { useTranslations } from 'next-intl'
 import type { PaymentStatus } from '@api/purchases/types'
 import { useAuthStore } from '@store/auth/store'
 import { DRAFT_ID } from '@store/lists/single/types'
 import { usePurchasesStoreBase } from '@store/purchases/store'
 import { useAccessUntil } from '@hooks/useAccess'
+import { useFormatDate } from '@hooks/useFormatDate'
 import { CURRENCY, PASS_DAYS, PASS_PRICE_AMD } from '@constants/pricing'
 import { CHECKOUT_QUERY, editorPath, newListPath, RETURN_TO_QUERY, ROUTES } from '@constants/routes'
 import { FREE_TEMPLATE_ID } from '@constants/templates'
@@ -36,7 +37,7 @@ const shown = (status: PaymentStatus): Status => (status === 'refunded' ? 'faile
 export const PaymentResultClient: FC<Props> = ({ status, listId, paymentId }) => {
   const t = useTranslations('Payment')
   const tTemplates = useTranslations('Templates')
-  const format = useFormatter()
+  const formatDate = useFormatDate()
   const user = useAuthStore.use.user()
   const isResolved = useAuthStore.use.isResolved()
   const until = useAccessUntil()
@@ -92,7 +93,7 @@ export const PaymentResultClient: FC<Props> = ({ status, listId, paymentId }) =>
     )
   }
 
-  const date = until ? format.dateTime(new Date(until), { dateStyle: 'long' }) : ''
+  const date = until ? formatDate(until) : ''
   const free = tTemplates(`names.${FREE_TEMPLATE_ID}`)
   const view = {
     succeeded: { icon: <CheckCircleFilled className='text-success' />, title: t('succeeded'), text: t('succeededText', { date }) },

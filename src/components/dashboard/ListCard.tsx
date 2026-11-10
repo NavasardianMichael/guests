@@ -4,8 +4,9 @@ import type { FC } from 'react'
 import { CopyOutlined, DeleteOutlined, DownloadOutlined, EditOutlined, MoreOutlined } from '@ant-design/icons'
 import { Button, Dropdown } from 'antd'
 import Link from 'next/link'
-import { useFormatter, useTranslations } from 'next-intl'
+import { useTranslations } from 'next-intl'
 import type { GuestList } from '@store/lists/single/types'
+import { useFormatDate } from '@hooks/useFormatDate'
 import { editorPath } from '@constants/routes'
 import { SheetPreview } from '@components/sheet/SheetPreview'
 
@@ -21,7 +22,7 @@ export const ListCard: FC<Props> = ({ list, onDuplicate, onDelete, onDownload })
   const t = useTranslations('Dashboard')
   const tKinds = useTranslations('Editor.layout.kinds')
   const tCommon = useTranslations('Common')
-  const format = useFormatter()
+  const formatDate = useFormatDate()
   const href = editorPath(list.id)
 
   return (
@@ -44,7 +45,7 @@ export const ListCard: FC<Props> = ({ list, onDuplicate, onDelete, onDownload })
             {tKinds(list.design.kind)} · {t('guests', { count: list.content.guests.length })}
           </p>
           <p className='m-0 mt-0.5 text-xs text-muted'>
-            {t('updated', { date: format.dateTime(new Date(list.updatedAt), { dateStyle: 'medium', timeStyle: 'short' }) })}
+            {t('updated', { date: formatDate(list.updatedAt, { time: true }) })}
           </p>
         </div>
         <Dropdown

@@ -2,10 +2,11 @@
 
 import { type FC, memo, useMemo } from 'react'
 import { CheckCircleFilled } from '@ant-design/icons'
-import { useFormatter, useTranslations } from 'next-intl'
+import { useTranslations } from 'next-intl'
 import { useListEditorStore, useListEditorStoreBase } from '@store/lists/single/store'
 import type { PrintKind, SheetShape } from '@store/lists/single/types'
 import { useAccessUntil, useNow } from '@hooks/useAccess'
+import { useFormatDate } from '@hooks/useFormatDate'
 import { useSampleTexts } from '@hooks/useSampleTexts'
 import { formatAmount, isAccessActive, PASS_DAYS, PASS_PRICE_AMD } from '@constants/pricing'
 import { FREE_TEMPLATE_ID, TEMPLATE_LIST, type TemplateId } from '@constants/templates'
@@ -66,11 +67,11 @@ const useAccessHint = (): string | undefined => {
   const t = useTranslations('Editor.template')
   const tTemplates = useTranslations('Templates')
   const tCommon = useTranslations('Common')
-  const format = useFormatter()
+  const formatDate = useFormatDate()
   const until = useAccessUntil()
   const now = useNow()
   if (until === undefined) return undefined
-  if (isAccessActive(until, now)) return t('accessHint', { date: format.dateTime(new Date(until!), { dateStyle: 'long' }) })
+  if (isAccessActive(until, now)) return t('accessHint', { date: formatDate(until!) })
   return t('premiumHint', {
     free: tTemplates(`names.${FREE_TEMPLATE_ID}`),
     price: tCommon('amount', { amount: formatAmount(PASS_PRICE_AMD) }),

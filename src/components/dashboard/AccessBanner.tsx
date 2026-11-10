@@ -2,8 +2,9 @@
 
 import type { FC } from 'react'
 import { Alert } from 'antd'
-import { useFormatter, useTranslations } from 'next-intl'
+import { useTranslations } from 'next-intl'
 import { useAccessUntil, useNow } from '@hooks/useAccess'
+import { useFormatDate } from '@hooks/useFormatDate'
 import { accessDaysLeft, isAccessActive, PASS_DAYS } from '@constants/pricing'
 import { FREE_TEMPLATE_ID } from '@constants/templates'
 
@@ -15,12 +16,12 @@ import { FREE_TEMPLATE_ID } from '@constants/templates'
 export const AccessBanner: FC<{ className?: string }> = ({ className }) => {
   const t = useTranslations('Dashboard')
   const tTemplates = useTranslations('Templates')
-  const format = useFormatter()
+  const formatDate = useFormatDate()
   const until = useAccessUntil()
   const now = useNow()
   if (until === undefined || until === null || now === 0) return null
 
-  const date = format.dateTime(new Date(until), { dateStyle: 'long' })
+  const date = formatDate(until)
   const active = isAccessActive(until, now)
 
   return (

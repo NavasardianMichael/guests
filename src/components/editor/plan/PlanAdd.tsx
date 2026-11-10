@@ -111,7 +111,8 @@ export const PlanToolbar: FC = () => {
         {t('add')}
       </span>
       {choices.map((choice) => (
-        <Button key={choice.key} size='small' icon={choice.icon} disabled={choice.disabled} onClick={choice.onAdd}>
+        // Inline: antd's own font size is unlayered and beats a Tailwind utility.
+        <Button key={choice.key} size='small' icon={choice.icon} disabled={choice.disabled} onClick={choice.onAdd} style={{ fontSize: 12 }}>
           {choice.label}
         </Button>
       ))}

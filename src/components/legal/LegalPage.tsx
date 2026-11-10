@@ -1,7 +1,8 @@
 import type { FC, ReactNode } from 'react'
 import Link from 'next/link'
-import { getTranslations } from 'next-intl/server'
+import { getLocale, getTranslations } from 'next-intl/server'
 import type { LegalDocument } from '@constants/legal'
+import { formatDate } from '@helpers/date'
 
 const LINK = /\[([^\]]+)\]\(([^)\s]+)\)/g
 
@@ -23,10 +24,11 @@ const renderParagraph = (paragraph: string): ReactNode[] => {
 
 export const LegalPage: FC<{ document: LegalDocument }> = async ({ document }) => {
   const t = await getTranslations('Legal')
+  const locale = await getLocale()
   return (
     <article className='mx-auto max-w-3xl px-4 py-10 sm:py-14 md:px-6'>
       <h1 className='m-0 font-display text-title font-extrabold tracking-tight text-ink sm:text-4xl'>{document.title}</h1>
-      <p className='mt-3 text-sm text-muted'>{t('updated', { date: document.updated })}</p>
+      <p className='mt-3 text-sm text-muted'>{t('updated', { date: formatDate(document.updated, locale) })}</p>
       {document.sections.map((section) => (
         <section key={section.heading} className='mt-10'>
           <h2 className='m-0 text-lg font-bold text-ink sm:text-xl'>{section.heading}</h2>

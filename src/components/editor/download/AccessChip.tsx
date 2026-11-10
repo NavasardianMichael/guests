@@ -2,9 +2,10 @@
 
 import type { FC } from 'react'
 import { ClockCircleOutlined } from '@ant-design/icons'
-import { useFormatter, useTranslations } from 'next-intl'
+import { useTranslations } from 'next-intl'
 import { useEditorUiStore } from '@store/editorUi/store'
 import { useAccessUntil, useNow } from '@hooks/useAccess'
+import { useFormatDate } from '@hooks/useFormatDate'
 import { accessDaysLeft, isAccessActive, PASS_DAYS } from '@constants/pricing'
 import { cn } from '@helpers/cn'
 import { HintTooltip } from '@components/ui/HintTooltip'
@@ -20,7 +21,7 @@ const ENDING_DAYS = 3
  */
 export const AccessChip: FC = () => {
   const t = useTranslations('Editor.access')
-  const format = useFormatter()
+  const formatDate = useFormatDate()
   const until = useAccessUntil()
   const now = useNow()
   const setCheckoutOpen = useEditorUiStore.use.setCheckoutOpen()
@@ -28,7 +29,7 @@ export const AccessChip: FC = () => {
 
   const days = accessDaysLeft(until, now)
   const ending = days <= ENDING_DAYS
-  const date = format.dateTime(new Date(until!), { dateStyle: 'long' })
+  const date = formatDate(until!)
 
   return (
     <span className='hidden md:flex'>

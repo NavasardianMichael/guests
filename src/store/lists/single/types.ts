@@ -17,7 +17,7 @@ import type { ResetScope } from '@helpers/designReset'
  * - `plan`: the hall's floor plan — tables drawn as round or long tables, their guests inside,
  *   with the stage, dance floor and entrance, each placed where the user puts it.
  */
-export const PRINT_KINDS = ['seating', 'list', 'cards', 'plan'] as const
+export const PRINT_KINDS = ['seating', 'list', 'plan', 'cards'] as const
 export type PrintKind = (typeof PRINT_KINDS)[number]
 
 /**
@@ -25,7 +25,19 @@ export type PrintKind = (typeof PRINT_KINDS)[number]
  * design is printed inside the shape and a cut line marks its edge. Place cards ignore it —
  * they are always rectangles.
  */
-export const SHEET_SHAPES = ['rectangle', 'rounded', 'ticket', 'arch', 'pointed', 'oval', 'circle', 'hexagon', 'octagon', 'wavy', 'scalloped'] as const
+export const SHEET_SHAPES = [
+  'rectangle',
+  'rounded',
+  'ticket',
+  'arch',
+  'pointed',
+  'oval',
+  'circle',
+  'hexagon',
+  'octagon',
+  'wavy',
+  'scalloped',
+] as const
 export type SheetShape = (typeof SHEET_SHAPES)[number]
 
 export type Guest = {

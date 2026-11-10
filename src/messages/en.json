@@ -60,7 +60,7 @@
     "stats": {
       "templates": "templates",
       "fonts": "Armenian fonts",
-      "kinds": "ways to print: chart, list, cards"
+      "kinds": "ways to print: chart, list, cards, hall plan"
     },
     "featuresTitle": "From a list to a printed sheet in minutes",
     "featuresSubtitle": "No spreadsheets, no designer: what you see on screen is what gets printed.",
@@ -108,6 +108,20 @@
     "templatesTitle": "Templates for every celebration",
     "templatesSubtitle": "A wedding, a christening, a birthday or a company party: pick a style, change the rest on the sheet.",
     "templatesAll": "All templates",
+    "showcase": {
+      "list": {
+        "title": "A guest list for the entrance",
+        "text": "Every name with its table, in neat columns, so each guest finds their seat at a glance."
+      },
+      "cards": {
+        "title": "A place card for every guest",
+        "text": "One card per name, with its table, laid out on the sheet ready to print and cut."
+      },
+      "plan": {
+        "title": "The hall plan",
+        "text": "Round and long tables with their guests and chairs, the stage, the dance floor and the entrance, placed where they stand in the hall."
+      }
+    },
     "faqTitle": "Frequently asked questions",
     "finalTitle": "Your guests will find their seats without asking",
     "finalCta": "Start now"
@@ -775,9 +789,12 @@
       "secure": "Payment is made on Ameriabank’s secure page. Your card details never reach us.",
       "agree": "By paying you agree to the <terms>terms</terms> and the <refund>refund policy</refund>.",
       "unavailable": "Payments aren’t available right now. Try again a little later.",
-      "freeTitle": "Or print for free",
-      "freeText": "Switch to “{free}”: it’s free, with a small “made with” line on each page. Your guests and layout stay as they are.",
       "freeSwitch": "Switch to “{free}”",
+      "freeIncludes": [
+        "Your guests and layout as they are",
+        "In the “Classic” template",
+        "A small “made with” line on each page"
+      ],
       "guestWarningTitle": "Paying without an account",
       "guestWarningText": "The access will belong to this browser only. It won’t work on other devices, and if this browser’s data is ever cleared (we never clear it), you’ll lose it. Sign in and it’s kept in your account.",
       "guestContinue": "Continue without an account",

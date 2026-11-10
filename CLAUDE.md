@@ -135,6 +135,9 @@ cv-builder's notes: under `concurrently` on Windows `tsx watch` never starts the
 - **Nothing is deleted for not paying; a year unused is.** The daily sweep
   (`services/retentionSweep.ts`) removes accounts whose `lastActiveAt` is a year old (with their
   lists) and guest lists unchanged for a year. Payments and download records stay.
+- **Dates shown to the reader go through `formatDate` (`src/helpers/date.ts`; components use
+  `useFormatDate`), never `Intl`/`format.dateTime` directly**: Chrome has no Armenian locale
+  data and prints `hy` dates in English, so Armenian month names are ours.
 - **Server Components cannot import `@ant-design/icons`**: import from `@components/ui/icons`.
 - **antd styles are unlayered and beat Tailwind utilities** — override antd's own
   `display`/`height`/`white-space` inline or on a wrapper. Hide or show an antd control at a

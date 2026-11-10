@@ -105,6 +105,24 @@ export const templateTypography = (templateId: TemplateId, kind: PrintKind): Typ
   }
 }
 
+/**
+ * `design` restyled in another template: its colours, fonts, table style and decor, keeping the
+ * kind, shape, layout, paper and each text's alignment. What the editor's template choice does
+ * (`applyTemplate`), and what the checkout previews for the free template.
+ */
+export const designInTemplate = (design: ListDesign, templateId: TemplateId): ListDesign => {
+  const type = templateTypography(templateId, design.kind)
+  for (const role of Object.keys(type) as TextRole[]) type[role].align = design.type[role].align
+  return {
+    ...design,
+    templateId,
+    palette: { ...TEMPLATES[templateId].palette },
+    type,
+    tableStyle: TEMPLATES[templateId].tableStyle,
+    decor: true,
+  }
+}
+
 /** A hall plan nobody has arranged: set out in rows, nothing placed or sized by hand. */
 export const emptyPlan = (arrangement: PlanArrangement = 'rows'): Plan => ({ arrangement, positions: {}, sizes: {} })
 
