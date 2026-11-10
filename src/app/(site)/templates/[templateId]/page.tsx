@@ -4,23 +4,22 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { getLocale, getTranslations } from 'next-intl/server'
 import type { CreativeWork, WithContext } from 'schema-dts'
-import { PRINT_KINDS } from '@store/lists/single/types'
-import { sampleTexts } from '@i18n/sampleTexts'
 import { APP_NAME } from '@constants/app'
 import { FONTS, fontSourceUrl } from '@constants/fonts'
 import { formatAmount, PASS_DAYS, PASS_PRICE_AMD } from '@constants/pricing'
 import { ROUTES, templatePath } from '@constants/routes'
 import { isTemplateId, TEMPLATE_IDS, TEMPLATE_LIST, TEMPLATES } from '@constants/templates'
-import { sampleContent, templateDesign } from '@helpers/listFactory'
 import { pageMetadata } from '@helpers/metadata'
+import { viewFromQuery } from '@helpers/templateQuery'
 import { absoluteUrl } from '@helpers/url'
 import { breadcrumbSchema, ORGANIZATION_ID } from '@linkedDataSchema/site'
 import { JsonLd } from '@components/seo/JsonLd'
 import { SheetFontsLink } from '@components/sheet/SheetFontsLink'
+import { KindSlider } from '@components/templates/KindSlider'
 import { TemplateCard } from '@components/templates/TemplateCard'
-import { ShapedSheetPreview, TemplateShapePicker, TemplateShapeProvider, UseTemplateLink } from '@components/templates/TemplateShape'
+import { TemplateShapePicker, TemplateShapeProvider, UseTemplateLink } from '@components/templates/TemplateShape'
 
-type Props = { params: Promise<{ templateId: string }> }
+type Props = { params: Promise<{ templateId: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }
 
 export const dynamicParams = false
 
@@ -41,17 +40,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   })
 }
 
-export default async function TemplatePage({ params }: Props) {
+export default async function TemplatePage({ params, searchParams }: Props) {
   const { templateId } = await params
+  const view = viewFromQuery(await searchParams)
   if (!isTemplateId(templateId)) notFound()
 
   const t = await getTranslations('Templates')
-  const tKinds = await getTranslations('Editor.layout.kinds')
   const tNav = await getTranslations('Nav')
   const tShapes = await getTranslations('Shapes')
   const tCommon = await getTranslations('Common')
   const locale = await getLocale()
-  const texts = await sampleTexts()
   const template = TEMPLATES[templateId]
   const name = t(`names.${templateId}`)
   // The next four in the list, wrapping: every template is linked from four others.
@@ -144,17 +142,7 @@ export default async function TemplatePage({ params }: Props) {
           </div>
         </div>
 
-        <div className='grid grid-cols-2 gap-4 sm:gap-6'>
-          {PRINT_KINDS.map((kind, index) => (
-            // The board and the (landscape) hall plan take the full width, the list and the cards share a row.
-            <figure key={kind} className={index === 0 || kind === 'plan' ? 'col-span-2 m-0' : 'm-0'}>
-              <div className='overflow-hidden rounded-xl shadow-[0_30px_70px_-25px_rgba(20,24,45,0.45)] ring-1 ring-black/5'>
-                <ShapedSheetPreview doc={{ title: '', content: sampleContent(texts, kind === 'cards' ? 3 : 6), design: templateDesign(templateId, kind) }} />
-              </div>
-              <figcaption className='mt-2 text-center text-sm text-muted'>{tKinds(kind)}</figcaption>
-            </figure>
-          ))}
-        </div>
+        <KindSlider templateId={templateId} kind={view.kind} arrangement={view.arrangement} />
       </div>
 
       <section className='mx-auto max-w-page px-4 pb-10 md:px-6' aria-labelledby='other-templates'>
@@ -163,7 +151,7 @@ export default async function TemplatePage({ params }: Props) {
         </h2>
         <div className='mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-4'>
           {others.map((other) => (
-            <TemplateCard key={other.id} template={other} texts={texts} />
+            <TemplateCard key={other.id} template={other} />
           ))}
         </div>
       </section>

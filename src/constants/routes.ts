@@ -1,4 +1,4 @@
-import type { PrintKind, SheetShape } from '@store/lists/single/types'
+import type { PlanArrangement, PrintKind, SheetShape } from '@store/lists/single/types'
 import type { TemplateId } from './templates'
 
 /**
@@ -27,7 +27,27 @@ export const ROUTES = {
   paymentResult: '/payment/result',
 } as const
 
-export const templatePath = (id: TemplateId): string => `${ROUTES.templates}/${id}`
+/** A template's page, optionally already showing the print kind (and hall arrangement) it was opened from. */
+export const templatePath = (id: TemplateId, options: { kind?: PrintKind; arrangement?: PlanArrangement } = {}): string => {
+  const path = `${ROUTES.templates}/${id}`
+  const query = new URLSearchParams()
+  if (options.kind && options.kind !== 'seating') query.set(KIND_QUERY, options.kind)
+  if (options.kind === 'plan' && options.arrangement && options.arrangement !== 'rows') query.set(ARRANGEMENT_QUERY, options.arrangement)
+  const search = query.toString()
+  return search ? `${path}?${search}` : path
+}
+
+/**
+ * The templates gallery, optionally already showing one print kind and, for the hall plan,
+ * one arrangement. The defaults (a seating board, rows) stay off the URL.
+ */
+export const templatesPath = (options: { kind?: PrintKind; arrangement?: PlanArrangement } = {}): string => {
+  const query = new URLSearchParams()
+  if (options.kind && options.kind !== 'seating') query.set(KIND_QUERY, options.kind)
+  if (options.kind === 'plan' && options.arrangement && options.arrangement !== 'rows') query.set(ARRANGEMENT_QUERY, options.arrangement)
+  const search = query.toString()
+  return search ? `${ROUTES.templates}?${search}` : ROUTES.templates
+}
 
 export const editorPath = (listId: string): string => `${ROUTES.editor}/${listId}`
 
@@ -47,6 +67,7 @@ export const PROTECTED_PREFIXES = [ROUTES.dashboard, ROUTES.account]
 export const RETURN_TO_QUERY = 'returnTo'
 export const TEMPLATE_QUERY = 'template'
 export const KIND_QUERY = 'kind'
+export const ARRANGEMENT_QUERY = 'arrangement'
 export const SHAPE_QUERY = 'shape'
 /** On the editor's URL: open the checkout at once (back from signing in to buy). */
 export const CHECKOUT_QUERY = 'checkout'

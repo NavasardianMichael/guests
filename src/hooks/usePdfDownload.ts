@@ -29,7 +29,11 @@ export type PdfDownloadResult = 'done' | 'locked' | 'failed'
  * also refreshes it. Rejections are shown here, never rethrown.
  */
 export const usePdfDownload = (): {
-  run: (listId: string, doc: ListDocument) => Promise<PdfDownloadResult>
+  /**
+   * `asGiven` prints `doc` itself (the draft route) even for a saved list. The checkout uses
+   * it to download the list restyled in the free template without writing that template back.
+   */
+  run: (listId: string, doc: ListDocument, options?: { asGiven?: boolean }) => Promise<PdfDownloadResult>
   isWorking: boolean
 } => {
   const t = useTranslations('Editor.download')
@@ -38,14 +42,17 @@ export const usePdfDownload = (): {
   const [isWorking, setIsWorking] = useState(false)
 
   const run = useCallback(
-    async (listId: string, doc: ListDocument): Promise<PdfDownloadResult> => {
+    async (listId: string, doc: ListDocument, options?: { asGiven?: boolean }): Promise<PdfDownloadResult> => {
       const active = accessActiveNow()
       if (active !== null && !isPrintable(doc.design.templateId, active)) return 'locked'
       const key = `pdf-${listId}`
       setIsWorking(true)
       message.loading({ key, content: t('preparing'), duration: 0 })
       try {
-        const blob = listId === DRAFT_ID ? await downloadDraftPdfAPI(doc) : await downloadListPdfAPI({ id: listId })
+        const blob =
+          listId === DRAFT_ID || options?.asGiven
+            ? await downloadDraftPdfAPI(doc)
+            : await downloadListPdfAPI({ id: listId })
         saveBlob(blob, `${doc.title.trim() || 'guests'}.pdf`)
         message.success({ key, content: t('done') })
         trackEvent('list_pdf', { kind: doc.design.kind, template: doc.design.templateId })

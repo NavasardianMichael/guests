@@ -196,6 +196,26 @@ export const sampleContent = (texts: SampleTexts, tableCount = SAMPLE_GUESTS.len
 }
 
 /**
+ * The sample wedding printed in a template, as the galleries and a template's page show it.
+ * Place cards use a few tables so the sheet is whole cards; a hall plan is set out by
+ * `arrangement` (rows, unless the caller asks for another).
+ */
+export const previewDocument = (
+  texts: SampleTexts,
+  templateId: TemplateId,
+  kind: PrintKind = 'seating',
+  arrangement: PlanArrangement = 'rows'
+): ListDocument => {
+  const doc: ListDocument = {
+    title: '',
+    content: sampleContent(texts, kind === 'cards' ? 3 : undefined),
+    design: templateDesign(templateId, kind),
+  }
+  if (kind === 'plan') arrange(doc, arrangement)
+  return doc
+}
+
+/**
  * A document saved before the hall plan (a draft in this browser; the API fills the same
  * fields itself): tables get a shape and chairs, the list a hall and a plan.
  */

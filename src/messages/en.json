@@ -119,7 +119,7 @@
       },
       "plan": {
         "title": "The hall plan",
-        "text": "Round and long tables with their guests and chairs, the stage, the dance floor and the entrance, placed where they stand in the hall."
+        "text": "Round and long tables with their guests and chairs, the stage, the dance floor and the entrance. Four ways to set the hall: in rows, around the dance floor, down both sides, or as long tables."
       }
     },
     "faqTitle": "Frequently asked questions",
@@ -169,9 +169,9 @@
   },
   "Templates": {
     "metaTitle": "Seating chart and guest list templates",
-    "metaDescription": "Classic and creative templates for seating charts, guest lists and place cards, with Armenian fonts. Pick one, fill it in and print.",
+    "metaDescription": "Classic and creative templates for seating charts, guest lists, place cards and hall plans, with Armenian fonts. Pick one, fill it in and print.",
     "title": "Choose the style of your celebration",
-    "subtitle": "Every template works for a seating chart, a list and place cards. Colours, fonts and ornaments can be changed after you fill it in.",
+    "subtitle": "Every template works as a seating chart, a guest list, place cards or a hall plan. Colours, fonts and ornaments can be changed after you fill it in.",
     "free": "Free",
     "premium": "Premium",
     "premiumPrice": "With full access: {price} for {days} days",
@@ -285,6 +285,13 @@
     "detailTitle": "“{name}” template",
     "detailDescription": "The “{name}” template for seating charts, guest lists and place cards: {tagline}.",
     "detailText": "One template, four ways: a seating chart by table, a guest list for the entrance, place cards to cut out and the hall plan with every table. Every colour, font and position can be changed.",
+    "kindsLabel": "Shown as",
+    "updating": "Updating the previews",
+    "slider": {
+      "label": "This template, four ways",
+      "previous": "Previous",
+      "next": "Next"
+    },
     "cardFacts": {
       "seating": "Seating chart",
       "list": "Guest list",
@@ -437,6 +444,8 @@
     "deleteTitle": "Delete “{title}”?",
     "deleteText": "This can’t be undone.",
     "deleted": "List deleted",
+    "duplicateTitle": "Duplicate “{title}”?",
+    "duplicateText": "A copy will be added to your lists.",
     "duplicated": "Copy created",
     "guests": "{count, plural, one {# guest} other {# guests}}",
     "actions": "Actions",
@@ -776,7 +785,7 @@
       "button": "Download PDF",
       "preparing": "Preparing the PDF…",
       "done": "PDF downloaded",
-      "checkoutTitle": "Full access for {days} days",
+      "checkoutTitle": "Download the PDF",
       "checkoutLead": "One payment opens everything for {days} days: every template, the seating board, guest list, place cards and hall plan, without the “made with” line.",
       "includes": [
         "Every template, for all your lists",
@@ -789,7 +798,7 @@
       "secure": "Payment is made on Ameriabank’s secure page. Your card details never reach us.",
       "agree": "By paying you agree to the <terms>terms</terms> and the <refund>refund policy</refund>.",
       "unavailable": "Payments aren’t available right now. Try again a little later.",
-      "freeSwitch": "Switch to “{free}”",
+      "freeDownload": "Download in “{free}”",
       "freeIncludes": [
         "Your guests and layout as they are",
         "In the “Classic” template",

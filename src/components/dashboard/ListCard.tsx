@@ -26,13 +26,14 @@ export const ListCard: FC<Props> = ({ list, onDuplicate, onDelete, onDownload })
   const href = editorPath(list.id)
 
   return (
-    <article className='group'>
+    <article className='group flex h-full flex-col'>
       <Link
         href={href}
-        className='relative block overflow-hidden rounded-2xl bg-surface shadow-[0_10px_30px_-12px_rgba(20,24,45,0.25)] ring-1 ring-black/5 transition duration-300 group-hover:-translate-y-1'
+        className='relative flex grow flex-col overflow-hidden rounded-2xl bg-transparent shadow-[0_10px_30px_-12px_rgba(20,24,45,0.25)] ring-1 ring-line transition duration-300 group-hover:-translate-y-1'
         aria-label={`${tCommon('edit')}: ${list.title}`}
       >
-        <SheetPreview doc={list} />
+        {/* The sheet keeps its own proportion; the bordered box grows so titles in a row share one line. */}
+        <SheetPreview doc={list} className='w-full shrink-0' />
       </Link>
       <div className='mt-3 flex items-start gap-2 px-1'>
         <div className='min-w-0 flex-1'>

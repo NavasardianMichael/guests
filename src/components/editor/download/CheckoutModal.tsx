@@ -1,8 +1,8 @@
 'use client'
 
 import { type FC, type ReactNode, useEffect, useMemo, useState } from 'react'
-import { CheckOutlined, ClockCircleOutlined, LockOutlined, SwapOutlined } from '@ant-design/icons'
-import { Alert, Button, Modal } from 'antd'
+import { CheckOutlined, ClockCircleOutlined, DownloadOutlined, LockOutlined } from '@ant-design/icons'
+import { Alert, App, Button, Modal } from 'antd'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { checkoutAPI } from '@api/purchases/main'
@@ -13,6 +13,7 @@ import { DRAFT_ID } from '@store/lists/single/types'
 import { useAccessUntil, useNow } from '@hooks/useAccess'
 import { useCapabilities } from '@hooks/useCapabilities'
 import { useFormatDate } from '@hooks/useFormatDate'
+import { usePdfDownload } from '@hooks/usePdfDownload'
 import { accessAfterPurchase, CURRENCY, formatAmount, isAccessActive, PASS_DAYS, PASS_PRICE_AMD } from '@constants/pricing'
 import { CHECKOUT_QUERY, ROUTES } from '@constants/routes'
 import { FREE_TEMPLATE_ID, isPrintable, TEMPLATES } from '@constants/templates'
@@ -80,28 +81,31 @@ const GuestWarning: FC<{ redirecting: boolean; onContinue: () => void; onSignIn:
 }
 
 /**
- * The two ways to download, side by side where there is room (as cv-builder's): the free
- * template with the "made with" line, and full access (docs/PAYMENTS.md) — one payment opens
- * every template and kind, clean, for `PASS_DAYS`; bought while a pass runs, the days go on
- * top. Before paying the buyer is told when the days start and end, what stays when they end
- * (everything: the lists, editable and printable in the free template) and how long unused
- * lists are kept. The list is saved first, so what prints after is what is on screen. The free
- * card is left out where it offers nothing: while a pass runs, or for a list already in the
- * free template. Neither path needs an account; paying without one is warned about once, on
- * the way to the bank. Opened by either Download button, the access chip (to add days), or
- * `?checkout=1` (back from signing in to pay).
+ * The two ways to download, side by side where there is room (as cv-builder's): this list in
+ * the free template (with the "made with" line, for that file only — the list on screen keeps
+ * its template), and full access (docs/PAYMENTS.md) — one payment opens every template and
+ * kind, clean, for `PASS_DAYS`; bought while a pass runs, the days go on top. Before paying
+ * the buyer is told when the days start and end, what stays when they end (everything: the
+ * lists, editable and printable in the free template) and how long unused lists are kept. The
+ * list is saved first, so what prints after is what is on screen. The free card is left out
+ * where it offers nothing: while a pass runs (Download already prints what is on screen), or
+ * for a list already in the free template. It is back the next time the dialog opens, for as
+ * long as no pass runs. Neither path needs an account; paying without one is warned about
+ * once, on the way to the bank. Opened by either Download button, the access chip (to add
+ * days), or `?checkout=1` (back from signing in to pay).
  */
 export const CheckoutModal: FC = () => {
   const t = useTranslations('Editor.download')
+  const tErrors = useTranslations('Errors')
   const tAccess = useTranslations('Editor.access')
   const tTemplates = useTranslations('Templates')
   const tCommon = useTranslations('Common')
+  const { message } = App.useApp()
   const formatDate = useFormatDate()
   const open = useEditorUiStore.use.checkoutOpen()
   const setOpen = useEditorUiStore.use.setCheckoutOpen()
   const listId = useListEditorStore.use.listId()
   const templateId = useListEditorStoreBase((state) => state.doc?.design.templateId)
-  const applyTemplate = useListEditorStore.use.applyTemplate()
   const isGuest = !useAuthStore.use.user()
   const until = useAccessUntil()
   const now = useNow()
@@ -110,6 +114,7 @@ export const CheckoutModal: FC = () => {
   const [error, setError] = useState<unknown>(null)
   const [confirmingGuest, setConfirmingGuest] = useState(false)
   const [signingIn, setSigningIn] = useState(false)
+  const { run: downloadPdf, isWorking: downloading } = usePdfDownload()
 
   // Back from signing in to pay: open once the access is known, unless it runs by now (it may
   // have been bought as a guest and moved to the account).
@@ -149,9 +154,22 @@ export const CheckoutModal: FC = () => {
     }
   }
 
-  const switchToFree = () => {
-    applyTemplate(FREE_TEMPLATE_ID)
-    close()
+  /** This list, restyled in the free template for the file only. The open list is left as it is. */
+  const downloadFree = async () => {
+    const current = useListEditorStoreBase.getState()
+    if (!current.listId || !current.doc) return
+    if (current.listId !== DRAFT_ID && !(await flushSave())) {
+      void message.error(tErrors('kinds.server'))
+      return
+    }
+    const saved = useListEditorStoreBase.getState().doc
+    if (!saved) return
+    const result = await downloadPdf(
+      current.listId,
+      { ...saved, design: designInTemplate(saved.design, FREE_TEMPLATE_ID) },
+      { asGiven: true }
+    )
+    if (result === 'done') close()
   }
 
   const unavailable = capabilities !== null && !capabilities.payments
@@ -164,7 +182,7 @@ export const CheckoutModal: FC = () => {
         footer={null}
         width={showFree ? 800 : 520}
         centered
-        title={t('checkoutTitle', { days: PASS_DAYS })}
+        title={t('checkoutTitle')}
         destroyOnHidden
       >
         <p className='mt-0 mb-4 text-sm text-muted'>{t('checkoutLead', { days: PASS_DAYS })}</p>
@@ -176,8 +194,15 @@ export const CheckoutModal: FC = () => {
               items={t.raw('freeIncludes') as string[]}
               preview={<OptionPreview free />}
             >
-              <Button size='large' block icon={<SwapOutlined />} disabled={redirecting} onClick={switchToFree}>
-                {t('freeSwitch', { free })}
+              <Button
+                size='large'
+                block
+                icon={<DownloadOutlined />}
+                loading={downloading}
+                disabled={redirecting}
+                onClick={() => void downloadFree()}
+              >
+                {downloading ? t('preparing') : t('freeDownload', { free })}
               </Button>
             </DownloadOption>
           )}
@@ -189,6 +214,7 @@ export const CheckoutModal: FC = () => {
                 type='info'
                 showIcon
                 icon={<ClockCircleOutlined />}
+                styles={{ root: { alignItems: 'flex-start' } }}
                 title={
                   active
                     ? t('extendNote', { until: formatDate(known!), days: PASS_DAYS, date: ends })
@@ -211,7 +237,7 @@ export const CheckoutModal: FC = () => {
                 block
                 icon={<LockOutlined />}
                 loading={redirecting}
-                disabled={unavailable}
+                disabled={unavailable || downloading}
                 onClick={() => (isGuest ? setConfirmingGuest(true) : void pay())}
               >
                 {redirecting ? t('redirecting') : t('pay', { price })}

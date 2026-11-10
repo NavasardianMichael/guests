@@ -26,6 +26,23 @@ const listen = () => {
   document.fonts.addEventListener('loadingdone', bump)
 }
 
+/**
+ * How many times a face has finished loading. A hall preview fitted before the real widths
+ * were known subscribes, and fits again when they arrive (`ShapedSheetPreview`).
+ */
+export const useFontEpoch = (): number => {
+  const [version, setVersion] = useState(fontsVersion)
+  useEffect(() => {
+    listen()
+    const onChange = () => setVersion(fontsVersion)
+    listeners.add(onChange)
+    return () => {
+      listeners.delete(onChange)
+    }
+  }, [])
+  return version
+}
+
 const documentFaces = (doc: ListDocument): string[] => {
   const faces = new Set<string>()
   for (const role of TEXT_ROLES) {

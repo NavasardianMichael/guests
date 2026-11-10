@@ -1,25 +1,25 @@
 import type { Metadata } from 'next'
 import { getTranslations } from 'next-intl/server'
-import { sampleTexts } from '@i18n/sampleTexts'
 import { ROUTES } from '@constants/routes'
-import { TEMPLATE_LIST } from '@constants/templates'
 import { pageMetadata } from '@helpers/metadata'
+import { viewFromQuery } from '@helpers/templateQuery'
 import { breadcrumbSchema, templatesListSchema } from '@linkedDataSchema/site'
 import { JsonLd } from '@components/seo/JsonLd'
 import { SheetFontsLink } from '@components/sheet/SheetFontsLink'
-import { TemplateCard } from '@components/templates/TemplateCard'
-import { TemplateShapePicker, TemplateShapeProvider } from '@components/templates/TemplateShape'
+import { TemplateBrowser } from '@components/templates/TemplateBrowser'
+import { TemplateShapeProvider } from '@components/templates/TemplateShape'
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations('Templates')
   return pageMetadata({ title: t('metaTitle'), description: t('metaDescription'), path: ROUTES.templates })
 }
 
-export default async function TemplatesPage() {
+type Props = { searchParams: Promise<Record<string, string | string[] | undefined>> }
+
+export default async function TemplatesPage({ searchParams }: Props) {
   const t = await getTranslations('Templates')
   const tNav = await getTranslations('Nav')
-  const tShapes = await getTranslations('Shapes')
-  const texts = await sampleTexts()
+  const view = viewFromQuery(await searchParams)
   return (
     <TemplateShapeProvider>
       <div className='mesh-bg'>
@@ -38,20 +38,7 @@ export default async function TemplatesPage() {
             {t('title')}
           </h1>
           <p className='mt-4 max-w-2xl text-base leading-relaxed text-muted sm:mt-5 sm:text-lg'>{t('subtitle')}</p>
-          <section className='mt-8 max-w-3xl sm:mt-10' aria-labelledby='templates-shape'>
-            <h2 id='templates-shape' className='m-0 text-xs font-semibold tracking-wider text-muted uppercase'>
-              {tShapes('label')}
-            </h2>
-            <p className='m-0 mt-1.5 text-sm text-muted'>{tShapes('galleryHint')}</p>
-            <div className='mt-3'>
-              <TemplateShapePicker />
-            </div>
-          </section>
-          <div className='mt-10 grid grid-cols-1 gap-x-6 gap-y-10 sm:mt-14 sm:gap-y-12 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4'>
-            {TEMPLATE_LIST.map((template) => (
-              <TemplateCard key={template.id} template={template} texts={texts} headingLevel='h2' />
-            ))}
-          </div>
+          <TemplateBrowser key={`${view.kind}:${view.arrangement}`} kind={view.kind} arrangement={view.arrangement} />
         </div>
       </div>
     </TemplateShapeProvider>

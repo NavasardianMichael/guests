@@ -191,6 +191,18 @@
   }
 }
 
+/* The template page's result caption, as the sheet beside it changes. */
+@keyframes kind-caption {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* A pending state that only shows if the wait is noticeable. */
 @utility animate-fade-in-late {
   animation: fade-in 0.2s ease-out 0.12s both;

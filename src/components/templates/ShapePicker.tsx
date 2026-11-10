@@ -38,7 +38,9 @@ export const ShapePicker: FC<Props> = ({ value, onChange }) => {
           active={value === shape}
           icon={<ShapeIcon shape={shape} className='block h-7 w-auto' />}
           className='font-medium'
-          onClick={() => onChange(shape)}
+          onClick={() => {
+            if (shape !== value) onChange(shape)
+          }}
         >
           {t(`names.${shape}`)}
         </TileButton>

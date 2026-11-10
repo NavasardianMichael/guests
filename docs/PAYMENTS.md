@@ -58,7 +58,8 @@ The 21 days, and what happens after them, are said wherever money is:
 
 1. Editor → **Download PDF**, list in a premium template without a running pass →
    `CheckoutModal` (also opened by the access chip, by `?checkout=1`: from the dashboard's
-   Download, or back from signing in to pay). It offers the free template instead.
+   Download, or back from signing in to pay). While no pass runs it also downloads the list in
+   the free template, for that file only — the list on screen keeps its template.
 2. **Pay** → the list is saved → `POST /purchases/checkout { listId? }` → `startCheckout`
    writes a `pending` `Payment` and returns the gateway's page URL.
 3. The buyer pays on the bank's page; the bank redirects to `GET /payments/return/<gateway>`.

@@ -1,34 +1,44 @@
-import type { FC } from 'react'
+import type { FC, ReactNode } from 'react'
 import Link from 'next/link'
 import { getTranslations } from 'next-intl/server'
-import type { PrintKind } from '@store/lists/single/types'
+import type { PlanArrangement, PrintKind } from '@store/lists/single/types'
 import { sampleTexts } from '@i18n/sampleTexts'
-import { ROUTES } from '@constants/routes'
+import { ROUTES, templatePath } from '@constants/routes'
 import { type TemplateId, TEMPLATES } from '@constants/templates'
 import { cn } from '@helpers/cn'
+import { previewDocument, type SampleTexts } from '@helpers/listFactory'
 import { TemplateCard } from '@components/templates/TemplateCard'
+import { TemplateCardLink, TemplateCardPending } from '@components/templates/TemplateCardLink'
+import { ShapedSheetPreview } from '@components/templates/TemplateShape'
 import { ArrowRightOutlined } from '@components/ui/icons'
 
 /**
- * One block per print kind, each in its own few templates — none repeated across blocks — so the
- * page shows the range without painting the catalogue. The seating board leads with the free
- * template and a spread of tastes, two rows; the others one row each. Hall plans are in
- * templates whose first page holds a full row of the sample's tables (in some, larger type
- * sends the tables to page two and the preview shows an empty hall).
+ * One block per print kind. The seating board leads, then the hall — its four arrangements,
+ * each on a different template, so the block shows how the tables are set out and not four
+ * recolourings of one layout. The guest list and the place cards follow. Templates are not
+ * repeated across the blocks. Hall templates are ones whose first page holds the sample hall
+ * (larger type can send the tables to page two; the preview then fits the letters down).
  */
-const BLOCKS: { kind: PrintKind; templates: TemplateId[] }[] = [
-  { kind: 'seating', templates: ['memorial', 'ivory', 'ornament', 'midnight', 'botanical', 'watercolor'] },
+const SEATING: TemplateId[] = ['memorial', 'ivory', 'ornament', 'midnight', 'botanical', 'watercolor']
+
+const LATER: { kind: Exclude<PrintKind, 'plan' | 'seating'>; templates: TemplateId[] }[] = [
   { kind: 'list', templates: ['pomegranate', 'manuscript', 'scandi'] },
   { kind: 'cards', templates: ['velvet', 'christening', 'kraft'] },
-  { kind: 'plan', templates: ['carpet', 'emerald', 'tiles'] },
 ]
 
-type BlockProps = { kind: PrintKind; templates: TemplateId[]; title: string; text: string; first: boolean }
+/** Hall examples: one arrangement each, on a template that keeps the sample hall on the first page. */
+const PLAN_SHOWCASE: { arrangement: PlanArrangement; templateId: TemplateId }[] = [
+  { arrangement: 'rows', templateId: 'carpet' },
+  { arrangement: 'around', templateId: 'emerald' },
+  { arrangement: 'sides', templateId: 'tiles' },
+  { arrangement: 'banquet', templateId: 'blacktie' },
+]
 
-const KindBlock: FC<BlockProps> = async ({ kind, templates, title, text, first }) => {
+type BlockProps = { kind: PrintKind; title: string; text: string; first: boolean; wide?: boolean; children: ReactNode }
+
+const KindBlock: FC<BlockProps> = async ({ kind, title, text, first, wide, children }) => {
   const t = await getTranslations('Home')
   const tKinds = await getTranslations('Editor.layout.kinds')
-  const texts = await sampleTexts()
   const id = `showcase-${kind}`
   return (
     <section className={cn(!first && 'mt-16 sm:mt-24')} aria-labelledby={id}>
@@ -56,29 +66,64 @@ const KindBlock: FC<BlockProps> = async ({ kind, templates, title, text, first }
           </Link>
         )}
       </div>
-      <div className='mt-8 grid grid-cols-1 gap-x-6 gap-y-10 sm:mt-10 sm:grid-cols-2 md:grid-cols-3'>
-        {templates.map((templateId) => (
-          <TemplateCard key={templateId} template={TEMPLATES[templateId]} texts={texts} kind={kind} />
-        ))}
+      <div
+        className={cn(
+          'mt-8 grid grid-cols-1 gap-x-6 gap-y-10 sm:mt-10',
+          wide ? 'sm:grid-cols-2 xl:grid-cols-4' : 'sm:grid-cols-2 md:grid-cols-3'
+        )}
+      >
+        {children}
       </div>
     </section>
   )
 }
 
-/** The templates, shown as each thing they print: seating board, guest list, place cards, hall plan. */
+/** One hall arrangement, on its template, opening that template's page on the same hall. */
+const ArrangementCard: FC<{ arrangement: PlanArrangement; templateId: TemplateId; texts: SampleTexts }> = async ({
+  arrangement,
+  templateId,
+  texts,
+}) => {
+  const t = await getTranslations('Editor.plan.arrangement')
+  return (
+    <TemplateCardLink
+      href={templatePath(templateId, { kind: 'plan', arrangement })}
+      className='group block rounded-2xl text-inherit no-underline focus-visible:outline-offset-4'
+    >
+      <div className='relative overflow-hidden rounded-2xl bg-surface shadow-[0_10px_30px_-12px_rgba(20,24,45,0.25)] ring-1 ring-black/5 transition duration-300 group-hover:-translate-y-1.5 group-hover:shadow-[0_24px_50px_-16px_rgba(20,24,45,0.35)]'>
+        <ShapedSheetPreview doc={previewDocument(texts, templateId, 'plan', arrangement)} />
+        <TemplateCardPending />
+      </div>
+      <div className='mt-4 px-1'>
+        <h3 className='m-0 font-display text-lg font-bold text-ink'>{t(`names.${arrangement}`)}</h3>
+        <p className='m-0 mt-1 text-sm text-muted'>{t(`hints.${arrangement}`)}</p>
+      </div>
+    </TemplateCardLink>
+  )
+}
+
+/** The templates, shown as each thing they print: seating board, hall plan, guest list, place cards. */
 export const TemplateShowcase: FC = async () => {
   const t = await getTranslations('Home')
+  const texts = await sampleTexts()
   return (
     <div className='mx-auto max-w-page px-4 py-14 sm:py-20 md:px-6'>
-      {BLOCKS.map((block, index) => (
-        <KindBlock
-          key={block.kind}
-          kind={block.kind}
-          templates={block.templates}
-          title={block.kind === 'seating' ? t('templatesTitle') : t(`showcase.${block.kind}.title`)}
-          text={block.kind === 'seating' ? t('templatesSubtitle') : t(`showcase.${block.kind}.text`)}
-          first={index === 0}
-        />
+      <KindBlock kind='seating' title={t('templatesTitle')} text={t('templatesSubtitle')} first>
+        {SEATING.map((templateId) => (
+          <TemplateCard key={templateId} template={TEMPLATES[templateId]} kind='seating' />
+        ))}
+      </KindBlock>
+      <KindBlock kind='plan' title={t('showcase.plan.title')} text={t('showcase.plan.text')} first={false} wide>
+        {PLAN_SHOWCASE.map((item) => (
+          <ArrangementCard key={item.arrangement} arrangement={item.arrangement} templateId={item.templateId} texts={texts} />
+        ))}
+      </KindBlock>
+      {LATER.map((block) => (
+        <KindBlock key={block.kind} kind={block.kind} title={t(`showcase.${block.kind}.title`)} text={t(`showcase.${block.kind}.text`)} first={false}>
+          {block.templates.map((templateId) => (
+            <TemplateCard key={templateId} template={TEMPLATES[templateId]} kind={block.kind} />
+          ))}
+        </KindBlock>
       ))}
       <div className='mt-12 flex justify-center sm:mt-16'>
         <Link

@@ -60,9 +60,17 @@ export const DashboardClient: FC = () => {
   const showError = (failure: unknown) => message.error(tErrors(errorCopyKey(classifyError(failure))))
 
   const onDuplicate = (item: GuestList) =>
-    duplicateList(item.id)
-      .then(() => message.success(t('duplicated')))
-      .catch(showError)
+    modal.confirm({
+      title: t('duplicateTitle', { title: item.title }),
+      content: t('duplicateText'),
+      okText: tCommon('duplicate'),
+      cancelText: tCommon('cancel'),
+      centered: true,
+      onOk: () =>
+        duplicateList(item.id)
+          .then(() => message.success(t('duplicated')))
+          .catch(showError),
+    })
 
   const onDelete = (item: GuestList) =>
     modal.confirm({

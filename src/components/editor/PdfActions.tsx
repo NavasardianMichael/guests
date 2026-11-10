@@ -16,7 +16,8 @@ import { flushSave } from './useAutosave'
  * Download PDF. It goes through the API's PDF (headless Chrome printing `/render`), so the
  * file is exactly what the venue's printer will print — sized to the chosen paper, fonts
  * embedded. A saved list is saved first: the server prints its copy. A premium template without
- * a running access pass opens the checkout (`CheckoutModal`), which also offers the free template.
+ * a running access pass opens the checkout (`CheckoutModal`), which can also download this
+ * list in the free template without changing it.
  */
 type Props = {
   /** The word beside the icon at every width; the editor's top bar hides it on phones. */
