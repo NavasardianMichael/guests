@@ -3,8 +3,8 @@ import Link from 'next/link'
 import { getTranslations } from 'next-intl/server'
 import type { PlanArrangement, PrintKind } from '@store/lists/single/types'
 import { sampleTexts } from '@i18n/sampleTexts'
-import { ROUTES, templatePath } from '@constants/routes'
-import { type TemplateId, TEMPLATES } from '@constants/templates'
+import { ROUTES, templatePath, templatesPath } from '@constants/routes'
+import { FREE_TEMPLATE_ID, type TemplateId, TEMPLATES } from '@constants/templates'
 import { cn } from '@helpers/cn'
 import { previewDocument, type SampleTexts } from '@helpers/listFactory'
 import { TemplateCard } from '@components/templates/TemplateCard'
@@ -15,23 +15,24 @@ import { ArrowRightOutlined } from '@components/ui/icons'
 /**
  * One block per print kind. The seating board leads, then the hall — its four arrangements,
  * each on a different template, so the block shows how the tables are set out and not four
- * recolourings of one layout. The guest list and the place cards follow. Templates are not
- * repeated across the blocks. Hall templates are ones whose first page holds the sample hall
+ * recolourings of one layout. The guest list and the place cards follow. Every block leads with
+ * the free template, badged, so each kind shows what prints without a pass; the others are the
+ * best-looking premium ones, not repeated across the blocks. Hall templates are ones whose first page holds the sample hall
  * (larger type can send the tables to page two; the preview then fits the letters down).
  */
-const SEATING: TemplateId[] = ['memorial', 'ivory', 'ornament', 'midnight', 'botanical', 'watercolor']
+const SEATING: TemplateId[] = [FREE_TEMPLATE_ID, 'ivory', 'midnight', 'ornament', 'velvet', 'carpet']
 
 const LATER: { kind: Exclude<PrintKind, 'plan' | 'seating'>; templates: TemplateId[] }[] = [
-  { kind: 'list', templates: ['pomegranate', 'manuscript', 'scandi'] },
-  { kind: 'cards', templates: ['velvet', 'christening', 'kraft'] },
+  { kind: 'list', templates: [FREE_TEMPLATE_ID, 'spring', 'manuscript'] },
+  { kind: 'cards', templates: [FREE_TEMPLATE_ID, 'deco', 'kraft'] },
 ]
 
 /** Hall examples: one arrangement each, on a template that keeps the sample hall on the first page. */
 const PLAN_SHOWCASE: { arrangement: PlanArrangement; templateId: TemplateId }[] = [
-  { arrangement: 'rows', templateId: 'carpet' },
+  { arrangement: 'rows', templateId: FREE_TEMPLATE_ID },
   { arrangement: 'around', templateId: 'emerald' },
-  { arrangement: 'sides', templateId: 'tiles' },
-  { arrangement: 'banquet', templateId: 'blacktie' },
+  { arrangement: 'sides', templateId: 'apricot' },
+  { arrangement: 'banquet', templateId: 'blush' },
 ]
 
 type BlockProps = { kind: PrintKind; title: string; text: string; first: boolean; wide?: boolean; children: ReactNode }
@@ -60,11 +61,10 @@ const KindBlock: FC<BlockProps> = async ({ kind, title, text, first, wide, child
           </h2>
           <p className='mt-3 text-base text-muted sm:mt-4 sm:text-lg'>{text}</p>
         </div>
-        {first && (
-          <Link href={ROUTES.templates} className='inline-flex items-center gap-2 font-semibold text-ink no-underline hover:text-accent-strong'>
-            {t('templatesAll')} <ArrowRightOutlined />
-          </Link>
-        )}
+        {/* Every block opens the gallery on its own print kind. */}
+        <Link href={templatesPath({ kind })} className='inline-flex items-center gap-2 font-semibold text-ink no-underline hover:text-accent-strong'>
+          {t('templatesAll')} <ArrowRightOutlined />
+        </Link>
       </div>
       <div
         className={cn(
@@ -85,6 +85,7 @@ const ArrangementCard: FC<{ arrangement: PlanArrangement; templateId: TemplateId
   texts,
 }) => {
   const t = await getTranslations('Editor.plan.arrangement')
+  const tTemplates = await getTranslations('Templates')
   return (
     <TemplateCardLink
       href={templatePath(templateId, { kind: 'plan', arrangement })}
@@ -92,6 +93,12 @@ const ArrangementCard: FC<{ arrangement: PlanArrangement; templateId: TemplateId
     >
       <div className='relative overflow-hidden rounded-2xl bg-surface shadow-[0_10px_30px_-12px_rgba(20,24,45,0.25)] ring-1 ring-black/5 transition duration-300 group-hover:-translate-y-1.5 group-hover:shadow-[0_24px_50px_-16px_rgba(20,24,45,0.35)]'>
         <ShapedSheetPreview doc={previewDocument(texts, templateId, 'plan', arrangement)} />
+        {/* The same badge as a TemplateCard's: this one prints without a pass. */}
+        {TEMPLATES[templateId].free && (
+          <span className='absolute top-3 right-3 rounded-full bg-surface/90 px-2.5 py-1 text-xs font-semibold text-ink shadow-sm'>
+            {tTemplates('free')}
+          </span>
+        )}
         <TemplateCardPending />
       </div>
       <div className='mt-4 px-1'>

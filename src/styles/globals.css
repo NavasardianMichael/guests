@@ -203,6 +203,16 @@
   }
 }
 
+/* The template page's slider: the active dot fills while its sheet waits for the next. */
+@keyframes slider-progress {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
 /* A pending state that only shows if the wait is noticeable. */
 @utility animate-fade-in-late {
   animation: fade-in 0.2s ease-out 0.12s both;
