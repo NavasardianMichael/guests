@@ -1,7 +1,7 @@
 'use client'
 
 import { type FC, useEffect, useState } from 'react'
-import { ArrowLeftOutlined, CheckCircleFilled, ClockCircleFilled, CloseCircleFilled, PlusOutlined } from '@ant-design/icons'
+import { ArrowLeftOutlined, CheckCircleFilled, ClockCircleFilled, CloseCircleFilled, LockOutlined, PlusOutlined } from '@ant-design/icons'
 import { Alert, Button, Spin } from 'antd'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
@@ -9,30 +9,34 @@ import type { PaymentStatus } from '@api/purchases/types'
 import { useAuthStore } from '@store/auth/store'
 import { DRAFT_ID } from '@store/lists/single/types'
 import { usePurchasesStoreBase } from '@store/purchases/store'
-import { useAccessUntil } from '@hooks/useAccess'
+import { accessActiveNow, useAccessUntil } from '@hooks/useAccess'
+import { useCheckout } from '@hooks/useCheckout'
 import { useFormatDate } from '@hooks/useFormatDate'
+import { ERROR_CODES } from '@constants/errors'
 import { CURRENCY, PASS_DAYS, PASS_PRICE_AMD } from '@constants/pricing'
-import { CHECKOUT_QUERY, editorPath, newListPath, RETURN_TO_QUERY, ROUTES } from '@constants/routes'
+import { editorPath, newListPath, type PaymentResultStatus, RETURN_TO_QUERY, ROUTES } from '@constants/routes'
 import { FREE_TEMPLATE_ID } from '@constants/templates'
 import { trackEvent } from '@helpers/analytics'
+import { processError } from '@helpers/error'
 import { readLocalDraft } from '@helpers/localDraft'
+import { ErrorAlert } from '@components/ui/ErrorAlert'
 
-type Status = 'succeeded' | 'failed' | 'pending'
-
-type Props = { status: Status; listId?: string; paymentId?: string }
+type Props = { status: PaymentResultStatus; listId?: string; paymentId?: string }
 
 const PENDING_POLL_MS = 4000
 const PENDING_MAX_POLLS = 8
 
-/** The payment's own status as the page shows it: a refund since reads as failed. */
-const shown = (status: PaymentStatus): Status => (status === 'refunded' ? 'failed' : status)
-
 /**
  * Where the bank's return trip lands (via the API, which has already asked the bank). The
  * payment is re-read rather than trusting `status`: reading it reconciles a pending payment, so
- * "pending" polls a few times until the bank has answered. On success it says until when the
- * access runs and what stays after it ends. A guest reads it through the guest cookie, and is
- * reminded that the access lives only in this browser until they sign in.
+ * "pending" polls a few times until the bank has answered — and says so once it stops, rather
+ * than promising a refresh that will not come. On success it says until when the access runs
+ * and what stays after it ends. A guest reads it through the guest cookie, and is reminded that
+ * the access lives only in this browser until they sign in.
+ *
+ * "Try again" on a failure starts a new payment from here, straight to the bank's page: the
+ * buyer saw the price, terms and guest warning moments ago. Never offered while pending — the
+ * first payment may yet be charged.
  */
 export const PaymentResultClient: FC<Props> = ({ status, listId, paymentId }) => {
   const t = useTranslations('Payment')
@@ -42,9 +46,13 @@ export const PaymentResultClient: FC<Props> = ({ status, listId, paymentId }) =>
   const isResolved = useAuthStore.use.isResolved()
   const until = useAccessUntil()
   const [polls, setPolls] = useState(0)
-  const [confirmed, setConfirmed] = useState<Status | null>(null)
+  // This payment's own status, once read; null: not this visitor's (opened in another browser).
+  const [payment, setPayment] = useState<PaymentStatus | null | undefined>(undefined)
   // The editor this purchase started from: a saved list, or this browser's draft.
   const [backTo, setBackTo] = useState<string | null>(listId ? editorPath(listId) : null)
+  const checkout = useCheckout()
+  const [retrying, setRetrying] = useState(false)
+  const [retryError, setRetryError] = useState<unknown>(null)
 
   useEffect(() => {
     // localStorage is only readable after hydration.
@@ -53,8 +61,7 @@ export const PaymentResultClient: FC<Props> = ({ status, listId, paymentId }) =>
   }, [listId])
 
   // Each read (the first once the owner is known, then each poll) settles a pending payment and
-  // answers its status, refreshing the access with it. A payment that is not this visitor's (opened
-  // in another browser) has no status to answer: the bank's word from the redirect stands.
+  // answers its status, refreshing the access with it.
   const ownerKnown = until !== undefined
   useEffect(() => {
     if (!ownerKnown || !paymentId) return
@@ -63,14 +70,27 @@ export const PaymentResultClient: FC<Props> = ({ status, listId, paymentId }) =>
       .getState()
       .refresh(paymentId)
       .then((access) => {
-        if (!cancelled) setConfirmed(access.payment ? shown(access.payment) : status)
+        if (!cancelled) setPayment(access.payment)
       })
     return () => {
       cancelled = true
     }
-  }, [ownerKnown, paymentId, polls, status])
+  }, [ownerKnown, paymentId, polls])
 
-  const effective: Status = confirmed ?? status
+  /**
+   * This payment as its record says. The redirect's `failed` stands even while the record is
+   * still pending (back from the bank with nothing charged, routes/payments.ts); a refund since
+   * reads as failed. With no record readable here (another browser, no payment id) the
+   * redirect's word is all there is.
+   */
+  const effective: PaymentResultStatus =
+    payment === 'succeeded'
+      ? 'succeeded'
+      : payment === 'failed' || payment === 'refunded' || status === 'failed'
+        ? 'failed'
+        : payment === 'pending'
+          ? 'pending'
+          : status
 
   // Revisiting this page repeats the event; GA counts one purchase per transaction_id.
   useEffect(() => {
@@ -85,7 +105,21 @@ export const PaymentResultClient: FC<Props> = ({ status, listId, paymentId }) =>
     return () => clearTimeout(timer)
   }, [effective, polls])
 
-  if (paymentId && confirmed === null && status !== 'failed') {
+  const retry = async () => {
+    setRetryError(null)
+    setRetrying(true)
+    try {
+      // False: an earlier payment may still be open, and the buyer chose to stay.
+      if (!(await checkout({ listId: listId ?? null, extend: accessActiveNow() === true }))) setRetrying(false)
+    } catch (failure) {
+      setRetrying(false)
+      // A payment whose redirect was lost went through after all: read again, which shows it.
+      if (processError(failure).code === ERROR_CODES.earlierPaymentSucceeded) return setPolls((count) => count + 1)
+      setRetryError(failure)
+    }
+  }
+
+  if (paymentId && payment === undefined && status !== 'failed') {
     return (
       <div className='grid flex-1 place-items-center'>
         <Spin size='large' />
@@ -98,7 +132,10 @@ export const PaymentResultClient: FC<Props> = ({ status, listId, paymentId }) =>
   const view = {
     succeeded: { icon: <CheckCircleFilled className='text-success' />, title: t('succeeded'), text: t('succeededText', { date }) },
     failed: { icon: <CloseCircleFilled className='text-danger' />, title: t('failed'), text: t('failedText') },
-    pending: { icon: <ClockCircleFilled className='text-accent' />, title: t('pending'), text: t('pendingText') },
+    pending:
+      polls < PENDING_MAX_POLLS
+        ? { icon: <ClockCircleFilled className='text-accent' />, title: t('pending'), text: t('pendingText') }
+        : { icon: <ClockCircleFilled className='text-accent' />, title: t('unconfirmed'), text: t('unconfirmedText') },
   }[effective]
 
   return (
@@ -125,6 +162,11 @@ export const PaymentResultClient: FC<Props> = ({ status, listId, paymentId }) =>
           />
         </div>
       )}
+      {Boolean(retryError) && (
+        <div className='mt-6 text-left'>
+          <ErrorAlert error={retryError} />
+        </div>
+      )}
       <div className='mt-8 flex flex-wrap justify-center gap-3'>
         {effective === 'succeeded' && backTo && (
           <Link href={backTo}>
@@ -140,12 +182,10 @@ export const PaymentResultClient: FC<Props> = ({ status, listId, paymentId }) =>
             </Button>
           </Link>
         )}
-        {effective === 'failed' && backTo && (
-          <Link href={`${backTo}?${CHECKOUT_QUERY}=1`}>
-            <Button type='primary' size='large'>
-              {t('tryAgain')}
-            </Button>
-          </Link>
+        {effective === 'failed' && (
+          <Button type='primary' size='large' icon={<LockOutlined />} loading={retrying} onClick={() => void retry()}>
+            {retrying ? t('redirecting') : t('tryAgain')}
+          </Button>
         )}
         {effective !== 'succeeded' && backTo && (
           <Link href={backTo}>

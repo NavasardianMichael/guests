@@ -4,6 +4,7 @@ import { ERROR_CODE } from '../lib/error-codes.js'
 import { readGuestKeyHash } from '../lib/guest.js'
 import { sendPdf } from '../lib/pdf-response.js'
 import { createRateLimiter } from '../lib/rateLimit.js'
+import { readRequestInfo } from '../lib/request-info.js'
 import type { ListOwner } from '../middleware/auth.js'
 import { asyncHandler } from '../middleware/error.js'
 import { recordDownload } from '../services/downloads.js'
@@ -43,7 +44,7 @@ pdfRouter.post(
       return fail(res, 'Too many prints', ERROR_CODE.rateLimited, 429)
     }
     const design = coerceDesign(req.body?.design)
-    const terms = await printTermsFor(draftOwnerOf(req), design.templateId)
+    const terms = await printTermsFor(draftOwnerOf(req), design.templateId, readRequestInfo(req))
     if (!terms.allowed) return fail(res, 'Payment required', ERROR_CODE.listNotPaid, 402)
     await sendPdf(
       res,

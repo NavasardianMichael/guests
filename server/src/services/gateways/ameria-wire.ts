@@ -1,4 +1,4 @@
-import type { GatewayVerdict } from './types.js'
+import { type GatewayVerdict, PAYMENT_PAGE_TIMEOUT_SECONDS } from './types.js'
 
 /**
  * Ameriabank vPOS 3.1 (REST, JSON) — the request and response shapes. Pure and import-free
@@ -18,6 +18,9 @@ import type { GatewayVerdict } from './types.js'
  * - A two-stage terminal stops at `OrderStatus` 1 / "payment_approved": the amount is only
  *   blocked on the card until `POST api/VPOS/ConfirmPayment` (PaymentID + Username + Password
  *   + Amount) charges it; that answers `ResponseCode` **"00"** on success.
+ * - Money back, both answering `ResponseCode` **"00"**: `POST api/VPOS/CancelPayment` (PaymentID +
+ *   Username + Password; only within 72 hours of InitPayment) and `POST api/VPOS/RefundPayment`
+ *   (the same + Amount, at most the transaction amount).
  * - Currency is ISO 4217 numeric: AMD = "051". Amount is a decimal number of drams.
  */
 
@@ -49,14 +52,14 @@ export type AmeriaDetailsResponse = {
   TrxnDescription?: string | null
 }
 
-export type AmeriaConfirmResponse = {
+export type AmeriaResultResponse = {
   ResponseCode?: string | number | null
   ResponseMessage?: string | null
   Opaque?: string | null
 }
 
-/** A gateway verdict, plus the wire-only "blocked, not yet charged" of a two-stage terminal. */
-export type AmeriaVerdict = GatewayVerdict | { status: 'approved' }
+/** A gateway verdict; `approved` is the "blocked, not yet charged" of a two-stage terminal. */
+export type AmeriaVerdict = GatewayVerdict
 
 export const buildInitPaymentBody = (
   credentials: AmeriaCredentials,
@@ -72,7 +75,7 @@ export const buildInitPaymentBody = (
   BackURL: input.backUrl,
   Opaque: input.opaque,
   // Seconds the payment page stays valid.
-  Timeout: 1200,
+  Timeout: PAYMENT_PAGE_TIMEOUT_SECONDS,
 })
 
 export const buildDetailsBody = (credentials: AmeriaCredentials, paymentId: string) => ({
@@ -88,7 +91,22 @@ export const buildConfirmBody = (credentials: AmeriaCredentials, paymentId: stri
   Amount: amount,
 })
 
-export const paymentPageUrl =(baseUrl: string, paymentId: string): string =>
+/** CancelPayment: within 72 hours of InitPayment; reverses the payment. */
+export const buildCancelBody = (credentials: AmeriaCredentials, paymentId: string) => ({
+  PaymentID: paymentId,
+  Username: credentials.username,
+  Password: credentials.password,
+})
+
+/** RefundPayment: `Amount` back to the card, at most the transaction amount. */
+export const buildRefundBody = (credentials: AmeriaCredentials, paymentId: string, amount: number) => ({
+  PaymentID: paymentId,
+  Username: credentials.username,
+  Password: credentials.password,
+  Amount: amount,
+})
+
+export const paymentPageUrl = (baseUrl: string, paymentId: string): string =>
   `${baseUrl}Payments/Pay?id=${encodeURIComponent(paymentId)}&lang=am`
 
 /** `ResponseCode` 1 (number, or "1" in some representations) with a PaymentID. */
@@ -100,10 +118,17 @@ export const readInitResponse = (body: AmeriaInitResponse): { ok: true; paymentI
   return { ok: false, message: `InitPayment ResponseCode ${String(code)}: ${body.ResponseMessage ?? 'no message'}` }
 }
 
-export const readConfirmResponse = (body: AmeriaConfirmResponse): { ok: true } | { ok: false; message: string } =>
+/** ConfirmPayment, CancelPayment and RefundPayment all answer `ResponseCode` "00" on success. */
+export const readResultResponse = (
+  operation: 'ConfirmPayment' | 'CancelPayment' | 'RefundPayment',
+  body: AmeriaResultResponse
+): { ok: true } | { ok: false; message: string } =>
   String(body.ResponseCode ?? '') === '00'
     ? { ok: true }
-    : { ok: false, message: `ConfirmPayment ResponseCode ${String(body.ResponseCode)}: ${body.ResponseMessage ?? 'no message'}` }
+    : {
+        ok: false,
+        message: `${operation} ResponseCode ${String(body.ResponseCode ?? '') || '(empty)'}: ${body.ResponseMessage || 'no message'}`,
+      }
 
 const asNumber = (value: unknown): number | null => {
   const parsed = typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : NaN
@@ -127,6 +152,12 @@ export const interpretDetails = (
   if (status === 6 || state === 'payment_declined') return { status: 'failed', reason: 'declined' }
   if (status === 3 || status === 4 || state === 'payment_void' || state === 'payment_refunded') {
     return { status: 'failed', reason: state || `status ${status}` }
+  }
+
+  // 0 / "payment_started": registered, no card entered yet. 5 / "payment_autoauthorized":
+  // 3-D Secure began but did not authorise. Either way no money has moved.
+  if (status === 0 || status === 5 || state === 'payment_started' || state === 'payment_autoauthorized') {
+    return { status: 'pending', nothingCharged: true }
   }
 
   const deposited = status === 2 || state === 'payment_deposited'

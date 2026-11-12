@@ -215,7 +215,7 @@ Then the outside services:
 - **Google sign-in** (optional; empty hides the button): Google Cloud console → APIs & Services
   → Credentials → Create OAuth client ID → Web application. Authorized redirect URI, exactly:
   `https://api.guests-seating-board.eapps.site/identity/google/callback`. Scopes: email, profile.
-- **Mail engine** (password-reset links and the contact form): `MAIL_API_URL` is the engine's
+- **Mail engine** (password-reset links, the contact form, and the admin's purchase mails — docs/PAYMENTS.md): `MAIL_API_URL` is the engine's
   base URL from its [API docs](https://github.com/NavasardianMichael/api-mail-engine/blob/master/API_DOCS.md),
   bare — no `/mail`, no trailing path (the client appends `/mail/internal/send` itself).
   `MAIL_API_KEY` is the engine's `API_KEY`, the same one the other apps use

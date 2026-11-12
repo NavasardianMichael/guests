@@ -49,6 +49,7 @@ import { cn } from '@helpers/cn'
 import { HintTooltip } from '@components/ui/HintTooltip'
 import { TileButton } from '@components/ui/TileButton'
 import { LiveTextInput } from '../controls/LiveFields'
+import { PhotoLock } from '../import/PhotoLock'
 import { SpreadsheetButton } from '../spreadsheet/SpreadsheetModal'
 
 type TableOption = { id: string; name: string }
@@ -639,6 +640,7 @@ export const GuestsPanel: FC = () => {
         </TileButton>
         <TileButton icon={<CameraOutlined />} onClick={() => openImport('photo')}>
           {t('importPhoto')}
+          <PhotoLock />
         </TileButton>
       </div>
 

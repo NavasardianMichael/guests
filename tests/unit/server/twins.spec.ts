@@ -5,16 +5,19 @@ import { GUEST_COOKIE, RESET_TOKEN_QUERY, VERIFY_TOKEN_QUERY } from '@constants/
 import { ERROR_CODES } from '@constants/errors'
 import { FONT_SLUGS } from '@constants/fonts'
 import { PAPER_FORMATS, PAPER_LIMITS, PAPER_SIZES } from '@constants/paper'
-import { PASS_DAYS, PASS_PRICE_AMD, RETENTION_DAYS } from '@constants/pricing'
-import { RETURN_TO_QUERY, ROUTES } from '@constants/routes'
+import { PASS_DAYS, PASS_PRICE_AMD, PHOTO_READS_PER_PASS, RETENTION_DAYS } from '@constants/pricing'
+import { PAYMENT_RESULT_STATUSES, RETURN_TO_QUERY, ROUTES } from '@constants/routes'
 import { DEFAULT_TEMPLATE_ID, isTemplateId, TABLE_STYLES, TEMPLATE_IDS, TEMPLATE_LIST } from '@constants/templates'
+import type { ClientInfo } from '@helpers/clientInfo'
 import { DEFAULT_LIST_TITLE, templateDesign } from '@helpers/listFactory'
 import * as serverCatalogue from '../../../server/src/lib/catalogue'
 import { DEFAULT_TEMPLATE_ID as SERVER_DEFAULT_TEMPLATE, FREE_TEMPLATE_IDS } from '../../../server/src/lib/catalogue'
 import { ERROR_CODE } from '../../../server/src/lib/error-codes'
 import * as guest from '../../../server/src/lib/guest'
+import { asClientInfo } from '../../../server/src/lib/request-info'
 import * as returnPath from '../../../server/src/lib/return-path'
 import { coerceDesign, DEFAULT_LIST_TITLE as SERVER_DEFAULT_TITLE, LIST_LIMITS } from '../../../server/src/services/listDocument'
+import { PHOTO_READS_PER_PASS as SERVER_PHOTO_READS } from '../../../server/src/services/photoQuota'
 import { PASS_DAYS as SERVER_PASS_DAYS, PASS_PRICE_AMD as SERVER_PRICE } from '../../../server/src/services/pricing'
 import { RETENTION_DAYS as SERVER_RETENTION_DAYS } from '../../../server/src/services/retention'
 
@@ -72,6 +75,7 @@ describe('server/web twins', () => {
     expect(SERVER_PRICE).toBe(PASS_PRICE_AMD)
     expect(SERVER_PASS_DAYS).toBe(PASS_DAYS)
     expect(SERVER_RETENTION_DAYS).toBe(RETENTION_DAYS)
+    expect(SERVER_PHOTO_READS).toBe(PHOTO_READS_PER_PASS)
   })
 
   it('name the guest cookie the proxy looks for', () => {
@@ -96,5 +100,26 @@ describe('server/web twins', () => {
     expect(returnPath.SIGN_IN_PATH).toBe(ROUTES.signIn)
     expect(returnPath.DASHBOARD_PATH).toBe(ROUTES.dashboard)
     expect(returnPath.PAYMENT_RESULT_PATH).toBe(ROUTES.paymentResult)
+    expect(returnPath.PAYMENT_RESULT_STATUSES).toEqual(PAYMENT_RESULT_STATUSES)
+  })
+
+  it('keep every device fact the checkout sends', () => {
+    // `Required` makes a new web key fail to compile here until it is added.
+    const everything: Required<ClientInfo> = {
+      timezone: 'Asia/Yerevan',
+      languages: 'hy-AM, en',
+      platform: 'Android',
+      mobile: true,
+      screen: '412×915',
+      viewport: '412×800',
+      pixelRatio: 2.625,
+      touchPoints: 5,
+      cores: 8,
+      memoryGb: 8,
+      connection: '4g, ~10 Mbps',
+      colorScheme: 'dark',
+      standalone: false,
+    }
+    expect(Object.keys(asClientInfo(everything)).sort()).toEqual(Object.keys(everything).sort())
   })
 })

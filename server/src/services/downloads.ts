@@ -2,11 +2,13 @@ import type { Request } from 'express'
 import { prisma } from '../lib/prisma.js'
 
 /**
- * Delivery evidence (`PdfDownload`, docs/PAYMENTS.md): a PDF printed under an access pass,
- * sent in full, recorded against the payment it was served under. Given to `sendPdf` as its `onSent`.
+ * A PDF sent in full (`PdfDownload`, docs/PAYMENTS.md). Under an access pass (`paymentId`) it
+ * is delivery evidence, recorded against the payment it was served under; a saved list's free
+ * print (`paymentId` null) is recorded as a use, which keeps the list from the retention sweep
+ * (services/retention.ts). Given to `sendPdf` as its `onSent`.
  */
 export const recordDownload =
-  (req: Request, input: { listId: string | null; templateId: string; paymentId: string }) =>
+  (req: Request, input: { listId: string | null; templateId: string; paymentId: string | null }) =>
   async (bytes: number): Promise<void> => {
     await prisma.pdfDownload.create({
       data: {

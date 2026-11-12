@@ -2,11 +2,12 @@ import { type Request, type Response, Router } from 'express'
 import { config } from '../config.js'
 import { escapeHtml } from '../lib/mail.js'
 import { prisma } from '../lib/prisma.js'
-import { buildWebUrl, PAYMENT_RESULT_PATH } from '../lib/return-path.js'
+import { readRequestInfo } from '../lib/request-info.js'
+import { buildWebUrl, PAYMENT_RESULT_PATH, type PaymentResultStatus } from '../lib/return-path.js'
 import { asyncHandler } from '../middleware/error.js'
 import { isGatewayId } from '../services/gateways/index.js'
 import { decideMockPayment, readMockPayment } from '../services/gateways/mock.js'
-import { settlePayment } from '../services/payments.js'
+import { markReturned, settlePayment, type SettleStatus } from '../services/payments.js'
 
 /**
  * The buyer's return trip from a gateway, and the mock gateway's page. Top-level browser
@@ -24,6 +25,26 @@ const queryParam = (req: Request, name: string): string => {
   const key = Object.keys(req.query).find((candidate) => candidate.toLowerCase() === name.toLowerCase())
   const value = key ? req.query[key] : undefined
   return typeof value === 'string' ? value : ''
+}
+
+/**
+ * What the buyer is shown. `unpaid` — back from the bank with nothing charged — means they
+ * left its page without paying (Back, a changed mind, the 20-minute limit, an error on the
+ * bank's page), so "the bank has not confirmed yet" would be wrong: it is shown as not paid.
+ * The row stays pending, so a payment made after all still counts the next time the buyer's
+ * access is read. Only when the bank's redirect itself claims success (`resposneCode` 00 — its
+ * spelling) is it worth waiting for its record to catch up. A refunded payment (a reload of
+ * an old return) has charged nothing that is kept: not paid.
+ */
+const resultStatus = (settled: SettleStatus, req: Request): PaymentResultStatus => {
+  switch (settled) {
+    case 'unpaid':
+      return (queryParam(req, 'resposneCode') || queryParam(req, 'responseCode')) === '00' ? 'pending' : 'failed'
+    case 'refunded':
+      return 'failed'
+    default:
+      return settled
+  }
 }
 
 /**
@@ -50,13 +71,17 @@ paymentsRouter.get(
       return toResult(res, { status: 'pending' })
     }
 
-    let status: string = payment.status
+    await markReturned(payment.id)
+
+    // A failed settle (the bank unreachable) leaves the row as it was: pending, so "processing".
+    let settled: SettleStatus = payment.status
     try {
-      status = await settlePayment(payment)
+      settled = await settlePayment(payment, { source: 'return', request: readRequestInfo(req) })
     } catch (error) {
       console.error(`[payments] settle on return failed for ${payment.id}`, error instanceof Error ? error.message : error)
     }
-    toResult(res, { status, payment: payment.id, ...(payment.listId ? { list: payment.listId } : {}) })
+    // `payment`: the result page re-reads this payment's status (`GET /purchases?payment=`).
+    toResult(res, { status: resultStatus(settled, req), payment: payment.id, ...(payment.listId ? { list: payment.listId } : {}) })
   })
 )
 

@@ -7,6 +7,7 @@ import { ensureGuestKeyHash } from '../lib/guest.js'
 import { sendPdf } from '../lib/pdf-response.js'
 import { prisma } from '../lib/prisma.js'
 import { createRateLimiter } from '../lib/rateLimit.js'
+import { readRequestInfo } from '../lib/request-info.js'
 import { mapList } from '../mappers/entities.js'
 import { type ListOwner, listOwnerOf, ownerKey, requireListOwner } from '../middleware/auth.js'
 import { asyncHandler, HttpError } from '../middleware/error.js'
@@ -148,9 +149,11 @@ listsRouter.delete(
 )
 
 /**
- * The PDF, as designed — on the terms `services/entitlement.ts` sets (a premium template only
- * once its owner has bought it, asked again so a refund takes it back). Every clean one sent
- * in full is recorded against its payment (`PdfDownload`).
+ * The PDF, as designed — on the terms `services/entitlement.ts` sets (every template, clean,
+ * while its owner's pass runs, asked again so a refund takes it back; the free template with
+ * the "made with" line otherwise). Every one sent in full is recorded (`PdfDownload`): against
+ * its payment when under a pass, and either way as a use that keeps the list from the
+ * retention sweep.
  */
 listsRouter.get(
   '/:id/pdf',
@@ -159,13 +162,13 @@ listsRouter.get(
     const owner = listOwnerOf(req)
     if (!pdfLimiter(ownerKey(owner)).allowed) return fail(res, 'Too many prints', ERROR_CODE.rateLimited, 429)
     const design = coerceDesign(list.design)
-    const terms = await printTermsFor(owner, design.templateId)
+    const terms = await printTermsFor(owner, design.templateId, readRequestInfo(req))
     if (!terms.allowed) return fail(res, 'Payment required', ERROR_CODE.listNotPaid, 402)
     await sendPdf(
       res,
       list.id,
       { title: list.title, content: coerceContent(list.content), design, watermark: terms.watermark, watermarkText: WATERMARK_TEXT },
-      terms.paymentId ? recordDownload(req, { listId: list.id, templateId: design.templateId, paymentId: terms.paymentId }) : undefined
+      recordDownload(req, { listId: list.id, templateId: design.templateId, paymentId: terms.paymentId })
     )
   })
 )

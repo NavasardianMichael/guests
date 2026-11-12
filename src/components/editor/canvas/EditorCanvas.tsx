@@ -25,6 +25,7 @@ import { MM_TO_PX } from '@components/sheet/SheetPreview'
 import { SelectionBar } from './SelectionBar'
 import { PAGE_GAP_MM, useCanvasInteraction } from './useCanvasInteraction'
 import { useCanvasShortcuts } from './useCanvasShortcuts'
+import { PhotoLock } from '../import/PhotoLock'
 import { PlanToolbar } from '../plan/PlanAdd'
 
 type Props = {
@@ -312,6 +313,7 @@ export const EditorCanvas: FC<Props> = memo(function EditorCanvas({ doc, zoom, o
                     </Button>
                     <Button type='primary' icon={<CameraOutlined />} onClick={() => openImport('photo')}>
                       {t('emptyPhoto')}
+                      <PhotoLock />
                     </Button>
                   </div>
                 </div>

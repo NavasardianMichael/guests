@@ -5,20 +5,22 @@ import { CheckOutlined, ClockCircleOutlined, DownloadOutlined, LockOutlined } fr
 import { Alert, App, Button, Modal } from 'antd'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
-import { checkoutAPI } from '@api/purchases/main'
 import { useAuthStore } from '@store/auth/store'
 import { useEditorUiStore, useEditorUiStoreBase } from '@store/editorUi/store'
 import { useListEditorStore, useListEditorStoreBase } from '@store/lists/single/store'
 import { DRAFT_ID } from '@store/lists/single/types'
+import { usePurchasesStoreBase } from '@store/purchases/store'
 import { useAccessUntil, useNow } from '@hooks/useAccess'
 import { useCapabilities } from '@hooks/useCapabilities'
+import { useCheckout } from '@hooks/useCheckout'
 import { useFormatDate } from '@hooks/useFormatDate'
 import { usePdfDownload } from '@hooks/usePdfDownload'
-import { accessAfterPurchase, CURRENCY, formatAmount, isAccessActive, PASS_DAYS, PASS_PRICE_AMD } from '@constants/pricing'
+import { ERROR_CODES } from '@constants/errors'
+import { accessAfterPurchase, formatAmount, isAccessActive, PASS_DAYS, PASS_PRICE_AMD } from '@constants/pricing'
 import { CHECKOUT_QUERY, ROUTES } from '@constants/routes'
 import { FREE_TEMPLATE_ID, isPrintable, TEMPLATES } from '@constants/templates'
-import { trackEvent } from '@helpers/analytics'
 import { cn } from '@helpers/cn'
+import { processError } from '@helpers/error'
 import { designInTemplate } from '@helpers/listFactory'
 import { SheetPreview } from '@components/sheet/SheetPreview'
 import { ErrorAlert } from '@components/ui/ErrorAlert'
@@ -93,6 +95,10 @@ const GuestWarning: FC<{ redirecting: boolean; onContinue: () => void; onSignIn:
  * long as no pass runs. Neither path needs an account; paying without one is warned about
  * once, on the way to the bank. Opened by either Download button, the access chip (to add
  * days), or `?checkout=1` (back from signing in to pay).
+ *
+ * Paying never charges one click twice: a bank page still open in another tab is offered
+ * again (`useCheckout`), and a payment whose redirect was lost but went through is reported —
+ * the dialog closes, says until when access runs, and downloads the list as designed.
  */
 export const CheckoutModal: FC = () => {
   const t = useTranslations('Editor.download')
@@ -115,6 +121,7 @@ export const CheckoutModal: FC = () => {
   const [confirmingGuest, setConfirmingGuest] = useState(false)
   const [signingIn, setSigningIn] = useState(false)
   const { run: downloadPdf, isWorking: downloading } = usePdfDownload()
+  const checkout = useCheckout()
 
   // Back from signing in to pay: open once the access is known, unless it runs by now (it may
   // have been bought as a guest and moved to the account).
@@ -140,16 +147,31 @@ export const CheckoutModal: FC = () => {
     setOpen(false)
   }
 
+  /**
+   * A payment whose redirect was lost went through after all: say so, so the buyer does not
+   * think the click charged them again, then print what they came for — as designed.
+   */
+  const earlierPaymentWentThrough = async () => {
+    const access = await usePurchasesStoreBase.getState().refresh()
+    close()
+    void message.success({
+      content: t('earlierPayment', { date: access.until ? formatDate(access.until) : '' }),
+      duration: 8,
+    })
+    const current = useListEditorStoreBase.getState()
+    if (current.listId && current.doc) await downloadPdf(current.listId, current.doc)
+  }
+
   const pay = async () => {
     setError(null)
     setRedirecting(true)
     try {
       if (listId !== DRAFT_ID) await flushSave()
-      const checkoutUrl = await checkoutAPI(listId !== DRAFT_ID ? { listId } : {})
-      trackEvent('begin_checkout', { currency: CURRENCY, value: PASS_PRICE_AMD, days: PASS_DAYS, extend: active })
-      window.location.assign(checkoutUrl)
+      // False: an earlier payment may still be open, and the buyer chose not to start another.
+      if (!(await checkout({ listId: listId !== DRAFT_ID ? listId : null, extend: active }))) setRedirecting(false)
     } catch (failure) {
       setRedirecting(false)
+      if (processError(failure).code === ERROR_CODES.earlierPaymentSucceeded) return earlierPaymentWentThrough()
       setError(failure)
     }
   }

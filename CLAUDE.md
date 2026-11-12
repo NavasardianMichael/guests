@@ -1,7 +1,7 @@
 # guests (Իմ հյուրերը)
 
 Guest lists for Armenian events, printed. Users build a list (typed, pasted, Excel/CSV, or a
-photo read by Gemini), arrange it on a sheet and print one of four **kinds**: a seating board
+photo read by Gemini — full access only, 5 per pass), arrange it on a sheet and print one of four **kinds**: a seating board
 (guests under their tables), a plain guest list, place cards, or the hall plan (round and long
 tables with their guests inside, chairs around, plus stage / dance floor / entrance, placed
 by hand). Any paper size, 46 templates,
@@ -28,6 +28,8 @@ pnpm test           # vitest (tests/unit)
 pnpm fonts:css      # public/fonts/manifest.json -> public/fonts/sheet-fonts.css
 pnpm build:api      # server/dist -> out/api, the standalone API release the deploy ships
 pnpm env:base64 production | clip   # server/.env.production.local -> the ENV_API_BASE64 secret
+pnpm payments:reverse refund 12 13  # money back through the gateway (refund | cancel), by Payment.orderNumber —
+                                    # only with AMERIA_API_REVERSALS=true; without the bank's permission refund in Ameria's dashboard
 ```
 
 Seeded test accounts (all `guests-dev-1234`): `docs/DEV_CREDS.md`.
@@ -58,12 +60,12 @@ cv-builder's notes: under `concurrently` on Windows `tsx watch` never starts the
 | Reset buttons (top bar: all; tab header; section header) | what each scope puts back `src/helpers/designReset.ts` · button + confirm `src/components/editor/controls/ResetButton.tsx` · paper change maths `src/helpers/paperChange.ts` |
 | "Leave this page?" while unsaved | `src/components/LeaveGuard.tsx` (tab close/reload, links, Back) · register with `useLeaveGuard` (`src/hooks/`) — the editor's autosave does |
 | Print preview (fullscreen modal) | `src/components/editor/PreviewModal.tsx` |
-| Import | `src/components/editor/import/` · parsing `src/helpers/guestImport.ts` · photo → `server/src/routes/ai.ts` → `services/guestReader.ts` (Gemini) |
+| Import | `src/components/editor/import/` · parsing `src/helpers/guestImport.ts` · photo → `server/src/routes/ai.ts` → `services/guestReader.ts` (Gemini); full access only, 5 reads per pass: rule `services/photoQuota.ts`, rows `services/photoReads.ts` (`PhotoRead`), status `GET /ai/photo`, docs `docs/PAYMENTS.md#photo-reading` |
 | Guest drafts (localStorage) | `src/helpers/localDraft.ts` — imported on sign-in by `EditorShell` |
 | PDF | `server/src/services/pdf.ts` prints the web's `/render` page (`src/app/render/`); the editor and dashboard only download it (`src/hooks/usePdfDownload.ts`, `PdfActions`) — no browser printing |
 | Who may print what | `server/src/services/entitlement.ts` (pure: `printTerms`, `accessWindow`): the free template (`memorial`, shown as “Classic”) for anyone, everything while the owner's pass runs — `printTermsFor` in `services/payments.ts`; web twin `isPrintable` |
-| Payments (21-day access pass) | `docs/PAYMENTS.md` · server `services/pricing.ts`, `services/payments.ts`, `services/gateways/` (Ameria + dev mock, as cv-builder), `routes/purchases.ts` (access, checkout), `routes/payments.ts` (bank return) · web `constants/pricing.ts`, `store/purchases/` + `hooks/useAccess.ts`, `components/editor/download/{CheckoutModal,AccessChip}.tsx`, `dashboard/AccessBanner.tsx`, `/payment/result`, `/pricing`, `/refund-policy` |
-| Retention (unused for a year → deleted) | policy `server/src/services/retention.ts`, daily sweep `retentionSweep.ts`, `User.lastActiveAt` stamped in `middleware/auth.ts` |
+| Payments (21-day access pass) | `docs/PAYMENTS.md` · server `services/pricing.ts`, `services/payments.ts` (settle, reconcile, open-payment resume), `services/gateways/` (Ameria + dev mock, as cv-builder), `routes/purchases.ts` (access, checkout), `routes/payments.ts` (bank return) · admin mails on checkout and success `services/paymentNotifications.ts` + `paymentMail.ts` (device facts `lib/request-info.ts` ← web `helpers/clientInfo.ts`) · operator refunds `pnpm payments:reverse` (`server/src/cli/`) · web `constants/pricing.ts`, `store/purchases/` + `hooks/useAccess.ts`, `hooks/useCheckout.ts`, `components/editor/download/{CheckoutModal,AccessChip}.tsx`, `dashboard/AccessBanner.tsx`, `/payment/result`, `/pricing`, `/refund-policy` |
+| Retention (wholly unused for a year → deleted) | policy `server/src/services/retention.ts`, daily sweep `retentionSweep.ts`, `User.lastActiveAt` stamped in `middleware/auth.ts` |
 | Languages | `src/i18n/request.ts` (cookie `NEXT_LOCALE`, default hy) · `src/messages/{hy,ru,en}.json` · switcher `components/layout/LanguageSwitcher.tsx` |
 | Auth (password + Google), guest key | as cv-builder: `server/src/routes/identity*.ts`, `lib/guest.ts`, `services/guestLists.ts` |
 | CI/CD, production | `.github/workflows/{ci,deploy}.yml` · `docs/DEPLOYMENT.md` · `docs/PRODUCTION_SETUP.md` · `deployment/` |
@@ -120,7 +122,7 @@ cv-builder's notes: under `concurrently` on Windows `tsx watch` never starts the
   colours `#rrggbb`, fonts/templates/paper from the catalogue, ids short tokens, limits capped.
 - **Twins, pinned by `tests/unit/server/twins.spec.ts`:** template ids and which are free,
   fonts, table styles, kinds, text roles, paper formats/sizes/limits, list limits, price, pass days, retention days,
-  default title, guest cookie, error codes, server-built paths — and every template's design
+  default title, guest cookie, error codes, server-built paths, photo reads per pass — and every template's design
   survives the server's coercion unchanged.
 - **Interface language is a cookie, not a URL.** Pages are indexed in Armenian. Calls with an
   explicit locale (`getTranslations({ locale: 'hy' })`, used by static OG images and llms.txt)
@@ -132,9 +134,16 @@ cv-builder's notes: under `concurrently` on Windows `tsx watch` never starts the
   running one). Nothing is locked to a template. A guest's payments follow the guest key and
   move to the account on sign-in with the lists (`services/guestLists.ts`). Every place money
   is asked for also says when the days end and that nothing is deleted then — keep it so.
+- **One click is charged once** (cv-builder's live-bank fixes): checkout first reconciles (a
+  lost redirect that went through answers `earlierPaymentSucceeded`), then offers to continue
+  a bank page that may still be open in another tab (`returnedAt`/`reopenedAt`) rather than
+  start a second order. Back from the bank with nothing charged reads as failed, not
+  "processing". The description sent to the bank stays Latin (Ameria drops Unicode).
 - **Nothing is deleted for not paying; a year unused is.** The daily sweep
-  (`services/retentionSweep.ts`) removes accounts whose `lastActiveAt` is a year old (with their
-  lists) and guest lists unchanged for a year. Payments and download records stay.
+  (`services/retentionSweep.ts`) removes accounts and guest lists only when wholly unused for a
+  year (`isUnusedSince`): not used (`lastActiveAt` / a guest list's `updatedAt`), not downloaded
+  (`PdfDownload`, free prints of saved lists included), no pass running. Payments and download
+  records stay.
 - **Dates shown to the reader go through `formatDate` (`src/helpers/date.ts`; components use
   `useFormatDate`), never `Intl`/`format.dateTime` directly**: Chrome has no Armenian locale
   data and prints `hy` dates in English, so Armenian month names are ours.

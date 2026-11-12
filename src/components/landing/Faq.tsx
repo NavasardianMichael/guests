@@ -1,6 +1,6 @@
 import type { FC } from 'react'
 import { getTranslations } from 'next-intl/server'
-import { formatAmount, PASS_DAYS, PASS_PRICE_AMD } from '@constants/pricing'
+import { formatAmount, PASS_DAYS, PASS_PRICE_AMD, PHOTO_READS_PER_PASS } from '@constants/pricing'
 import { faqSchema } from '@linkedDataSchema/site'
 import { JsonLd } from '@components/seo/JsonLd'
 import { PlusOutlined } from '@components/ui/icons'
@@ -16,7 +16,7 @@ export const Faq: FC<{ title?: string }> = async ({ title }) => {
   const tHome = await getTranslations('Home')
   const tCommon = await getTranslations('Common')
   const price = tCommon('amount', { amount: formatAmount(PASS_PRICE_AMD) })
-  const items = FAQ_KEYS.map((key) => ({ key, question: t(`${key}.q`), answer: t(`${key}.a`, { price, days: PASS_DAYS }) }))
+  const items = FAQ_KEYS.map((key) => ({ key, question: t(`${key}.q`), answer: t(`${key}.a`, { price, days: PASS_DAYS, photos: PHOTO_READS_PER_PASS }) }))
 
   return (
     <section className='mx-auto max-w-3xl px-4 py-14 sm:py-20 md:px-6' aria-labelledby='faq-title'>

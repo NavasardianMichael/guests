@@ -6,4 +6,7 @@ export const processAccessResponse: GetAccessAPI['processor'] = (response) => {
   return { until: Number.isFinite(until) ? until : null, payment: response.value.payment ?? null }
 }
 
-export const processCheckoutResponse: CheckoutAPI['processor'] = (response) => response.value.checkoutUrl
+export const processCheckoutResponse: CheckoutAPI['processor'] = (response) =>
+  'openPayment' in response.value
+    ? { kind: 'open', minutesAgo: response.value.openPayment.minutesAgo }
+    : { kind: 'redirect', url: response.value.redirectUrl }

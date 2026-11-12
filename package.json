@@ -25,6 +25,7 @@
     "db:down": "docker compose down",
     "db:migrate": "pnpm --filter guests-server run db:deploy",
     "db:seed": "pnpm --filter guests-server run db:seed",
+    "payments:reverse": "pnpm --filter guests-server run payments:reverse",
     "db:setup": "pnpm db:migrate && pnpm db:seed",
     "server:dev": "pnpm --filter guests-server dev",
     "build:api": "pnpm --filter guests-server build && node scripts/build-api-release.mjs",

@@ -1,13 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import {
   AMERIA_BASE_URL,
+  buildCancelBody,
   buildConfirmBody,
   buildInitPaymentBody,
+  buildRefundBody,
   interpretDetails,
   isReversedPayment,
   paymentPageUrl,
-  readConfirmResponse,
   readInitResponse,
+  readResultResponse,
 } from '../../../server/src/services/gateways/ameria-wire'
 
 const credentials = { clientId: 'client', username: 'user', password: 'secret' }
@@ -67,9 +69,17 @@ describe('Ameria GetPaymentDetails → verdict', () => {
     expect(interpretDetails({ ResponseCode: '00', OrderStatus: '4' }, expected).status).toBe('failed')
   })
 
-  it('keeps a started or unconfirmed payment pending', () => {
-    expect(interpretDetails({ ResponseCode: '00', OrderStatus: 0 }, expected)).toEqual({ status: 'pending' })
+  it('keeps a started payment pending, marked as nothing charged', () => {
+    const unpaid = { status: 'pending', nothingCharged: true }
+    expect(interpretDetails({ ResponseCode: '00', OrderStatus: 0 }, expected)).toEqual(unpaid)
+    expect(interpretDetails({ ResponseCode: '0-100', OrderStatus: '0', PaymentState: 'payment_started' }, expected)).toEqual(unpaid)
+    expect(interpretDetails({ ResponseCode: '00', OrderStatus: '5', PaymentState: 'payment_autoauthorized' }, expected)).toEqual(unpaid)
+  })
+
+  it('keeps an unreadable or unconfirmed record plainly pending', () => {
     expect(interpretDetails({ ...deposited, ResponseCode: '01' }, expected)).toEqual({ status: 'pending' })
+    // What the live server answered once for a bad request: no status at all.
+    expect(interpretDetails({ Message: 'An error has occurred.' } as never, expected)).toEqual({ status: 'pending' })
   })
 
   describe('two-stage (OrderStatus 1, payment_approved)', () => {
@@ -115,7 +125,27 @@ describe('Ameria ConfirmPayment', () => {
   })
 
   it('reads ResponseCode "00" as success, anything else as failure', () => {
-    expect(readConfirmResponse({ ResponseCode: '00' })).toEqual({ ok: true })
-    expect(readConfirmResponse({ ResponseCode: '0914', ResponseMessage: 'Orig trans not found' }).ok).toBe(false)
+    expect(readResultResponse('ConfirmPayment', { ResponseCode: '00' })).toEqual({ ok: true })
+    expect(readResultResponse('ConfirmPayment', { ResponseCode: '0914', ResponseMessage: 'Orig trans not found' })).toEqual({
+      ok: false,
+      message: 'ConfirmPayment ResponseCode 0914: Orig trans not found',
+    })
+  })
+})
+
+describe('Ameria CancelPayment and RefundPayment', () => {
+  it('cancels by PaymentID alone', () => {
+    expect(buildCancelBody(credentials, 'pay-1')).toEqual({ PaymentID: 'pay-1', Username: 'user', Password: 'secret' })
+  })
+
+  it('refunds an amount', () => {
+    expect(buildRefundBody(credentials, 'pay-1', 10)).toEqual({ PaymentID: 'pay-1', Username: 'user', Password: 'secret', Amount: 10 })
+  })
+
+  it('names the operation the bank refused', () => {
+    expect(readResultResponse('RefundPayment', { ResponseCode: '513', ResponseMessage: null })).toEqual({
+      ok: false,
+      message: 'RefundPayment ResponseCode 513: no message',
+    })
   })
 })

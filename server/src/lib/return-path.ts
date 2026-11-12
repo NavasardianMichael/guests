@@ -24,6 +24,13 @@ export const SIGN_IN_PATH = '/auth/sign-in'
 /** Where the bank's return trip lands, with `?status=` (`ROUTES.paymentResult`). */
 export const PAYMENT_RESULT_PATH = '/payment/result'
 
+/**
+ * Its `?status=` (`PAYMENT_RESULT_STATUSES` on the web), with `payment` (the Payment's id) and
+ * `list` (where the buyer started, if from a saved list).
+ */
+export const PAYMENT_RESULT_STATUSES = ['succeeded', 'failed', 'pending'] as const
+export type PaymentResultStatus = (typeof PAYMENT_RESULT_STATUSES)[number]
+
 /** Signed-in default destination (`ROUTES.dashboard`). */
 export const DASHBOARD_PATH = '/dashboard'
 

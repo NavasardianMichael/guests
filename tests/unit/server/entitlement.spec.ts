@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { FREE_TEMPLATE_IDS } from '../../../server/src/lib/catalogue'
 import { accessWindow, printTerms } from '../../../server/src/services/entitlement'
-import { RETENTION_DAYS, retentionCutoff } from '../../../server/src/services/retention'
+import { isUnusedSince, RETENTION_DAYS, retentionCutoff } from '../../../server/src/services/retention'
 
 const DAY = 24 * 60 * 60 * 1000
 const T0 = Date.UTC(2026, 10, 1)
@@ -53,5 +53,23 @@ describe('retentionCutoff', () => {
   it('is a year back', () => {
     expect(RETENTION_DAYS).toBe(365)
     expect(retentionCutoff(new Date(T0))).toEqual(new Date(T0 - 365 * DAY))
+  })
+})
+
+describe('isUnusedSince', () => {
+  const cutoff = new Date(T0)
+  const longAgo = new Date(T0 - 400 * DAY)
+  const recently = new Date(T0 + 30 * DAY)
+
+  it('removes only what was not used, not downloaded and had no access for the whole year', () => {
+    expect(isUnusedSince({ lastUsedAt: longAgo, lastDownloadAt: null, accessUntil: null }, cutoff)).toBe(true)
+    expect(isUnusedSince({ lastUsedAt: longAgo, lastDownloadAt: longAgo, accessUntil: new Date(T0 - DAY) }, cutoff)).toBe(true)
+  })
+
+  it('keeps it after any use, any download, or any access within the year', () => {
+    expect(isUnusedSince({ lastUsedAt: recently, lastDownloadAt: null, accessUntil: null }, cutoff)).toBe(false)
+    expect(isUnusedSince({ lastUsedAt: longAgo, lastDownloadAt: recently, accessUntil: null }, cutoff)).toBe(false)
+    // A pass that ended inside the year counts: its days were in use.
+    expect(isUnusedSince({ lastUsedAt: longAgo, lastDownloadAt: null, accessUntil: recently }, cutoff)).toBe(false)
   })
 })

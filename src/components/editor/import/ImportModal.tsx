@@ -1,16 +1,21 @@
 'use client'
 
-import { type FC, useMemo, useState } from 'react'
-import { CameraOutlined, FileExcelOutlined, InboxOutlined, SnippetsOutlined } from '@ant-design/icons'
-import { Alert, App, Button, Input, Modal, Progress, Select, Upload } from 'antd'
+import { type FC, useEffect, useMemo, useState } from 'react'
+import { CameraOutlined, FileExcelOutlined, InboxOutlined, LockOutlined, SnippetsOutlined } from '@ant-design/icons'
+import { Alert, App, Button, Input, Modal, Select, Spin, Upload } from 'antd'
 import { useTranslations } from 'next-intl'
-import { extractGuestsAPI } from '@api/ai/main'
+import { extractGuestsAPI, getPhotoStatusAPI } from '@api/ai/main'
+import type { PhotoStatus } from '@api/ai/types'
 import { useEditorUiStore } from '@store/editorUi/store'
 import { useListEditorStore, useListEditorStoreBase } from '@store/lists/single/store'
 import type { ImportMode, IncomingGuest } from '@store/lists/single/types'
+import { useAccessUntil } from '@hooks/useAccess'
 import { useCapabilities } from '@hooks/useCapabilities'
+import { useFormatDate } from '@hooks/useFormatDate'
+import { ERROR_CODES } from '@constants/errors'
+import { PASS_DAYS, PHOTO_READS_PER_PASS } from '@constants/pricing'
 import { trackEvent } from '@helpers/analytics'
-import { classifyError, errorCopyKey } from '@helpers/error'
+import { classifyError, errorCopyKey, processError } from '@helpers/error'
 import {
   cellText,
   type ColumnMapping,
@@ -26,7 +31,6 @@ import { TileButton } from '@components/ui/TileButton'
 import { ColumnMapper } from './ColumnMapper'
 import { ImportPreview } from './ImportPreview'
 
-const MAX_PHOTOS = 5
 /**
  * Named types, not `image/*`: Chrome on Windows resolves the wildcard against every image type
  * in the registry, and the picker takes seconds to open — a click looks like it did nothing.
@@ -78,9 +82,14 @@ const readFile = async (file: File): Promise<{ sheets: Record<string, string[][]
 /**
  * Bringing an existing list in, three ways: pasted text (one name per line, "Table 5:" lines
  * seating the names under them — or a block copied from Excel), a file (CSV, TSV, TXT, XLSX,
- * with the columns mapped), or photos read by the AI (`POST /ai/extract-guests`). Whatever the
+ * with the columns mapped), or a photo read by the AI (`POST /ai/extract-guests`). Whatever the
  * source, the result is shown, editable; on Import, a list that already has guests asks whether
  * the result replaces them or is added to them.
+ *
+ * The photo comes with full access: `PHOTO_READS_PER_PASS` reads per pass, one photo at a time
+ * (`server/src/services/photoQuota.ts`, which the API enforces too). The source is never hidden:
+ * its upload is disabled, with the reason and the way on — the checkout, to get full access or
+ * to add days (which bring more reads) — and the reads left are shown (`GET /ai/photo`).
  */
 export const ImportModal: FC = () => {
   const t = useTranslations('Editor.import')
@@ -92,6 +101,10 @@ export const ImportModal: FC = () => {
   const addGuests = useListEditorStore.use.addGuests()
   const existing = useListEditorStoreBase((state) => state.doc?.content.guests.length ?? 0)
   const capabilities = useCapabilities()
+  const formatDate = useFormatDate()
+  const setCheckoutOpen = useEditorUiStore.use.setCheckoutOpen()
+  // Asked again when the access changes (bought, or found to have run out).
+  const until = useAccessUntil()
 
   const [text, setText] = useState('')
   const [pasteMapping, setPasteMapping] = useState<ColumnMapping | null>(null)
@@ -99,7 +112,9 @@ export const ImportModal: FC = () => {
   const [sheetName, setSheetName] = useState<string | null>(null)
   const [fileLines, setFileLines] = useState<string | null>(null)
   const [photoGuests, setPhotoGuests] = useState<IncomingGuest[] | null>(null)
-  const [photoProgress, setPhotoProgress] = useState<{ done: number; total: number } | null>(null)
+  const [photoReading, setPhotoReading] = useState(false)
+  // Undefined while asked; null when it could not be asked (the API still decides).
+  const [photoStatus, setPhotoStatus] = useState<PhotoStatus | null | undefined>(undefined)
   const [edited, setEdited] = useState<IncomingGuest[] | null>(null)
 
   const reset = () => {
@@ -109,9 +124,26 @@ export const ImportModal: FC = () => {
     setSheetName(null)
     setFileLines(null)
     setPhotoGuests(null)
-    setPhotoProgress(null)
+    setPhotoReading(false)
     setEdited(null)
   }
+
+  const aiOn = capabilities === null || capabilities.ai
+  const onPhotoSource = source === 'photo' && aiOn
+  useEffect(() => {
+    if (!onPhotoSource || until === undefined) return
+    let cancelled = false
+    getPhotoStatusAPI()
+      .then((status) => {
+        if (!cancelled) setPhotoStatus(status)
+      })
+      .catch(() => {
+        if (!cancelled) setPhotoStatus(null)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [onPhotoSource, until])
 
   const close = () => {
     closeImport()
@@ -166,26 +198,34 @@ export const ImportModal: FC = () => {
     }
   }
 
-  const onPhotos = async (files: File[]) => {
-    const batch = files.slice(0, MAX_PHOTOS)
+  /** One photo. It counts once it yields names; one that yields none gives its read back. */
+  const onPhoto = async (file: File) => {
     setEdited(null)
     setPhotoGuests(null)
-    setPhotoProgress({ done: 0, total: batch.length })
-    const found: IncomingGuest[] = []
-    let failures = 0
-    for (const [index, file] of batch.entries()) {
-      try {
-        const image = await fileToUploadDataUrl(file)
-        found.push(...(await extractGuestsAPI({ image })))
-      } catch (error) {
-        failures += 1
-        void message.error(tErrors(errorCopyKey(classifyError(error))))
+    setPhotoReading(true)
+    try {
+      const image = await fileToUploadDataUrl(file)
+      const result = await extractGuestsAPI({ image })
+      setPhotoGuests(result.guests)
+      setPhotoStatus(result.photo)
+      if (!result.guests.length) void message.warning(t('photoNothing'))
+    } catch (error) {
+      const { code } = processError(error)
+      // The API's word wins over what this page last knew: ask again, which shows why.
+      if (code === ERROR_CODES.photoNeedsAccess || code === ERROR_CODES.photoLimitReached) {
+        getPhotoStatusAPI()
+          .then(setPhotoStatus)
+          .catch(() => undefined)
       }
-      setPhotoProgress({ done: index + 1, total: batch.length })
+      void message.error(tErrors(errorCopyKey(classifyError(error))))
+    } finally {
+      setPhotoReading(false)
     }
-    setPhotoProgress(null)
-    setPhotoGuests(found)
-    if (!found.length && failures < batch.length) void message.warning(t('photoNothing'))
+  }
+
+  const getFullAccess = () => {
+    close()
+    setCheckoutOpen(true)
   }
 
   const importRows = (rows: IncomingGuest[], mode: ImportMode) => {
@@ -229,7 +269,9 @@ export const ImportModal: FC = () => {
   }
 
   const sheet = sheetName ? sheets[sheetName] : undefined
-  const busy = photoProgress !== null
+  const busy = photoReading
+  // Until the status is known the upload waits; if it cannot be asked, the API decides on upload.
+  const photoAllowed = aiOn && photoStatus !== undefined && photoStatus?.state !== 'locked' && photoStatus?.state !== 'used'
 
   return (
     <Modal
@@ -347,15 +389,54 @@ export const ImportModal: FC = () => {
 
           {source === 'photo' && (
             <>
-              {capabilities && !capabilities.ai && <Alert type='warning' showIcon title={t('photoUnavailable')} />}
+              {!aiOn && <Alert type='warning' showIcon title={t('photoUnavailable')} />}
+              {aiOn && photoStatus?.state === 'locked' && (
+                <Alert
+                  type='warning'
+                  showIcon
+                  icon={<LockOutlined />}
+                  title={t('photoLockedTitle')}
+                  description={t('photoLockedText', { count: PHOTO_READS_PER_PASS, days: PASS_DAYS })}
+                  action={
+                    <Button type='primary' size='small' onClick={getFullAccess}>
+                      {t('photoGetAccess')}
+                    </Button>
+                  }
+                />
+              )}
+              {aiOn && photoStatus?.state === 'used' && (
+                <Alert
+                  type='info'
+                  showIcon
+                  title={t('photoUsedTitle', { count: photoStatus.allowance })}
+                  description={t('photoUsedText', {
+                    date: photoStatus.until ? formatDate(photoStatus.until) : '',
+                    count: PHOTO_READS_PER_PASS,
+                    days: PASS_DAYS,
+                  })}
+                  action={
+                    <Button size='small' onClick={getFullAccess}>
+                      {t('photoAddDays')}
+                    </Button>
+                  }
+                />
+              )}
+              {aiOn && photoStatus?.state === 'available' && (
+                <p className='m-0 text-sm font-medium text-ink'>
+                  {t('photoRemaining', { remaining: photoStatus.remaining, count: photoStatus.allowance })}
+                </p>
+              )}
               <Upload.Dragger
                 accept={PHOTO_ACCEPT}
-                multiple
+                multiple={false}
+                maxCount={1}
                 showUploadList={false}
-                disabled={busy || (capabilities !== null && !capabilities.ai)}
+                disabled={busy || !photoAllowed}
                 beforeUpload={(file, list) => {
-                  // Called once per file; start once, with the whole selection.
-                  if (file === list[0]) void onPhotos(list)
+                  // One photo at a time: of several dropped at once, only the first is read.
+                  if (file !== list[0]) return false
+                  if (list.length > 1) void message.info(t('photoOneAtATime'))
+                  void onPhoto(file)
                   return false
                 }}
               >
@@ -363,14 +444,15 @@ export const ImportModal: FC = () => {
                   <CameraOutlined />
                 </p>
                 <p className='ant-upload-text'>{t('photoDrop')}</p>
-                <p className='ant-upload-hint'>{t('photoHint', { max: MAX_PHOTOS })}</p>
+                <p className='ant-upload-hint'>{t('photoHint')}</p>
               </Upload.Dragger>
-              {photoProgress && (
-                <div>
-                  <p className='m-0 mb-1 text-sm'>{t('photoReading', photoProgress)}</p>
-                  <Progress percent={Math.round(((photoProgress.done + 0.5) / photoProgress.total) * 100)} status='active' showInfo={false} />
+              {photoReading && (
+                <div className='flex items-center gap-2 text-sm'>
+                  <Spin size='small' />
+                  {t('photoReading')}
                 </div>
               )}
+              <p className='m-0 text-xs leading-relaxed text-muted'>{t('photoRules', { count: PHOTO_READS_PER_PASS, days: PASS_DAYS })}</p>
               <p className='m-0 text-xs leading-relaxed text-muted'>{t('photoPrivacy')}</p>
             </>
           )}

@@ -60,6 +60,14 @@ export const newListPath = (options: { template?: TemplateId; kind?: PrintKind; 
   return search ? `${ROUTES.editorNew}?${search}` : ROUTES.editorNew
 }
 
+/**
+ * `ROUTES.paymentResult`'s `?status=`, set by the API's return from the bank (twin in
+ * `server/src/lib/return-path.ts`), with `payment` (the Payment's id) and `list` (where the
+ * buyer started, if from a saved list).
+ */
+export const PAYMENT_RESULT_STATUSES = ['succeeded', 'failed', 'pending'] as const
+export type PaymentResultStatus = (typeof PAYMENT_RESULT_STATUSES)[number]
+
 /** Signed-in areas; `src/proxy.ts` sends a visitor without a session cookie to sign-in. */
 export const PROTECTED_PREFIXES = [ROUTES.dashboard, ROUTES.account]
 

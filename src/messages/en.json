@@ -67,7 +67,7 @@
     "features": {
       "import": {
         "title": "Import from anywhere",
-        "text": "Excel, CSV, pasted text or a photo of a handwritten list — AI reads the names and the tables."
+        "text": "Excel, CSV, pasted text or a photo of a handwritten list — AI reads the names and the tables (photos with full access)."
       },
       "arrange": {
         "title": "Arrange by dragging",
@@ -141,7 +141,7 @@
     },
     "photo": {
       "q": "How does photo import work?",
-      "a": "Take a photo of a printed or handwritten list (up to 5 photos at once). AI reads the names and, where they are written, the tables. You see the result and can correct it before importing."
+      "a": "Take a photo of a printed or handwritten list. AI reads the names and, where they are written, the tables. You see the result and can correct it before importing. Reading from a photo comes with full access: {photos} photos for every {days} days, one at a time. A photo with no names found doesn’t count."
     },
     "print": {
       "q": "How do I print?",
@@ -327,7 +327,7 @@
     "freePrice": "0 AMD",
     "freeItems": [
       "Unlimited lists and guests",
-      "Import from Excel, CSV and photos",
+      "Import from Excel, CSV and pasted text",
       "Every template to try and preview",
       "PDF in “Classic”, with a small “made with” line"
     ],
@@ -337,6 +337,7 @@
       "All 46 templates, for all your lists",
       "Seating board, list, place cards and hall plan",
       "No “made with” line, unlimited downloads",
+      "A list from a photo, 5 photos",
       "Pay again while it runs and the days add up"
     ],
     "cta": "Create a list",
@@ -351,7 +352,16 @@
     "failed": "Payment failed",
     "failedText": "Nothing was charged. You can try again or use another card.",
     "pending": "Payment is being processed",
-    "pendingText": "The bank hasn’t confirmed the payment yet. This page will refresh in a few seconds.",
+    "pendingText": "The bank hasn’t confirmed the payment yet. We’re checking — it usually takes a few seconds.",
+    "unconfirmed": "Payment not confirmed yet",
+    "unconfirmedText": "We haven’t heard back from the bank yet, and there’s no need to wait here. If your card was charged, full access opens by itself — check again in a few minutes. If it wasn’t, there’s nothing to do.",
+    "redirecting": "Taking you to the payment page…",
+    "openPayment": {
+      "title": "You have an unfinished payment",
+      "text": "You started a payment {minutes, plural, one {# minute} other {# minutes}} ago and it isn’t finished yet. Continue that same payment so you aren’t charged twice. Nothing has been charged so far.",
+      "continue": "Continue the payment",
+      "cancel": "Cancel"
+    },
     "toEditor": "Back to the editor",
     "newList": "New list",
     "toDashboard": "My lists",
@@ -758,11 +768,21 @@
       "fileEmpty": "No names found in the file",
       "fileFailed": "Couldn’t read the file. Save it as .xlsx or .csv and try again.",
       "photoUnavailable": "Photo import isn’t available right now.",
-      "photoDrop": "Choose or drop photos of the list",
-      "photoHint": "Printed or handwritten, up to {max} photos at once",
-      "photoReading": "Reading photo {done} of {total}…",
+      "photoDrop": "Choose or drop a photo of the list",
+      "photoHint": "Printed or handwritten, one photo",
+      "photoReading": "Reading the photo…",
       "photoPrivacy": "The photo is sent to Google Gemini only to read the names, and is not stored. Check the result before importing.",
-      "photoNothing": "No names found in the photo",
+      "photoNothing": "No names found in the photo. It doesn’t count — try a clearer one.",
+      "photoRules": "Reading a list from a photo comes with full access: {count} photos for every {days} days, one at a time. A photo with no names found doesn’t count.",
+      "photoLockedTitle": "Reading from a photo comes with full access",
+      "photoLockedText": "With full access you can read a list from a photo {count} times in {days} days. Typing names, pasting text and importing from Excel / CSV are free.",
+      "photoGetAccess": "Get full access",
+      "photoLockedHint": "With full access",
+      "photoUsedTitle": "All {count} photo reads are used",
+      "photoUsedText": "Your full access runs until {date}. Add another {days} days to get {count} more photos. Meanwhile you can type names, paste text or import from Excel / CSV.",
+      "photoAddDays": "Add days",
+      "photoRemaining": "{remaining} of {count} photos left",
+      "photoOneAtATime": "One photo at a time — reading the first one.",
       "imported": "{count, plural, one {Added # guest} other {Added # guests}}",
       "modeTitle": "{count, plural, one {The list already has # guest} other {The list already has # guests}}",
       "modeText": "Replace them with the imported guests, or add the imported guests to them? Replacing removes the current tables too; Undo brings everything back.",
@@ -791,10 +811,12 @@
         "Every template, for all your lists",
         "Seating board, guest list, place cards and hall plan",
         "No “made with” line on the pages",
-        "Unlimited editing and downloads"
+        "Unlimited editing and downloads",
+        "A list from a photo, 5 photos"
       ],
       "pay": "Pay {price}",
       "redirecting": "Taking you to the payment page…",
+      "earlierPayment": "Your earlier payment went through, so there’s no need to pay again. Full access runs until {date}. Downloading the PDF.",
       "secure": "Payment is made on Ameriabank’s secure page. Your card details never reach us.",
       "agree": "By paying you agree to the <terms>terms</terms> and the <refund>refund policy</refund>.",
       "unavailable": "Payments aren’t available right now. Try again a little later.",
@@ -919,6 +941,7 @@
       "4006": "Your email isn’t confirmed yet. Follow the link in the email we sent.",
       "4007": "The confirmation link is invalid or expired. Sign in to get a new one.",
       "4010": "You have reached the maximum number of lists. Delete old ones.",
+      "4020": "Your earlier payment went through — full access is already on.",
       "4021": "To download in this template, get full access first.",
       "4022": "Payments aren’t available right now. Try again a little later.",
       "4023": "Couldn’t open the payment page. Try again.",
@@ -927,6 +950,8 @@
       "4050": "Photo import isn’t available right now.",
       "4051": "Couldn’t read the photo. Try a clearer photo or try again a little later.",
       "4052": "The file isn’t an image or is too large. Choose a JPG, PNG or WebP photo.",
+      "4053": "Reading a list from a photo comes with full access.",
+      "4054": "Every photo read of this access is used. Add days to get more.",
       "4290": "Too many attempts. Wait a little."
     },
     "details": "Details for developers",

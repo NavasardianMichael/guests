@@ -11,6 +11,8 @@ export const ERROR_CODES = {
   emailNotVerified: 4006,
   verifyTokenInvalid: 4007,
   listLimitReached: 4010,
+  /** Starting a checkout: an earlier payment turned out to have gone through — access is running. */
+  earlierPaymentSucceeded: 4020,
   listNotPaid: 4021,
   paymentsUnavailable: 4022,
   paymentInitFailed: 4023,
@@ -19,6 +21,10 @@ export const ERROR_CODES = {
   aiUnavailable: 4050,
   aiFailed: 4051,
   imageInvalid: 4052,
+  /** Reading a photo needs a running access pass. */
+  photoNeedsAccess: 4053,
+  /** Every photo read of the running access (`PHOTO_READS_PER_PASS` per pass) is used. */
+  photoLimitReached: 4054,
   rateLimited: 4290,
 } as const
 

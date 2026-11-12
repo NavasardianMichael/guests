@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import type { GatewayVerdict, PaymentGatewayClient } from './types.js'
+import { GatewayError, type GatewayVerdict, type PaymentGatewayClient } from './types.js'
 import { config } from '../../config.js'
 
 /**
@@ -12,6 +12,8 @@ type MockPayment = { orderNumber: number; amount: number; backUrl: string; opaqu
 
 const payments = new Map<string, MockPayment>()
 
+const mockPageUrl = (id: string): string => `${config.apiPublicUrl}/payments/mock/${id}`
+
 export const mockGateway: PaymentGatewayClient = {
   async init(input) {
     const id = randomUUID()
@@ -22,7 +24,11 @@ export const mockGateway: PaymentGatewayClient = {
       opaque: input.opaque,
       verdict: { status: 'pending' },
     })
-    return { gatewayPaymentId: id, redirectUrl: `${config.apiPublicUrl}/payments/mock/${id}` }
+    return { gatewayPaymentId: id, redirectUrl: mockPageUrl(id) }
+  },
+
+  pageUrl(gatewayPaymentId) {
+    return mockPageUrl(gatewayPaymentId)
   },
 
   async check(gatewayPaymentId, expected) {
@@ -34,7 +40,20 @@ export const mockGateway: PaymentGatewayClient = {
     return payment.verdict
   },
 
+  // One-stage: the mock bank never blocks an amount, so there is nothing to confirm.
+  async confirm() {
+    throw new GatewayError('The mock bank has no two-stage payments')
+  },
+
   // The mock bank has no refunds.
+  async refund() {
+    throw new GatewayError('The mock bank has no refunds')
+  },
+
+  async cancel() {
+    throw new GatewayError('The mock bank has no refunds')
+  },
+
   async isReversed() {
     return false
   },

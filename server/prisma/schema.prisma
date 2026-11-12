@@ -35,8 +35,9 @@ model User {
   createdAt              DateTime  @default(now())
   updatedAt              DateTime  @updatedAt
 
-  lists    GuestList[]
-  payments Payment[]
+  lists      GuestList[]
+  payments   Payment[]
+  photoReads PhotoRead[]
 }
 
 /// One guest list and how it prints. `content` and `design` are JSON coerced by
@@ -110,6 +111,12 @@ model Payment {
   status           PaymentStatus  @default(pending)
   failureReason    String?
   paidAt           DateTime?
+  /// When the bank first sent the buyer back to us. Null: they never came back — the bank's
+  /// page may still be open in another tab (`findOpenPayment`).
+  returnedAt       DateTime?
+  /// When the buyer was sent back to this payment's still-open bank page rather than a new
+  /// order (`resumeOpenPayment`). Once only: a second time, a new order is started.
+  reopenedAt       DateTime?
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
 
@@ -119,17 +126,20 @@ model Payment {
   @@index([guestKeyHash, status])
 }
 
-/// One PDF printed under an access pass that the server sent in full (routes/lists.ts,
-/// routes/pdf.ts): the proof, next to the payment's, that what was paid for was delivered —
-/// what the refund policy's "could not download it" claim is checked against. Written once the
-/// last byte is handed to the connection. PDFs printed without a pass are not recorded. Kept,
-/// like `Payment`, when the list or account goes. `listId` is null for a guest's local draft.
+/// One PDF the server sent in full (routes/lists.ts, routes/pdf.ts), written once the last byte
+/// is handed to the connection. Under an access pass (`paymentId`) it is the proof, next to the
+/// payment's, that what was paid for was delivered — what the refund policy's "could not
+/// download it" claim is checked against. A saved list's free print is recorded too: any
+/// download within the year keeps the list from the retention sweep (services/retention.ts).
+/// A guest's local draft printed free is not (`listId` is null for a draft). Kept, like
+/// `Payment`, when the list or account goes.
 model PdfDownload {
   id         String     @id @default(cuid())
   listId     String?
   list       GuestList? @relation(fields: [listId], references: [id], onDelete: SetNull)
   templateId String
-  /// The `succeeded` payment (the latest of the running pass) the download was served under.
+  /// The `succeeded` payment (the latest of the running pass) the download was served under;
+  /// null for a saved list printed without a pass (free template, "made with" line).
   paymentId  String?
   payment    Payment?   @relation(fields: [paymentId], references: [id], onDelete: SetNull)
   bytes      Int
@@ -139,4 +149,22 @@ model PdfDownload {
 
   @@index([listId, createdAt])
   @@index([paymentId])
+}
+
+/// One photo read into guests (routes/ai.ts): who, and when. Photo reading comes with a running
+/// access pass, `PHOTO_READS_PER_PASS` reads per pass, counted over the running access window
+/// (services/photoQuota.ts); this row is what enforces it, so a restart or a second API instance
+/// does not reset the count. A read that found no names is deleted again. Nothing of the photo is
+/// kept. Owned like a list — an account or a browser's guest key, moved to the account on sign-in
+/// (services/guestLists.ts). Rows a year old are swept (services/retentionSweep.ts).
+model PhotoRead {
+  id           String   @id @default(cuid())
+  userId       String?
+  user         User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  guestKeyHash String?
+  createdAt    DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([guestKeyHash, createdAt])
+  @@index([createdAt])
 }

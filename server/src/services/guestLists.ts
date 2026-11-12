@@ -3,8 +3,8 @@ import { clearGuestKey, readGuestKeyHash } from '../lib/guest.js'
 import { prisma } from '../lib/prisma.js'
 
 /**
- * Moves this browser's guest-owned lists — and the passes it bought (its payments) — to the
- * account that has just signed in, then forgets the guest key. Called on sign-in, sign-up,
+ * Moves this browser's guest-owned lists — and the passes it bought (its payments), and its
+ * photo reads — to the account that has just signed in, then forgets the guest key. Called on sign-in, sign-up,
  * Google sign-in and `GET /identity/me`, so a guest who signs in by any route keeps what they
  * made and bought.
  *
@@ -17,6 +17,8 @@ export const claimGuestLists = async (req: Request, res: Response, userId: strin
     await prisma.$transaction([
       prisma.guestList.updateMany({ where: { guestKeyHash }, data: { userId, guestKeyHash: null } }),
       prisma.payment.updateMany({ where: { guestKeyHash }, data: { userId, guestKeyHash: null } }),
+      // Photo reads follow the pass, so signing in does not grant fresh ones.
+      prisma.photoRead.updateMany({ where: { guestKeyHash }, data: { userId, guestKeyHash: null } }),
     ])
     clearGuestKey(res)
   } catch (error) {
