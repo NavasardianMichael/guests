@@ -1,12 +1,20 @@
 import type { MetadataRoute } from 'next'
+import { PRIVACY, REFUND, TERMS } from '@constants/legal'
 import { ROUTES, templatePath } from '@constants/routes'
+import { CONTENT_UPDATED } from '@constants/seo'
 import { TEMPLATE_IDS } from '@constants/templates'
 import { absoluteUrl } from '@helpers/url'
 
 /** Every indexable page. Indexed in Armenian; the language switch is a cookie, so no alternates. */
 export default function sitemap(): MetadataRoute.Sitemap {
-  const page = (path: string, priority: number, changeFrequency: MetadataRoute.Sitemap[number]['changeFrequency']) => ({
+  const page = (
+    path: string,
+    priority: number,
+    changeFrequency: MetadataRoute.Sitemap[number]['changeFrequency'],
+    lastModified = CONTENT_UPDATED
+  ) => ({
     url: absoluteUrl(path),
+    lastModified,
     changeFrequency,
     priority,
   })
@@ -17,8 +25,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     ...TEMPLATE_IDS.map((id) => page(templatePath(id), 0.8, 'monthly')),
     page(ROUTES.pricing, 0.7, 'monthly'),
     page(ROUTES.contact, 0.3, 'yearly'),
-    page(ROUTES.terms, 0.2, 'yearly'),
-    page(ROUTES.privacy, 0.2, 'yearly'),
-    page(ROUTES.refundPolicy, 0.2, 'yearly'),
+    page(ROUTES.terms, 0.2, 'yearly', TERMS.updated),
+    page(ROUTES.privacy, 0.2, 'yearly', PRIVACY.updated),
+    page(ROUTES.refundPolicy, 0.2, 'yearly', REFUND.updated),
   ]
 }

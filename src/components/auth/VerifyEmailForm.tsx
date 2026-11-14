@@ -8,7 +8,7 @@ import { useTranslations } from 'next-intl'
 import { verifyEmailAPI } from '@api/auth/main'
 import { VERIFIED_QUERY } from '@constants/auth'
 import { RETURN_TO_QUERY, ROUTES } from '@constants/routes'
-import { isSafeReturnPath } from '@helpers/url'
+import { safeReturnPath } from '@helpers/url'
 import { ErrorAlert } from '@components/ui/ErrorAlert'
 
 /**
@@ -40,7 +40,8 @@ export const VerifyEmailForm: FC<{ token: string | undefined; returnTo?: string 
     try {
       await verifyEmailAPI({ token })
       const query = new URLSearchParams({ [VERIFIED_QUERY]: '1' })
-      if (isSafeReturnPath(returnTo)) query.set(RETURN_TO_QUERY, returnTo)
+      const returnPath = safeReturnPath(returnTo)
+      if (returnPath) query.set(RETURN_TO_QUERY, returnPath)
       router.replace(`${ROUTES.signIn}?${query.toString()}`)
     } catch (failure) {
       setError(failure)

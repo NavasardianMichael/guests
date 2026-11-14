@@ -71,7 +71,7 @@ export const EditorSteps: FC = () => {
                     className={cn(
                       'grid size-8 shrink-0 place-items-center rounded-full text-sm font-semibold tabular-nums transition-colors',
                       active && 'bg-ink text-white shadow-md',
-                      passed && 'bg-accent text-white',
+                      passed && 'bg-accent text-ink-deep',
                       !active && !passed && 'bg-canvas text-muted shadow-[inset_0_0_0_1px_var(--brand-border)]'
                     )}
                   >

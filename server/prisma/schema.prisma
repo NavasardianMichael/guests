@@ -38,6 +38,9 @@ model User {
   lists      GuestList[]
   payments   Payment[]
   photoReads PhotoRead[]
+
+  /// The daily retention sweep finds accounts by it (services/retentionSweep.ts).
+  @@index([lastActiveAt])
 }
 
 /// One guest list and how it prints. `content` and `design` are JSON coerced by

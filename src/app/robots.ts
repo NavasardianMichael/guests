@@ -28,8 +28,10 @@ const AI_CRAWLERS = [
 ]
 
 export default function robots(): MetadataRoute.Robots {
+  // The editor is not here: template pages link to `/editor/new?template=…`, and a URL blocked
+  // from crawling can still be indexed bare from such links. It may be crawled instead and says
+  // `noindex` itself (`editor/new`, `editor/[id]`); opened by a crawler it writes nothing to the API.
   const disallow = [
-    `${ROUTES.editor}/`,
     ROUTES.dashboard,
     ROUTES.account,
     '/auth/',

@@ -38,6 +38,13 @@ export const KEYWORDS_RU = [
 
 export const SEARCH_KEYWORDS = [...KEYWORDS_HY, ...KEYWORDS_EN, ...KEYWORDS_RU]
 
+/**
+ * When the public pages' content (landing, templates, pricing, contact) last changed, for the
+ * sitemap's `lastModified`. Bump it with a change a search engine should re-read; a date that
+ * moves on every build would teach crawlers to ignore it. Legal pages carry their own (`legal.ts`).
+ */
+export const CONTENT_UPDATED = '2026-11-13'
+
 /** The service's name as an English or Russian speaker would put it. */
 export const ALTERNATE_NAMES = ['Guests', 'Guest list & seating chart', 'Список гостей и рассадка']
 

@@ -38,11 +38,15 @@ export const antdTheme: ThemeConfig = {
       // Selected *and* keyboard-active (the state it opens in) uses this global token instead,
       // which otherwise derives a mid grey from colorPrimary.
       controlItemBgActiveHover: INK[800],
+      colorBorder: CANVAS.field,
     },
     /** The label sits close to its field (antd's default is 8px below it). */
     Form: {
       verticalLabelPadding: '0 0 4px',
     },
+    /** Form fields get a darker edge than cards and dividers, so they read as fields (tokens.ts). */
+    Input: { colorBorder: CANVAS.field },
+    InputNumber: { colorBorder: CANVAS.field },
     /** antd gives a tooltip `min-height: controlHeight`; at our 38px that is taller than one line
         plus its padding, and the spare height all falls below the text. antd's own 32px is shorter
         than a line, so the even padding decides the height and the text sits centred. */

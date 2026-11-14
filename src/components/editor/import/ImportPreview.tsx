@@ -4,11 +4,19 @@ import type { FC } from 'react'
 import { CloseOutlined } from '@ant-design/icons'
 import { useTranslations } from 'next-intl'
 import type { IncomingGuest } from '@store/lists/single/types'
+import { cn } from '@helpers/cn'
 
 type Props = {
   guests: IncomingGuest[]
   onChange: (guests: IncomingGuest[]) => void
 }
+
+/**
+ * A borderless field that shows where the caret is: an inset ring on focus. 16px on touch
+ * screens, under which iOS zooms the page into a focused field.
+ */
+const FIELD =
+  'min-w-0 rounded-md border-0 bg-transparent px-1.5 py-1 outline-none focus:bg-canvas focus:ring-2 focus:ring-accent-strong focus:ring-inset pointer-coarse:text-base'
 
 /** What will come in, editable: a misread name is fixed here, a stray line removed. */
 export const ImportPreview: FC<Props> = ({ guests, onChange }) => {
@@ -27,13 +35,13 @@ export const ImportPreview: FC<Props> = ({ guests, onChange }) => {
           <li key={index} className='group flex items-center gap-1'>
             <span className='w-7 shrink-0 text-right text-[11px] text-muted tabular-nums'>{index + 1}</span>
             <input
-              className='min-w-0 flex-1 rounded-md border-0 bg-transparent px-1.5 py-1 text-sm outline-none focus:bg-canvas'
+              className={cn(FIELD, 'flex-1 text-sm')}
               value={guest.name}
               aria-label={t('name')}
               onChange={(event) => update(index, { name: event.target.value })}
             />
             <input
-              className='w-24 min-w-0 rounded-md border-0 bg-transparent px-1.5 py-1 text-xs text-muted outline-none focus:bg-canvas'
+              className={cn(FIELD, 'w-24 text-xs text-muted')}
               value={guest.table ?? ''}
               placeholder={t('tablePlaceholder')}
               aria-label={t('table')}
@@ -41,7 +49,7 @@ export const ImportPreview: FC<Props> = ({ guests, onChange }) => {
             />
             <button
               type='button'
-              className='cursor-pointer rounded border-0 bg-transparent p-1 text-muted opacity-0 group-hover:opacity-100 hover:text-danger focus:opacity-100'
+              className='cursor-pointer rounded border-0 bg-transparent p-1 text-muted opacity-0 group-hover:opacity-100 hover:text-danger focus:opacity-100 pointer-coarse:opacity-100 pointer-coarse:p-2'
               aria-label={t('removeRow')}
               onClick={() => onChange(guests.filter((_, at) => at !== index))}
             >

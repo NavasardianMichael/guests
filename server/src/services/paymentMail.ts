@@ -19,7 +19,7 @@ export type PaymentMailEvent = 'started' | 'succeeded'
  * (`reconcileOwnerPayments`) when the buyer's access was read, a PDF was printed, a photo was
  * read, or another checkout was started.
  */
-export type SettleSource = 'return' | 'access' | 'pdf-download' | 'photo' | 'checkout'
+export type SettleSource = 'return' | 'access' | 'pdf-download' | 'photo' | 'checkout' | 'sweep'
 
 export type BuyerFacts =
   | {
@@ -77,6 +77,7 @@ const SOURCE_LABEL: Record<SettleSource, string> = {
   'pdf-download': 'reconciled when the buyer downloaded a PDF (no bank redirect seen)',
   photo: 'reconciled when the buyer read a guest list from a photo (no bank redirect seen)',
   checkout: 'reconciled when the buyer started another checkout (no bank redirect seen)',
+  sweep: 'settled by the hourly check of payments left pending (no bank redirect seen, the buyer did not come back)',
 }
 
 const CLIENT_LABEL: Record<ClientInfoKey, string> = {

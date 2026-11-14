@@ -7,7 +7,8 @@ export type CreateListAPI = Endpoint<{ payload: ListDocument; response: GuestLis
 
 export type GetListAPI = Endpoint<{ payload: { id: string }; response: GuestList; processed: GuestList }>
 
-export type UpdateListPayload = { id: string } & Partial<ListDocument>
+/** `baseUpdatedAt`: the stamp of the copy the edit started from; the API refuses a write over a newer one (409). */
+export type UpdateListPayload = { id: string; baseUpdatedAt?: string } & Partial<ListDocument>
 export type UpdateListResponse = { updatedAt: string }
 export type UpdateListAPI = Endpoint<{
   payload: UpdateListPayload

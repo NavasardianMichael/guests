@@ -1,5 +1,6 @@
 # =============================================================================
-# CI — the `pnpm verify` gate, plus the API release build, on every pull request.
+# CI — the `pnpm verify` gate, plus the API release build, on every pull request (and on a
+# push to master that deploy.yml would not verify).
 #
 # Steps are spelled out individually so the Actions UI names the gate that broke,
 # in the order `verify` runs them: fastest-failing first.
@@ -13,6 +14,15 @@ name: CI
 on:
   pull_request:
     branches: [master]
+  # A push to master is gated by deploy.yml's own verify — but only when it deploys something.
+  # A push touching only tests or tooling deploys nothing, so it is checked here.
+  push:
+    branches: [master]
+    paths:
+      - 'tests/**'
+      - 'vitest.config.mts'
+      - 'eslint.config.mjs'
+      - '.github/workflows/ci.yml'
 
 permissions:
   contents: read

@@ -91,7 +91,7 @@ export const AccountMenu: FC = () => {
       <button
         type='button'
         aria-label={user.fullName}
-        className='group flex cursor-pointer items-center gap-2 rounded-full border border-line bg-surface p-0.5 shadow-sm transition-colors hover:border-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:pr-3'
+        className='group flex cursor-pointer items-center gap-2 rounded-full border border-line bg-surface p-0.5 shadow-sm transition-colors hover:border-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-strong sm:pr-3'
       >
         <Avatar size={32} src={user.avatarUrl ?? undefined} style={AVATAR_STYLE} className='ring-2 ring-accent-soft'>
           {initials}

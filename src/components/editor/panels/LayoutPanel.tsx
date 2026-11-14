@@ -10,7 +10,7 @@ import type { ResetScope } from '@helpers/designReset'
 import { LiveInputNumber, LiveSlider } from '../controls/LiveFields'
 import { ResetButton } from '../controls/ResetButton'
 import { PlanAddTiles } from '../plan/PlanAdd'
-import { SpreadsheetButton } from '../spreadsheet/SpreadsheetModal'
+import { SpreadsheetButton } from '../spreadsheet/SpreadsheetButton'
 
 /** A panel's section; `reset` puts a reset button for that part of the design in its header. */
 export const PanelSection: FC<{ title: string; children: ReactNode; hint?: string; reset?: ResetScope }> = ({ title, children, hint, reset }) => (
@@ -213,8 +213,8 @@ export const LayoutPanel: FC = () => {
             onChange={(sort) => setLayout({ sort })}
             options={[
               { value: 'manual', label: t('sortManual') },
-              { value: 'az', label: 'Ա→Ֆ' },
-              { value: 'za', label: 'Ֆ→Ա' },
+              { value: 'az', label: t('sortAz') },
+              { value: 'za', label: t('sortZa') },
             ]}
           />
         </Row>

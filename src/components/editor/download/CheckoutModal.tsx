@@ -1,6 +1,6 @@
 'use client'
 
-import { type FC, type ReactNode, useEffect, useMemo, useState } from 'react'
+import { type CSSProperties, type FC, type ReactNode, useEffect, useMemo, useState } from 'react'
 import { CheckOutlined, ClockCircleOutlined, DownloadOutlined, LockOutlined } from '@ant-design/icons'
 import { Alert, App, Button, Modal } from 'antd'
 import Link from 'next/link'
@@ -62,6 +62,12 @@ const DownloadOption: FC<OptionProps> = ({ name, price, items, preview, featured
   </section>
 )
 
+/**
+ * A large button whose label may wrap: antd's fixed height and `nowrap` run long Armenian and
+ * Russian labels ("Ներբեռնել «…» ձևանմուշով", the redirect note) out of a phone-wide card.
+ */
+const WRAPPING: CSSProperties = { height: 'auto', minHeight: 42, whiteSpace: 'normal', paddingBlock: 8 }
+
 /** What paying without an account means, said before the bank page — not after. */
 const GuestWarning: FC<{ redirecting: boolean; onContinue: () => void; onSignIn: () => void }> = ({
   redirecting,
@@ -72,10 +78,10 @@ const GuestWarning: FC<{ redirecting: boolean; onContinue: () => void; onSignIn:
   return (
     <div className='flex flex-col gap-2'>
       <Alert type='warning' showIcon className='mb-2' title={t('guestWarningTitle')} description={t('guestWarningText')} />
-      <Button type='primary' size='large' block loading={redirecting} onClick={onContinue}>
+      <Button type='primary' size='large' block style={WRAPPING} loading={redirecting} onClick={onContinue}>
         {redirecting ? t('redirecting') : t('guestContinue')}
       </Button>
-      <Button size='large' block disabled={redirecting} onClick={onSignIn}>
+      <Button size='large' block style={WRAPPING} disabled={redirecting} onClick={onSignIn}>
         {t('guestSignIn')}
       </Button>
     </div>
@@ -219,6 +225,7 @@ export const CheckoutModal: FC = () => {
               <Button
                 size='large'
                 block
+                style={WRAPPING}
                 icon={<DownloadOutlined />}
                 loading={downloading}
                 disabled={redirecting}
@@ -257,6 +264,7 @@ export const CheckoutModal: FC = () => {
                 type='primary'
                 size='large'
                 block
+                style={WRAPPING}
                 icon={<LockOutlined />}
                 loading={redirecting}
                 disabled={unavailable || downloading}

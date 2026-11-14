@@ -3,9 +3,10 @@ import cors from 'cors'
 import express from 'express'
 import { config, isAiConfigured, isGoogleOAuthConfigured, isPaymentConfigured } from './config.js'
 import { fail, ok } from './lib/api-response.js'
+import { prisma } from './lib/prisma.js'
 import { optionalAuth } from './middleware/auth.js'
 import { requireSameOrigin } from './middleware/csrf.js'
-import { errorHandler } from './middleware/error.js'
+import { asyncHandler, errorHandler } from './middleware/error.js'
 import { aiRouter } from './routes/ai.js'
 import { contactRouter } from './routes/contact.js'
 import { identityRouter } from './routes/identity.js'
@@ -23,7 +24,15 @@ export function createApp() {
   app.set('trust proxy', 1)
   app.disable('x-powered-by')
 
-  app.use(cors({ origin: config.corsOrigin, credentials: true }))
+  // Responses are JSON or a PDF attachment: no browser should sniff them into something else.
+  app.use((_req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff')
+    next()
+  })
+
+  // `maxAge`: the web is another origin, so every JSON write is preflighted; without it Chrome
+  // forgets a preflight after 5 s and autosave pays an extra round trip on almost every save.
+  app.use(cors({ origin: config.corsOrigin, credentials: true, maxAge: 7200 }))
   app.use(cookieParser())
 
   // A photo is a bigger body than anything else here: it has its own parser and limit, so it
@@ -35,16 +44,25 @@ export function createApp() {
   app.use(requireSameOrigin)
   app.use(optionalAuth)
 
-  app.get('/health', (_req, res) => {
-    // What the web shows depends on these; one source of truth.
-    ok(res, {
-      status: 'ok',
-      google: isGoogleOAuthConfigured(),
-      ai: isAiConfigured(),
-      payments: isPaymentConfigured(),
-      priceAmd: PASS_PRICE_AMD,
+  app.get(
+    '/health',
+    asyncHandler(async (_req, res) => {
+      // Down when the database is: the deploy's health wait and the uptime monitor rely on it.
+      try {
+        await prisma.$queryRaw`SELECT 1`
+      } catch {
+        return fail(res, 'Database unavailable', 503, 503)
+      }
+      // What the web shows depends on these; one source of truth.
+      ok(res, {
+        status: 'ok',
+        google: isGoogleOAuthConfigured(),
+        ai: isAiConfigured(),
+        payments: isPaymentConfigured(),
+        priceAmd: PASS_PRICE_AMD,
+      })
     })
-  })
+  )
 
   app.use('/identity', identityRouter)
   app.use('/lists', listsRouter)

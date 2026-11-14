@@ -2,10 +2,11 @@
 
 import type { FC } from 'react'
 import { AlignCenterOutlined, AlignLeftOutlined, AlignRightOutlined, BoldOutlined, FontSizeOutlined, ItalicOutlined } from '@ant-design/icons'
-import { Button, Segmented, Tooltip } from 'antd'
+import { Button, Segmented } from 'antd'
 import { useTranslations } from 'next-intl'
 import { useListEditorStore, useListEditorStoreBase } from '@store/lists/single/store'
 import type { Align, TextRole } from '@store/lists/single/types'
+import { HintTooltip } from '@components/ui/HintTooltip'
 import { FontSelect } from './FontSelect'
 import { LiveColorPicker, LiveInputNumber, LiveSlider } from './LiveFields'
 
@@ -41,7 +42,7 @@ export const TextStyleEditor: FC<Props> = ({ role }) => {
         />
         <LiveColorPicker size='small' value={style.color} aria-label={t('color')} onChange={(color) => set({ color })} />
         <div className='ml-auto flex gap-0.5'>
-          <Tooltip title={t('bold')}>
+          <HintTooltip title={t('bold')}>
             <Button
               size='small'
               type={style.bold ? 'primary' : 'text'}
@@ -50,8 +51,8 @@ export const TextStyleEditor: FC<Props> = ({ role }) => {
               aria-label={t('bold')}
               onClick={() => set({ bold: !style.bold })}
             />
-          </Tooltip>
-          <Tooltip title={t('italic')}>
+          </HintTooltip>
+          <HintTooltip title={t('italic')}>
             <Button
               size='small'
               type={style.italic ? 'primary' : 'text'}
@@ -60,8 +61,8 @@ export const TextStyleEditor: FC<Props> = ({ role }) => {
               aria-label={t('italic')}
               onClick={() => set({ italic: !style.italic })}
             />
-          </Tooltip>
-          <Tooltip title={t('uppercase')}>
+          </HintTooltip>
+          <HintTooltip title={t('uppercase')}>
             <Button
               size='small'
               type={style.uppercase ? 'primary' : 'text'}
@@ -71,7 +72,7 @@ export const TextStyleEditor: FC<Props> = ({ role }) => {
             >
               Աա
             </Button>
-          </Tooltip>
+          </HintTooltip>
         </div>
       </div>
       <div className='flex items-center gap-3'>

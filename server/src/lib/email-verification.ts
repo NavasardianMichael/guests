@@ -1,6 +1,6 @@
 import { escapeHtml, type MailResult, sendAccountMail } from './mail.js'
 import { prisma } from './prisma.js'
-import { buildWebUrl, EMAIL_VERIFY_PATH, EMAIL_VERIFY_QUERY, isSafeReturnPath, RETURN_TO_QUERY } from './return-path.js'
+import { buildWebUrl, EMAIL_VERIFY_PATH, EMAIL_VERIFY_QUERY, RETURN_TO_QUERY, safeReturnPath } from './return-path.js'
 import { hashUrlToken, mintUrlToken } from './token.js'
 import { config } from '../config.js'
 
@@ -18,11 +18,13 @@ export const issueEmailVerifyToken = async (userId: string): Promise<string> => 
 }
 
 /** `returnTo` rides along, so a sign-up started from the editor lands back there once verified. */
-export const buildEmailVerifyUrl = (token: string, returnTo?: unknown): string =>
-  buildWebUrl(config.corsOrigin, EMAIL_VERIFY_PATH, {
+export const buildEmailVerifyUrl = (token: string, returnTo?: unknown): string => {
+  const returnPath = safeReturnPath(returnTo)
+  return buildWebUrl(config.corsOrigin, EMAIL_VERIFY_PATH, {
     [EMAIL_VERIFY_QUERY]: token,
-    ...(isSafeReturnPath(returnTo) ? { [RETURN_TO_QUERY]: returnTo } : {}),
+    ...(returnPath ? { [RETURN_TO_QUERY]: returnPath } : {}),
   })
+}
 
 const SUBJECT = 'Հաստատեք Ձեր էլ. փոստը — Իմ հյուրերը'
 

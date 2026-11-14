@@ -9,7 +9,7 @@ import {
   SnippetsOutlined,
   WarningOutlined,
 } from '@ant-design/icons'
-import { App, Button, Tooltip } from 'antd'
+import { App, Button } from 'antd'
 import { useTranslations } from 'next-intl'
 import { useEditorUiStore } from '@store/editorUi/store'
 import { DEFAULT_SEATS_PER_TABLE, useListEditorStore, useListEditorStoreBase } from '@store/lists/single/store'
@@ -22,6 +22,7 @@ import { measureText } from '@helpers/measureText'
 import { SheetDocument } from '@components/sheet/SheetDocument'
 import { SheetInteractionProvider } from '@components/sheet/SheetInteraction'
 import { MM_TO_PX } from '@components/sheet/SheetPreview'
+import { HintTooltip } from '@components/ui/HintTooltip'
 import { SelectionBar } from './SelectionBar'
 import { PAGE_GAP_MM, useCanvasInteraction } from './useCanvasInteraction'
 import { useCanvasShortcuts } from './useCanvasShortcuts'
@@ -202,7 +203,7 @@ export const EditorCanvas: FC<Props> = memo(function EditorCanvas({ doc, zoom, o
   const onScreen = (px: number): string => `calc(${px}px / var(--canvas-zoom, 1))`
 
   const roundButton =
-    'absolute z-30 grid place-items-center rounded-full border-solid border-line bg-surface p-0 text-ink shadow-sm transition-colors focus-visible:outline-2 focus-visible:outline-accent'
+    'absolute z-30 grid place-items-center rounded-full border-solid border-line bg-surface p-0 text-ink shadow-sm transition-colors focus-visible:outline-2 focus-visible:outline-accent-strong'
   const roundButtonStyle = (right: number) => ({
     top: onScreen(-34),
     right: onScreen(right),
@@ -216,7 +217,7 @@ export const EditorCanvas: FC<Props> = memo(function EditorCanvas({ doc, zoom, o
     <>
       {page === 0 && canFit && (
         <>
-          <Tooltip title={t('resetSizingHint')} placement='left'>
+          <HintTooltip title={t('resetSizingHint')} placement='left'>
             {/* `aria-disabled`, not `disabled`: a disabled button never shows its tooltip. */}
             <button
               type='button'
@@ -231,8 +232,8 @@ export const EditorCanvas: FC<Props> = memo(function EditorCanvas({ doc, zoom, o
             >
               <ReloadOutlined />
             </button>
-          </Tooltip>
-          <Tooltip title={t('fitHint')} placement='left'>
+          </HintTooltip>
+          <HintTooltip title={t('fitHint')} placement='left'>
             <button
               type='button'
               data-canvas-ui
@@ -243,7 +244,7 @@ export const EditorCanvas: FC<Props> = memo(function EditorCanvas({ doc, zoom, o
             >
               <ExpandOutlined />
             </button>
-          </Tooltip>
+          </HintTooltip>
         </>
       )}
       <span

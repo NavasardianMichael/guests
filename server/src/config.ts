@@ -10,13 +10,38 @@ export type PaymentGatewayId = 'ameria' | 'mock'
 
 const paymentGateway = (process.env.PAYMENT_GATEWAY ?? 'mock') as PaymentGatewayId
 
+const DEV_JWT_SECRET = 'dev-secret-change-me'
+
+/**
+ * Production refuses to start on a missing or guessable secret: anyone could sign a session
+ * with it. Generate one with `openssl rand -hex 64` (docs/PRODUCTION_SETUP.md, step 6).
+ */
+const readJwtSecret = (): string => {
+  const secret = process.env.JWT_SECRET ?? ''
+  if (nodeEnv !== 'production') return secret || DEV_JWT_SECRET
+  if (secret.length < 32 || secret.startsWith('change-me') || secret === DEV_JWT_SECRET) {
+    throw new Error('JWT_SECRET must be a random value of at least 32 characters in production (openssl rand -hex 64)')
+  }
+  return secret
+}
+
+const ameriaTestMode = process.env.AMERIA_TEST_MODE !== 'false'
+const ameriaAmountOverride = process.env.AMERIA_AMOUNT_OVERRIDE ? Number(process.env.AMERIA_AMOUNT_OVERRIDE) : null
+
+// The override exists for the test terminal (it takes 10 AMD only). On the live terminal it
+// would sell every pass for that amount, and the check would accept it as paid.
+if (!ameriaTestMode && ameriaAmountOverride !== null) {
+  throw new Error('AMERIA_AMOUNT_OVERRIDE is for the test terminal only: remove it when AMERIA_TEST_MODE="false"')
+}
+
 /** The only reader of `process.env` (with `load-env.ts`). */
 export const config = {
   port,
   /** Every interface in dev; production sets `HOST=127.0.0.1` so only nginx reaches it. */
   host: process.env.HOST ?? '0.0.0.0',
   nodeEnv,
-  jwtSecret: process.env.JWT_SECRET ?? 'dev-secret-change-me',
+  /** Signs the session cookie. The dev default is local only; production must set its own. */
+  jwtSecret: readJwtSecret(),
   corsOrigin,
   /** This API's public origin: links back to it (Google's redirect, the bank's return) are built on it. */
   apiPublicUrl: (process.env.API_PUBLIC_URL ?? `http://localhost:${port}`).replace(/\/+$/, ''),
@@ -58,10 +83,10 @@ export const config = {
       clientId: process.env.AMERIA_CLIENT_ID ?? '',
       username: process.env.AMERIA_USERNAME ?? '',
       password: process.env.AMERIA_PASSWORD ?? '',
-      testMode: process.env.AMERIA_TEST_MODE !== 'false',
+      testMode: ameriaTestMode,
       orderIdOffset: Number(process.env.AMERIA_ORDER_ID_OFFSET ?? 0) || 0,
-      /** The test terminal accepts only 10 AMD; null charges the real price. */
-      amountOverride: process.env.AMERIA_AMOUNT_OVERRIDE ? Number(process.env.AMERIA_AMOUNT_OVERRIDE) : null,
+      /** The test terminal accepts only 10 AMD; null charges the real price. Refused with the live terminal (above). */
+      amountOverride: ameriaAmountOverride,
       /** CancelPayment / RefundPayment need a permission the bank grants on request; off, money goes back by hand. */
       apiReversals: process.env.AMERIA_API_REVERSALS === 'true',
     },
@@ -76,7 +101,7 @@ export const isAiConfigured = (): boolean => Boolean(config.gemini.apiKey)
 
 /**
  * Whether a checkout can be started. The mock gateway is a development tool: it hands out
- * templates for a click, so it is never available in production whatever the env says.
+ * passes for a click, so it is never available in production whatever the env says.
  */
 export const isPaymentConfigured = (): boolean => {
   const { gateway, ameria } = config.payments

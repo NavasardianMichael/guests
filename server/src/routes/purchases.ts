@@ -5,6 +5,7 @@ import { ERROR_CODE } from '../lib/error-codes.js'
 import { ensureGuestKeyHash, readGuestKeyHash, renewGuestKey } from '../lib/guest.js'
 import { prisma } from '../lib/prisma.js'
 import { createRateLimiter } from '../lib/rateLimit.js'
+import { clientAddress } from '../lib/request.js'
 import { readRequestInfo } from '../lib/request-info.js'
 import type { ListOwner } from '../middleware/auth.js'
 import { asyncHandler } from '../middleware/error.js'
@@ -62,7 +63,7 @@ purchasesRouter.post(
   asyncHandler(async (req, res) => {
     if (!isPaymentConfigured()) return fail(res, 'Payments are unavailable', ERROR_CODE.paymentsUnavailable, 503)
 
-    const limitKey = req.session ? req.session.userId : `ip:${req.ip ?? 'unknown'}`
+    const limitKey = req.session ? req.session.userId : `ip:${clientAddress(req)}`
     const verdict = checkoutLimiter(limitKey)
     if (!verdict.allowed) {
       res.setHeader('Retry-After', String(verdict.retryAfterSeconds))

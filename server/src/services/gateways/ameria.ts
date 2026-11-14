@@ -28,7 +28,8 @@ const settings = () => config.payments.ameria
 const baseUrl = (): string => (settings().testMode ? AMERIA_BASE_URL.test : AMERIA_BASE_URL.live)
 const credentials = () => ({ clientId: settings().clientId, username: settings().username, password: settings().password })
 const orderIdOf = (orderNumber: number): number => settings().orderIdOffset + orderNumber
-const chargeOf = (amount: number): number => settings().amountOverride ?? amount
+/** The override is honoured only on the test terminal (`config.ts` also refuses it with the live one). */
+const chargeOf = (amount: number): number => (settings().testMode ? (settings().amountOverride ?? amount) : amount)
 
 const post = async <T>(operation: string, body: object): Promise<T> => {
   let response: Response

@@ -56,6 +56,7 @@
   --color-accent: var(--brand-accent);
   --color-accent-soft: var(--brand-accent-soft);
   --color-accent-strong: var(--brand-accent-strong);
+  --color-accent-deep: var(--brand-accent-deep);
   --color-ink-soft: var(--brand-ink-soft);
   --color-ink-deep: var(--brand-ink-deep);
   --radius-brand: var(--brand-radius);
@@ -98,8 +99,9 @@
     container-type: inline-size;
   }
 
+  /* `accent-strong`: the accent itself is 2.5:1 on white, under the 3:1 a focus ring needs. */
   :focus-visible {
-    outline: 2px solid var(--brand-accent);
+    outline: 2px solid var(--brand-accent-strong);
     outline-offset: 2px;
   }
 }

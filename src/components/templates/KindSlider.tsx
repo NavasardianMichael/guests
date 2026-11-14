@@ -11,7 +11,7 @@ import {
   useState,
   useSyncExternalStore,
 } from 'react'
-import { LeftOutlined, RightOutlined } from '@ant-design/icons'
+import { CaretRightOutlined, LeftOutlined, PauseOutlined, RightOutlined } from '@ant-design/icons'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { type PlanArrangement, PRINT_KINDS, type PrintKind } from '@store/lists/single/types'
@@ -116,9 +116,11 @@ type Props = { templateId: TemplateId; kind?: PrintKind; arrangement?: PlanArran
 /**
  * The four things one template prints — seating board, guest list, hall plan, place cards —
  * one at a time. It advances on its own, and the arrows, dots and a swipe move it by
- * hand; a drag carries the sheet under the finger and a flick throws it. Autoplay stops while the
- * pointer is on it, while it is dragged, off screen, in a background tab, or when motion is
- * reduced. A click on the sheet opens the editor on the result showing at that moment.
+ * hand; a drag carries the sheet under the finger and a flick throws it. Autoplay waits while the
+ * pointer is on it, while it is dragged, off screen, or in a background tab, and resumes where it
+ * stopped; the pause button, or keyboard focus coming in, stops it until play is pressed (WCAG
+ * 2.2.2), and reduced motion stops it for good. A click on the sheet opens the editor on the result showing
+ * at that moment.
  *
  * The sheets share one grid cell, so the stage is as tall as the tallest and never animates its
  * height; every move is transform + opacity on the Web Animations API, started from wherever the
@@ -136,6 +138,8 @@ export const KindSlider: FC<Props> = ({ templateId, kind: initialKind = 'seating
   const count = PRINT_KINDS.length
   const [index, setIndex] = useState(() => Math.max(0, PRINT_KINDS.indexOf(initialKind)))
   const [hover, setHover] = useState(false)
+  /** Stopped by the pause button or keyboard focus, until the visitor starts it again. */
+  const [stopped, setStopped] = useState(false)
   const [holding, setHolding] = useState(false)
   const [onScreen, setOnScreen] = useState(true)
   const sectionRef = useRef<HTMLElement>(null)
@@ -153,7 +157,9 @@ export const KindSlider: FC<Props> = ({ templateId, kind: initialKind = 'seating
     () => PRINT_KINDS.map((value) => previewDocument(texts, templateId, value, value === 'plan' ? arrangement : 'rows')),
     [arrangement, templateId, texts]
   )
-  const paused = reduced || hidden || hover || holding || !onScreen
+  const paused = reduced || hidden || hover || stopped || holding || !onScreen
+  /** What is left of the current sheet's wait: a pause holds it, and the dot's bar with it. */
+  const remaining = useRef(SLIDE_MS)
 
   const slides = (): HTMLDivElement[] => slideRefs.current.filter((node): node is HTMLDivElement => !!node)
 
@@ -233,10 +239,19 @@ export const KindSlider: FC<Props> = ({ templateId, kind: initialKind = 'seating
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [index])
 
+  // A new sheet waits the full time. Declared before the timer, so it runs first.
+  useEffect(() => {
+    remaining.current = SLIDE_MS
+  }, [index])
+
   useEffect(() => {
     if (paused) return
-    const id = window.setTimeout(() => go(index + 1, 1), SLIDE_MS)
-    return () => window.clearTimeout(id)
+    const started = performance.now()
+    const id = window.setTimeout(() => go(index + 1, 1), remaining.current)
+    return () => {
+      window.clearTimeout(id)
+      remaining.current = Math.max(0, remaining.current - (performance.now() - started))
+    }
   }, [go, index, paused])
 
   // Off screen it does not move: no timers, no animations nobody sees.
@@ -325,7 +340,7 @@ export const KindSlider: FC<Props> = ({ templateId, kind: initialKind = 'seating
   }
 
   const arrowClass =
-    'absolute top-1/2 z-20 grid size-11 -translate-y-1/2 cursor-pointer place-items-center rounded-full bg-surface/95 text-ink shadow-lg ring-1 ring-black/10 transition-[transform,background-color] duration-200 hover:scale-105 hover:bg-surface active:scale-95'
+    'absolute top-1/2 z-20 grid size-11 -translate-y-1/2 cursor-pointer place-items-center rounded-full bg-surface/95 text-ink shadow-lg ring-1 ring-black/10 transition-[scale,background-color] duration-200 hover:scale-105 hover:bg-surface active:scale-95'
 
   return (
     <section
@@ -335,6 +350,11 @@ export const KindSlider: FC<Props> = ({ templateId, kind: initialKind = 'seating
       className='min-w-0'
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
+      // Keyboard focus coming in stops it, as the pause button would, until play is pressed
+      // (WAI-ARIA carousel pattern). A click's focus does not: hovering already holds it.
+      onFocus={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget) && event.target.matches(':focus-visible')) setStopped(true)
+      }}
     >
       <div className='relative'>
         {/* Clipped only sideways, a few px outside the sheet, so the shadows below still show. */}
@@ -388,32 +408,51 @@ export const KindSlider: FC<Props> = ({ templateId, kind: initialKind = 'seating
         <p className='m-0 mt-1 text-sm leading-relaxed text-muted'>{tHint(kind)}</p>
       </div>
 
-      <div className='mt-4 flex items-center justify-center gap-2.5'>
+      <div className='mt-1 flex items-center justify-center'>
         {PRINT_KINDS.map((value, slide) => {
           const active = slide === index
           return (
+            // The button is the 40px tap target; the dot inside it is what shows.
             <button
               key={value}
               type='button'
               aria-label={tKinds(value)}
               aria-current={active ? 'true' : undefined}
               onClick={() => go(slide)}
-              className={cn(
-                'relative h-2 cursor-pointer overflow-hidden rounded-full transition-[width,background-color] duration-300',
-                active ? 'w-8 bg-ink/20' : 'w-2 bg-line hover:bg-ink/40'
-              )}
+              className='group grid h-10 cursor-pointer place-items-center border-0 bg-transparent px-1.5'
             >
-              {/* The active dot fills while the sheet waits, then the next one swipes in. */}
-              {active && (
-                <span
-                  key={paused ? 'held' : 'running'}
-                  className='absolute inset-0 origin-left rounded-full bg-ink'
-                  style={paused ? undefined : { animation: `slider-progress ${SLIDE_MS}ms linear both` }}
-                />
-              )}
+              <span
+                className={cn(
+                  'relative block h-2 overflow-hidden rounded-full transition-[width,background-color] duration-300',
+                  active ? 'w-8 bg-ink/20' : 'w-2 bg-line group-hover:bg-ink/40'
+                )}
+              >
+                {/* The active dot fills while the sheet waits, then the next one swipes in; a
+                    pause holds it where it is. With reduced motion nothing advances: it is full. */}
+                {active && (
+                  <span
+                    className='absolute inset-0 origin-left rounded-full bg-ink'
+                    style={
+                      reduced
+                        ? undefined
+                        : { animation: `slider-progress ${SLIDE_MS}ms linear both`, animationPlayState: paused ? 'paused' : 'running' }
+                    }
+                  />
+                )}
+              </span>
             </button>
           )
         })}
+        {!reduced && (
+          <button
+            type='button'
+            aria-label={stopped ? t('play') : t('pause')}
+            onClick={() => setStopped(!stopped)}
+            className='ml-1 grid size-10 cursor-pointer place-items-center rounded-full border-0 bg-transparent text-muted transition-colors hover:text-ink'
+          >
+            {stopped ? <CaretRightOutlined /> : <PauseOutlined />}
+          </button>
+        )}
       </div>
     </section>
   )

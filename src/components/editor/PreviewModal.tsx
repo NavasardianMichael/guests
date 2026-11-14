@@ -2,7 +2,7 @@
 
 import { type CSSProperties, type FC, useEffect, useMemo, useRef } from 'react'
 import { CompressOutlined, ZoomInOutlined, ZoomOutOutlined } from '@ant-design/icons'
-import { Button, Modal, Tooltip } from 'antd'
+import { Button, Modal } from 'antd'
 import { useTranslations } from 'next-intl'
 import type { ListDocument } from '@store/lists/single/types'
 import { useSheetLayout } from '@hooks/useSheetLayout'
@@ -11,6 +11,7 @@ import { cn } from '@helpers/cn'
 import { bestColumns, gridSize, type Pad } from '@helpers/previewView'
 import { SheetDocument } from '@components/sheet/SheetDocument'
 import { MM_TO_PX } from '@components/sheet/SheetPreview'
+import { HintTooltip } from '@components/ui/HintTooltip'
 import { PAGE_GAP_MM } from './canvas/useCanvasInteraction'
 import { PdfActions } from './PdfActions'
 
@@ -89,7 +90,7 @@ const PreviewPages: FC<{ doc: ListDocument }> = ({ doc }) => {
       {/* Bottom centre, as document viewers have it: clear of the corners (and of Next's dev badge). */}
       <div className='pointer-events-none absolute bottom-3 left-1/2 z-10 -translate-x-1/2'>
         <div className='pointer-events-auto flex items-center gap-0.5 rounded-full bg-surface p-1 shadow-lg ring-1 ring-black/5'>
-          <Tooltip title={t('zoomOut')}>
+          <HintTooltip title={t('zoomOut')}>
             <Button
               type='text'
               shape='circle'
@@ -98,8 +99,8 @@ const PreviewPages: FC<{ doc: ListDocument }> = ({ doc }) => {
               disabled={!canZoomOut}
               aria-label={t('zoomOut')}
             />
-          </Tooltip>
-          <Tooltip title={t('previewFit')}>
+          </HintTooltip>
+          <HintTooltip title={t('previewFit')}>
             <Button
               type='text'
               shape='circle'
@@ -108,8 +109,8 @@ const PreviewPages: FC<{ doc: ListDocument }> = ({ doc }) => {
               disabled={fitted}
               aria-label={t('previewFit')}
             />
-          </Tooltip>
-          <Tooltip title={t('zoomIn')}>
+          </HintTooltip>
+          <HintTooltip title={t('zoomIn')}>
             <Button
               type='text'
               shape='circle'
@@ -118,7 +119,7 @@ const PreviewPages: FC<{ doc: ListDocument }> = ({ doc }) => {
               disabled={!canZoomIn}
               aria-label={t('zoomIn')}
             />
-          </Tooltip>
+          </HintTooltip>
         </div>
       </div>
     </>

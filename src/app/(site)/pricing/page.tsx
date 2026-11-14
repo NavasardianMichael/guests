@@ -76,7 +76,7 @@ export default async function PricingPage() {
             </ul>
             <Link
               href={newListPath()}
-              className='relative mt-6 flex justify-center rounded-full bg-accent px-5 py-3 sm:px-6 sm:py-3.5 font-semibold text-white no-underline transition hover:bg-accent-strong sm:mt-8'
+              className='relative mt-6 flex justify-center rounded-full bg-accent px-5 py-3 sm:px-6 sm:py-3.5 font-semibold text-ink-deep no-underline transition hover:brightness-110 sm:mt-8'
             >
               {t('cta')}
             </Link>

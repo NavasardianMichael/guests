@@ -126,15 +126,24 @@ Values that must match something else exactly:
 |              |                                                                                                                                                         |
 | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `ci.yml`     | PR → master. typecheck · typecheck:server · lint · unit tests · build · build:api. No database and no Chrome needed.                                     |
-| `deploy.yml` | Push to `master` (or **Run workflow**). `changes` picks the sides, `verify` runs the non-build gates, `build-web` and `build-api` in parallel, `deploy`. |
+| `deploy.yml` | Push to `master` (or **Run workflow**). `changes` picks the sides, `config` checks every secret in seconds (`scripts/check-deploy-config.mjs`: SSH, `APP_DIR`, both origins, and inside `ENV_API_BASE64` `DATABASE_URL`, `JWT_SECRET` ≥ 32, `CORS_ORIGIN` = site, `API_PUBLIC_URL` = API, the Google callback, the Ameria set; optional features off are warnings), `verify` runs the non-build gates, `build-web` and `build-api` in parallel, `deploy`. |
 
 The API deploys **first**: the browser calls it the moment new pages serve, so the schema and
 the API must be new before they do. API side: `pnpm install --prod --frozen-lockfile` (which
 also downloads Chrome) → `prisma generate` → `ensure_chrome` (fails on missing system
 libraries, before anything changes) → `ensure_database` (creates Postgres only if missing) →
-`prisma migrate deploy` → flip → restart → poll `/health`. Web side: extract, flip, restart,
+a `pg_dump` to `$APP_DIR/backups/pre-deploy-*.dump` (the last 5 kept) → `prisma migrate deploy` →
+flip → restart → poll `/health` (which also asks the database). Web side: extract, flip, restart,
 poll `/`. Then, whichever side deployed, `check_pdf` prints the free black-and-white PDF of an
 empty draft through the live API and web: the one check that covers Chrome and `/render`.
+
+**Rollback is automatic for the code, not the schema.** If a health wait or `check_pdf` fails,
+each side that deployed is pointed back at the release that was live before and restarted. A
+migration that already ran stays: keep migrations additive, so the previous API runs on the new
+schema; to undo one, restore the pre-deploy dump (docs/DRIVE_BACKUP.md, "Real restore"). A re-run of
+an already-live commit installs into a side directory (`<sha>-rerun-<time>`), never over the
+running one. The API stops gracefully on the restart (SIGTERM: in-flight prints and saves finish,
+up to 25 s).
 
 The web bundle is booted in CI before it ships (standalone output can miss traced files), and
 the API ships as a standalone package with pinned dependencies
@@ -167,6 +176,9 @@ ls -t /home/michael/apps/guests-seating-board/web/releases
 ln -sfn /home/michael/apps/guests-seating-board/web/releases/<sha> /home/michael/apps/guests-seating-board/web/current
 sudo systemctl restart guests-seating-board-web                     # same shape for api
 
+# backup to Drive now; restore: docs/DRIVE_BACKUP.md
+/home/michael/apps/guests-seating-board/shared/backup-db.sh
+
 # lists per kind
 docker exec guests-seating-board-postgres-prod psql -U guests-seating-board -d guests-seating-board \
   -c 'select kind, count(*) from "GuestList" group by 1;'
@@ -194,7 +206,7 @@ assistants.
   blocks Chrome's sandbox: PRODUCTION_SETUP.md step 2.
 - **Photo import is off until `GEMINI_API_KEY` is in `ENV_API_BASE64`**: the web says so in
   the import dialog; everything else works.
-- **Nobody can buy a template until `PAYMENT_GATEWAY="ameria"` and the three `AMERIA_*`
+- **Nobody can buy full access until `PAYMENT_GATEWAY="ameria"` and the three `AMERIA_*`
   credentials are in `ENV_API_BASE64`**: the mock bank is refused in production, so checkout
   answers 503 and the dialog says payments are unavailable. Going live: docs/PAYMENTS.md.
 - **`deploy` needs `verify` to have passed, not merely "not failed".** A failed `verify` skips
@@ -203,5 +215,5 @@ assistants.
 - **Changing `NEXT_PUBLIC_*` requires a rebuild** — they are inlined.
 - **Never add `proxy_cache`** to the web host, **never strip `Origin`/`Referer`** on the API
   host, **one API process only** — see `deployment/CLAUDE.md`.
-- **The database is the only state** — back up the Postgres volume; releases and Chrome are
-  disposable.
+- **The database is the only state** — releases and Chrome are disposable. The nightly Drive
+  backup ([DRIVE_BACKUP.md](DRIVE_BACKUP.md)) dumps it, 22 days kept.

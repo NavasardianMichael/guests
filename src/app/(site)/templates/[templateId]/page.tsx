@@ -65,7 +65,8 @@ export default async function TemplatePage({ params, searchParams }: Props) {
     description: t(`taglines.${templateId}`),
     url: absoluteUrl(templatePath(templateId)),
     inLanguage: locale,
-    isAccessibleForFree: true,
+    // Every template is free to build with and preview; only the free one prints without the pass.
+    isAccessibleForFree: template.free,
     creator: { '@id': ORGANIZATION_ID },
     isPartOf: { '@type': 'WebSite', name: APP_NAME, url: absoluteUrl('/') },
   }
@@ -86,7 +87,7 @@ export default async function TemplatePage({ params, searchParams }: Props) {
       />
       <div className='mx-auto grid max-w-page grid-cols-1 gap-8 px-4 pt-8 pb-12 sm:gap-12 sm:pt-10 sm:pb-16 md:px-6 lg:grid-cols-[1fr_1.1fr]'>
         <div className='lg:sticky lg:top-24 lg:self-start'>
-          <nav aria-label='breadcrumb' className='text-sm text-muted'>
+          <nav aria-label={tNav('breadcrumb')} className='text-sm text-muted'>
             <Link href={ROUTES.templates} className='no-underline hover:text-ink'>
               {tNav('templates')}
             </Link>{' '}

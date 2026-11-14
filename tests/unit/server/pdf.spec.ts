@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { PdfBusyError, type RenderDocument,renderListPdf } from '../../../server/src/services/pdf'
+import { PdfAbortedError, PdfBusyError, type RenderDocument, renderListPdf } from '../../../server/src/services/pdf'
 
 /** A browser whose print finishes only when the test says so. */
 const fakeBrowser = () => {
@@ -87,5 +87,32 @@ describe('renderListPdf', () => {
       await vi.waitFor(() => expect(launch).toHaveBeenCalledTimes(Math.min(index + 2, fakes.length)))
     }
     await Promise.all(pdfs)
+  })
+
+  it('drops a waiting print whose client hung up, and never launches it', async () => {
+    const [first, second] = nextBrowsers(2)
+    const running = renderListPdf(doc)
+    await vi.waitFor(() => expect(launch).toHaveBeenCalledTimes(1))
+
+    const gone = new AbortController()
+    const waiting = renderListPdf(doc, gone.signal)
+    const after = renderListPdf(doc)
+    gone.abort()
+    await expect(waiting).rejects.toBeInstanceOf(PdfAbortedError)
+
+    // The next in line takes the freed turn: one more launch, not two.
+    first.finish(new Uint8Array())
+    await running
+    await vi.waitFor(() => expect(launch).toHaveBeenCalledTimes(2))
+    second.finish(new Uint8Array([2]))
+    await expect(after).resolves.toEqual(new Uint8Array([2]))
+    expect(launch).toHaveBeenCalledTimes(2)
+  })
+
+  it('refuses at once a print whose client is already gone', async () => {
+    const gone = new AbortController()
+    gone.abort()
+    await expect(renderListPdf(doc, gone.signal)).rejects.toBeInstanceOf(PdfAbortedError)
+    expect(launch).not.toHaveBeenCalled()
   })
 })

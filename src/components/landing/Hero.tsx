@@ -71,7 +71,7 @@ export const Hero: FC = async () => {
         <Link
           href={ROUTES.templates}
           aria-label={t('heroTemplates')}
-          className='relative mx-auto block aspect-[1.15] w-full max-w-xl rounded-xl transition hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent'
+          className='relative mx-auto block aspect-[1.15] w-full max-w-xl rounded-xl transition hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent-strong'
         >
           {STACK.map((item) => (
             <div

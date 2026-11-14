@@ -40,7 +40,7 @@ export const AccessChip: FC = () => {
           aria-label={`${t('label')}: ${t('left', { days })}`}
           className={cn(
             'flex cursor-pointer items-center gap-1.5 rounded-full border-0 px-2.5 py-1 text-xs font-semibold whitespace-nowrap transition',
-            ending ? 'bg-accent-soft text-accent-strong hover:bg-accent/25' : 'bg-success/10 text-success hover:bg-success/20'
+            ending ? 'bg-accent-soft text-accent-deep hover:bg-accent/25' : 'bg-success/10 text-success hover:bg-success/20'
           )}
         >
           <ClockCircleOutlined aria-hidden='true' />

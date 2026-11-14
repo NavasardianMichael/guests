@@ -3,7 +3,6 @@
 import { createContext, type FC, type ReactNode, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { type ListDocument, SHEET_SHAPES, type SheetShape } from '@store/lists/single/types'
-import { useFontEpoch } from '@hooks/useSheetLayout'
 import { newListPath } from '@constants/routes'
 import type { TemplateId } from '@constants/templates'
 import { startingPlanScale } from '@helpers/fitSheet'
@@ -112,17 +111,11 @@ const fitPlanPreview = (doc: ListDocument): ListDocument => {
 /** A sheet preview in the page's chosen shape, when there is one (place cards stay rectangles). */
 export const ShapedSheetPreview: FC<{ doc: ListDocument; className?: string }> = ({ doc, className }) => {
   const drawn = useContext(TemplateShapePreviewContext)
-  const fonts = useFontEpoch()
   const shape = drawn && doc.design.kind !== 'cards' ? drawn : doc.design.shape
   const shaped = useMemo(() => (shape === doc.design.shape ? doc : { ...doc, design: { ...doc.design, shape } }), [doc, shape])
-  // `fonts` is how many times a face has loaded. The fit reads those widths through `measureText`,
-  // so it has to run again when they arrive — the same reason `useSheetLayout` lists its version.
-  const fitted = useMemo(
-    () => fitPlanPreview(shaped),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [shaped, fonts]
-  )
-  return <SheetPreview doc={fitted} className={className} />
+  // The fit measures text, so the preview runs it only once it comes near the screen, and again
+  // whenever a face arrives.
+  return <SheetPreview doc={shaped} fit={fitPlanPreview} className={className} />
 }
 
 /** "Use this template", starting the list in the chosen shape. */

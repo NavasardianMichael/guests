@@ -3,6 +3,7 @@
 import { type FC, useCallback, useDeferredValue, useEffect, useState } from 'react'
 import { CloseOutlined } from '@ant-design/icons'
 import { Button, Drawer, Spin } from 'antd'
+import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
@@ -19,15 +20,12 @@ import { clearLocalDraft, readLocalDraft } from '@helpers/localDraft'
 import { ErrorState } from '@components/ui/ErrorState'
 import { CanvasZoomControl } from './canvas/CanvasZoomControl'
 import { EditorCanvas } from './canvas/EditorCanvas'
-import { CheckoutModal } from './download/CheckoutModal'
 import { EditorBottomBar } from './EditorBottomBar'
 import { EditorSidebar } from './EditorSidebar'
 import { EditorSteps } from './EditorSteps'
 import { EditorTopBar } from './EditorTopBar'
-import { ImportModal } from './import/ImportModal'
 import { PanelBody, TabResetButton } from './panels/EditorPanel'
 import { PreviewModal } from './PreviewModal'
-import { SpreadsheetModal } from './spreadsheet/SpreadsheetModal'
 import { Autosave } from './useAutosave'
 
 type Props = { listId: string }
@@ -41,6 +39,36 @@ const bannerClosed = (): boolean => {
   } catch {
     return false
   }
+}
+
+/*
+ * The editor's dialogs, closed until asked for, are not in the editor's first load. Import and
+ * the spreadsheet mount the first time they open, and stay (so they still animate closed).
+ * Checkout is mounted at once: back from signing in to pay, it opens itself.
+ */
+const ImportModal = dynamic(() => import('./import/ImportModal').then((loaded) => loaded.ImportModal), { ssr: false })
+const SpreadsheetModal = dynamic(() => import('./spreadsheet/SpreadsheetModal').then((loaded) => loaded.SpreadsheetModal), {
+  ssr: false,
+})
+const CheckoutModal = dynamic(() => import('./download/CheckoutModal').then((loaded) => loaded.CheckoutModal), { ssr: false })
+
+/** Whether `open` has ever been true. */
+const useOpenedOnce = (open: boolean): boolean => {
+  const [opened, setOpened] = useState(open)
+  if (open && !opened) setOpened(true)
+  return opened || open
+}
+
+const EditorDialogs: FC = () => {
+  const importOpened = useOpenedOnce(useEditorUiStore.use.importSource() !== null)
+  const spreadsheetOpened = useOpenedOnce(useEditorUiStore.use.spreadsheetOpen())
+  return (
+    <>
+      {importOpened && <ImportModal />}
+      {spreadsheetOpened && <SpreadsheetModal />}
+      <CheckoutModal />
+    </>
+  )
 }
 
 type LoadState = { phase: 'loading' } | { phase: 'importing' } | { phase: 'ready' } | { phase: 'error'; error: unknown }
@@ -136,7 +164,7 @@ export const EditorShell: FC<Props> = ({ listId }) => {
       return router.replace(`${ROUTES.signIn}?${RETURN_TO_QUERY}=${encodeURIComponent(editorPath(listId))}`)
     }
     const loaded: ListDocument = { title: list.title, content: list.content, design: list.design }
-    loadDocument({ listId: list.id, doc: loaded })
+    loadDocument({ listId: list.id, doc: loaded, updatedAt: list.updatedAt })
     useEditorUiStore.getState().startAt(startStep(loaded), list.id)
     setState({ phase: 'ready' })
   }, [listId, loadDocument, router, user])
@@ -246,9 +274,7 @@ export const EditorShell: FC<Props> = ({ listId }) => {
           <PanelBody tab={tab} />
         </Drawer>
       )}
-      <ImportModal />
-      <SpreadsheetModal />
-      <CheckoutModal />
+      <EditorDialogs />
     </div>
   )
 }

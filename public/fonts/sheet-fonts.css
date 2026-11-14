@@ -2,7 +2,7 @@
 
 @font-face {
   font-family: 'sf-90';
-  src: url('/fonts/90/400.woff2') format('woff2');
+  src: url('/fonts/90/400.woff2?v=9f89e1c958') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -10,7 +10,7 @@
 
 @font-face {
   font-family: 'sf-amar';
-  src: url('/fonts/amar/400.woff2') format('woff2');
+  src: url('/fonts/amar/400.woff2?v=935f154a4b') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -18,7 +18,7 @@
 
 @font-face {
   font-family: 'sf-arian-amu';
-  src: url('/fonts/arian-amu/400-italic.woff2') format('woff2');
+  src: url('/fonts/arian-amu/400-italic.woff2?v=3acf945415') format('woff2');
   font-weight: 400;
   font-style: italic;
   font-display: swap;
@@ -26,7 +26,7 @@
 
 @font-face {
   font-family: 'sf-arian-amu';
-  src: url('/fonts/arian-amu/700-italic.woff2') format('woff2');
+  src: url('/fonts/arian-amu/700-italic.woff2?v=459b3e6912') format('woff2');
   font-weight: 700;
   font-style: italic;
   font-display: swap;
@@ -34,7 +34,7 @@
 
 @font-face {
   font-family: 'sf-arian-amu';
-  src: url('/fonts/arian-amu/400.woff2') format('woff2');
+  src: url('/fonts/arian-amu/400.woff2?v=8d6bcd1b6f') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -42,7 +42,7 @@
 
 @font-face {
   font-family: 'sf-arian-amu';
-  src: url('/fonts/arian-amu/700.woff2') format('woff2');
+  src: url('/fonts/arian-amu/700.woff2?v=20427955c0') format('woff2');
   font-weight: 700;
   font-style: normal;
   font-display: swap;
@@ -50,7 +50,7 @@
 
 @font-face {
   font-family: 'sf-arian-grqi';
-  src: url('/fonts/arian-grqi/400-italic.woff2') format('woff2');
+  src: url('/fonts/arian-grqi/400-italic.woff2?v=067f5e1b16') format('woff2');
   font-weight: 400;
   font-style: italic;
   font-display: swap;
@@ -58,7 +58,7 @@
 
 @font-face {
   font-family: 'sf-arian-grqi';
-  src: url('/fonts/arian-grqi/400.woff2') format('woff2');
+  src: url('/fonts/arian-grqi/400.woff2?v=22eb9e0c94') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -66,7 +66,7 @@
 
 @font-face {
   font-family: 'sf-arm-hmks-bebas-neue';
-  src: url('/fonts/arm-hmks-bebas-neue/400.woff2') format('woff2');
+  src: url('/fonts/arm-hmks-bebas-neue/400.woff2?v=f32257275d') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -74,7 +74,7 @@
 
 @font-face {
   font-family: 'sf-arm-hmks-script';
-  src: url('/fonts/arm-hmks-script/400.woff2') format('woff2');
+  src: url('/fonts/arm-hmks-script/400.woff2?v=bdc06348ff') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -82,7 +82,7 @@
 
 @font-face {
   font-family: 'sf-arti';
-  src: url('/fonts/arti/400.woff2') format('woff2');
+  src: url('/fonts/arti/400.woff2?v=b4b431a734') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -90,7 +90,7 @@
 
 @font-face {
   font-family: 'sf-artsakh';
-  src: url('/fonts/artsakh/400.woff2') format('woff2');
+  src: url('/fonts/artsakh/400.woff2?v=6bfb854598') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -98,7 +98,7 @@
 
 @font-face {
   font-family: 'sf-atyan-dsegh';
-  src: url('/fonts/atyan-dsegh/400.woff2') format('woff2');
+  src: url('/fonts/atyan-dsegh/400.woff2?v=ce2d2dcc38') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -106,7 +106,7 @@
 
 @font-face {
   font-family: 'sf-bainsley';
-  src: url('/fonts/bainsley/400-italic.woff2') format('woff2');
+  src: url('/fonts/bainsley/400-italic.woff2?v=ace1514f2c') format('woff2');
   font-weight: 400;
   font-style: italic;
   font-display: swap;
@@ -114,7 +114,7 @@
 
 @font-face {
   font-family: 'sf-bainsley';
-  src: url('/fonts/bainsley/700-italic.woff2') format('woff2');
+  src: url('/fonts/bainsley/700-italic.woff2?v=44c73fbda7') format('woff2');
   font-weight: 700;
   font-style: italic;
   font-display: swap;
@@ -122,7 +122,7 @@
 
 @font-face {
   font-family: 'sf-bainsley';
-  src: url('/fonts/bainsley/400.woff2') format('woff2');
+  src: url('/fonts/bainsley/400.woff2?v=565bb19a7f') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -130,7 +130,7 @@
 
 @font-face {
   font-family: 'sf-bainsley';
-  src: url('/fonts/bainsley/700.woff2') format('woff2');
+  src: url('/fonts/bainsley/700.woff2?v=86260cf711') format('woff2');
   font-weight: 700;
   font-style: normal;
   font-display: swap;
@@ -138,7 +138,7 @@
 
 @font-face {
   font-family: 'sf-berd';
-  src: url('/fonts/berd/400.woff2') format('woff2');
+  src: url('/fonts/berd/400.woff2?v=9337c3d9f5') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -146,7 +146,7 @@
 
 @font-face {
   font-family: 'sf-bokonique';
-  src: url('/fonts/bokonique/300-italic.woff2') format('woff2');
+  src: url('/fonts/bokonique/300-italic.woff2?v=42002d1c55') format('woff2');
   font-weight: 300;
   font-style: italic;
   font-display: swap;
@@ -154,7 +154,7 @@
 
 @font-face {
   font-family: 'sf-bokonique';
-  src: url('/fonts/bokonique/400-italic.woff2') format('woff2');
+  src: url('/fonts/bokonique/400-italic.woff2?v=7d349ea6d4') format('woff2');
   font-weight: 400;
   font-style: italic;
   font-display: swap;
@@ -162,7 +162,7 @@
 
 @font-face {
   font-family: 'sf-bokonique';
-  src: url('/fonts/bokonique/700-italic.woff2') format('woff2');
+  src: url('/fonts/bokonique/700-italic.woff2?v=877f314958') format('woff2');
   font-weight: 700;
   font-style: italic;
   font-display: swap;
@@ -170,7 +170,7 @@
 
 @font-face {
   font-family: 'sf-bokonique';
-  src: url('/fonts/bokonique/300.woff2') format('woff2');
+  src: url('/fonts/bokonique/300.woff2?v=57372fdab2') format('woff2');
   font-weight: 300;
   font-style: normal;
   font-display: swap;
@@ -178,7 +178,7 @@
 
 @font-face {
   font-family: 'sf-bokonique';
-  src: url('/fonts/bokonique/400.woff2') format('woff2');
+  src: url('/fonts/bokonique/400.woff2?v=13f20ed662') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -186,7 +186,7 @@
 
 @font-face {
   font-family: 'sf-bokonique';
-  src: url('/fonts/bokonique/700.woff2') format('woff2');
+  src: url('/fonts/bokonique/700.woff2?v=e89db9bcef') format('woff2');
   font-weight: 700;
   font-style: normal;
   font-display: swap;
@@ -194,7 +194,7 @@
 
 @font-face {
   font-family: 'sf-braind-amanor';
-  src: url('/fonts/braind-amanor/400.woff2') format('woff2');
+  src: url('/fonts/braind-amanor/400.woff2?v=f6114fae10') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -202,7 +202,7 @@
 
 @font-face {
   font-family: 'sf-braind-doctor';
-  src: url('/fonts/braind-doctor/400.woff2') format('woff2');
+  src: url('/fonts/braind-doctor/400.woff2?v=9a851ddb73') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -210,7 +210,7 @@
 
 @font-face {
   font-family: 'sf-braind-gyumri';
-  src: url('/fonts/braind-gyumri/400.woff2') format('woff2');
+  src: url('/fonts/braind-gyumri/400.woff2?v=6d9e6d6012') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -218,7 +218,7 @@
 
 @font-face {
   font-family: 'sf-braind-republic';
-  src: url('/fonts/braind-republic/400.woff2') format('woff2');
+  src: url('/fonts/braind-republic/400.woff2?v=2a82b1012c') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -226,7 +226,7 @@
 
 @font-face {
   font-family: 'sf-braind-yerevan';
-  src: url('/fonts/braind-yerevan/400.woff2') format('woff2');
+  src: url('/fonts/braind-yerevan/400.woff2?v=de7aebc665') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -234,7 +234,7 @@
 
 @font-face {
   font-family: 'sf-braind-zbans';
-  src: url('/fonts/braind-zbans/400.woff2') format('woff2');
+  src: url('/fonts/braind-zbans/400.woff2?v=9f50829919') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -242,7 +242,7 @@
 
 @font-face {
   font-family: 'sf-calama-condensed';
-  src: url('/fonts/calama-condensed/400.woff2') format('woff2');
+  src: url('/fonts/calama-condensed/400.woff2?v=bb99c5c764') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -250,7 +250,7 @@
 
 @font-face {
   font-family: 'sf-cosiarm';
-  src: url('/fonts/cosiarm/400.woff2') format('woff2');
+  src: url('/fonts/cosiarm/400.woff2?v=807cd6afc2') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -258,7 +258,7 @@
 
 @font-face {
   font-family: 'sf-davel-aghvor';
-  src: url('/fonts/davel-aghvor/400.woff2') format('woff2');
+  src: url('/fonts/davel-aghvor/400.woff2?v=0ab4e674c2') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -266,7 +266,7 @@
 
 @font-face {
   font-family: 'sf-emin-script';
-  src: url('/fonts/emin-script/400.woff2') format('woff2');
+  src: url('/fonts/emin-script/400.woff2?v=3b9ef8d70c') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -274,7 +274,7 @@
 
 @font-face {
   font-family: 'sf-free-sans';
-  src: url('/fonts/free-sans/400-italic.woff2') format('woff2');
+  src: url('/fonts/free-sans/400-italic.woff2?v=94542a6ae3') format('woff2');
   font-weight: 400;
   font-style: italic;
   font-display: swap;
@@ -282,7 +282,7 @@
 
 @font-face {
   font-family: 'sf-free-sans';
-  src: url('/fonts/free-sans/700-italic.woff2') format('woff2');
+  src: url('/fonts/free-sans/700-italic.woff2?v=8caaf42027') format('woff2');
   font-weight: 700;
   font-style: italic;
   font-display: swap;
@@ -290,7 +290,7 @@
 
 @font-face {
   font-family: 'sf-free-sans';
-  src: url('/fonts/free-sans/400.woff2') format('woff2');
+  src: url('/fonts/free-sans/400.woff2?v=ea4e406035') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -298,7 +298,7 @@
 
 @font-face {
   font-family: 'sf-free-sans';
-  src: url('/fonts/free-sans/700.woff2') format('woff2');
+  src: url('/fonts/free-sans/700.woff2?v=bc1766f40a') format('woff2');
   font-weight: 700;
   font-style: normal;
   font-display: swap;
@@ -306,7 +306,7 @@
 
 @font-face {
   font-family: 'sf-free-serif';
-  src: url('/fonts/free-serif/400-italic.woff2') format('woff2');
+  src: url('/fonts/free-serif/400-italic.woff2?v=c57b928bd5') format('woff2');
   font-weight: 400;
   font-style: italic;
   font-display: swap;
@@ -314,7 +314,7 @@
 
 @font-face {
   font-family: 'sf-free-serif';
-  src: url('/fonts/free-serif/700-italic.woff2') format('woff2');
+  src: url('/fonts/free-serif/700-italic.woff2?v=5ea7adfdf5') format('woff2');
   font-weight: 700;
   font-style: italic;
   font-display: swap;
@@ -322,7 +322,7 @@
 
 @font-face {
   font-family: 'sf-free-serif';
-  src: url('/fonts/free-serif/400.woff2') format('woff2');
+  src: url('/fonts/free-serif/400.woff2?v=30e3bd3be6') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -330,7 +330,7 @@
 
 @font-face {
   font-family: 'sf-free-serif';
-  src: url('/fonts/free-serif/700.woff2') format('woff2');
+  src: url('/fonts/free-serif/700.woff2?v=cfa22b238c') format('woff2');
   font-weight: 700;
   font-style: normal;
   font-display: swap;
@@ -338,7 +338,7 @@
 
 @font-face {
   font-family: 'sf-gaa-gayane';
-  src: url('/fonts/gaa-gayane/400-italic.woff2') format('woff2');
+  src: url('/fonts/gaa-gayane/400-italic.woff2?v=b5c28e9544') format('woff2');
   font-weight: 400;
   font-style: italic;
   font-display: swap;
@@ -346,7 +346,7 @@
 
 @font-face {
   font-family: 'sf-gaa-gayane';
-  src: url('/fonts/gaa-gayane/500-italic.woff2') format('woff2');
+  src: url('/fonts/gaa-gayane/500-italic.woff2?v=d57c949275') format('woff2');
   font-weight: 500;
   font-style: italic;
   font-display: swap;
@@ -354,7 +354,7 @@
 
 @font-face {
   font-family: 'sf-gaa-gayane';
-  src: url('/fonts/gaa-gayane/600-italic.woff2') format('woff2');
+  src: url('/fonts/gaa-gayane/600-italic.woff2?v=57bfeb3c5b') format('woff2');
   font-weight: 600;
   font-style: italic;
   font-display: swap;
@@ -362,7 +362,7 @@
 
 @font-face {
   font-family: 'sf-gaa-gayane';
-  src: url('/fonts/gaa-gayane/700-italic.woff2') format('woff2');
+  src: url('/fonts/gaa-gayane/700-italic.woff2?v=19fcbc447d') format('woff2');
   font-weight: 700;
   font-style: italic;
   font-display: swap;
@@ -370,7 +370,7 @@
 
 @font-face {
   font-family: 'sf-gaa-gayane';
-  src: url('/fonts/gaa-gayane/800-italic.woff2') format('woff2');
+  src: url('/fonts/gaa-gayane/800-italic.woff2?v=32ff5cc59a') format('woff2');
   font-weight: 800;
   font-style: italic;
   font-display: swap;
@@ -378,7 +378,7 @@
 
 @font-face {
   font-family: 'sf-gaa-gayane';
-  src: url('/fonts/gaa-gayane/400.woff2') format('woff2');
+  src: url('/fonts/gaa-gayane/400.woff2?v=cfdad7cc3a') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -386,7 +386,7 @@
 
 @font-face {
   font-family: 'sf-gaa-gayane';
-  src: url('/fonts/gaa-gayane/500.woff2') format('woff2');
+  src: url('/fonts/gaa-gayane/500.woff2?v=a291201740') format('woff2');
   font-weight: 500;
   font-style: normal;
   font-display: swap;
@@ -394,7 +394,7 @@
 
 @font-face {
   font-family: 'sf-gaa-gayane';
-  src: url('/fonts/gaa-gayane/600.woff2') format('woff2');
+  src: url('/fonts/gaa-gayane/600.woff2?v=e66858baa7') format('woff2');
   font-weight: 600;
   font-style: normal;
   font-display: swap;
@@ -402,7 +402,7 @@
 
 @font-face {
   font-family: 'sf-gaa-gayane';
-  src: url('/fonts/gaa-gayane/700.woff2') format('woff2');
+  src: url('/fonts/gaa-gayane/700.woff2?v=ae7bbef6bd') format('woff2');
   font-weight: 700;
   font-style: normal;
   font-display: swap;
@@ -410,7 +410,7 @@
 
 @font-face {
   font-family: 'sf-gaa-gayane';
-  src: url('/fonts/gaa-gayane/800.woff2') format('woff2');
+  src: url('/fonts/gaa-gayane/800.woff2?v=f825db6077') format('woff2');
   font-weight: 800;
   font-style: normal;
   font-display: swap;
@@ -418,7 +418,7 @@
 
 @font-face {
   font-family: 'sf-ghea-grapalat';
-  src: url('/fonts/ghea-grapalat/400-italic.woff2') format('woff2');
+  src: url('/fonts/ghea-grapalat/400-italic.woff2?v=bec40fffcc') format('woff2');
   font-weight: 400;
   font-style: italic;
   font-display: swap;
@@ -426,7 +426,7 @@
 
 @font-face {
   font-family: 'sf-ghea-grapalat';
-  src: url('/fonts/ghea-grapalat/700-italic.woff2') format('woff2');
+  src: url('/fonts/ghea-grapalat/700-italic.woff2?v=72d9c96ae9') format('woff2');
   font-weight: 700;
   font-style: italic;
   font-display: swap;
@@ -434,7 +434,7 @@
 
 @font-face {
   font-family: 'sf-ghea-grapalat';
-  src: url('/fonts/ghea-grapalat/400.woff2') format('woff2');
+  src: url('/fonts/ghea-grapalat/400.woff2?v=e13fc099b5') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -442,7 +442,7 @@
 
 @font-face {
   font-family: 'sf-ghea-grapalat';
-  src: url('/fonts/ghea-grapalat/700.woff2') format('woff2');
+  src: url('/fonts/ghea-grapalat/700.woff2?v=1a46408d18') format('woff2');
   font-weight: 700;
   font-style: normal;
   font-display: swap;
@@ -450,7 +450,7 @@
 
 @font-face {
   font-family: 'sf-ghea-mariam';
-  src: url('/fonts/ghea-mariam/400-italic.woff2') format('woff2');
+  src: url('/fonts/ghea-mariam/400-italic.woff2?v=e7a7cc7601') format('woff2');
   font-weight: 400;
   font-style: italic;
   font-display: swap;
@@ -458,7 +458,7 @@
 
 @font-face {
   font-family: 'sf-ghea-mariam';
-  src: url('/fonts/ghea-mariam/700-italic.woff2') format('woff2');
+  src: url('/fonts/ghea-mariam/700-italic.woff2?v=e53cb46058') format('woff2');
   font-weight: 700;
   font-style: italic;
   font-display: swap;
@@ -466,7 +466,7 @@
 
 @font-face {
   font-family: 'sf-ghea-mariam';
-  src: url('/fonts/ghea-mariam/400.woff2') format('woff2');
+  src: url('/fonts/ghea-mariam/400.woff2?v=614466a719') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -474,7 +474,7 @@
 
 @font-face {
   font-family: 'sf-ghea-mariam';
-  src: url('/fonts/ghea-mariam/700.woff2') format('woff2');
+  src: url('/fonts/ghea-mariam/700.woff2?v=5d801278ee') format('woff2');
   font-weight: 700;
   font-style: normal;
   font-display: swap;
@@ -482,7 +482,7 @@
 
 @font-face {
   font-family: 'sf-kamavor-na';
-  src: url('/fonts/kamavor-na/400.woff2') format('woff2');
+  src: url('/fonts/kamavor-na/400.woff2?v=371adc1da0') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -490,7 +490,7 @@
 
 @font-face {
   font-family: 'sf-kotayk';
-  src: url('/fonts/kotayk/400-italic.woff2') format('woff2');
+  src: url('/fonts/kotayk/400-italic.woff2?v=8f0a579f3e') format('woff2');
   font-weight: 400;
   font-style: italic;
   font-display: swap;
@@ -498,7 +498,7 @@
 
 @font-face {
   font-family: 'sf-kotayk';
-  src: url('/fonts/kotayk/400.woff2') format('woff2');
+  src: url('/fonts/kotayk/400.woff2?v=4b539ecbdf') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -506,7 +506,7 @@
 
 @font-face {
   font-family: 'sf-mardoto';
-  src: url('/fonts/mardoto/100-italic.woff2') format('woff2');
+  src: url('/fonts/mardoto/100-italic.woff2?v=34b6b1244b') format('woff2');
   font-weight: 100;
   font-style: italic;
   font-display: swap;
@@ -514,7 +514,7 @@
 
 @font-face {
   font-family: 'sf-mardoto';
-  src: url('/fonts/mardoto/300-italic.woff2') format('woff2');
+  src: url('/fonts/mardoto/300-italic.woff2?v=7a190ea46d') format('woff2');
   font-weight: 300;
   font-style: italic;
   font-display: swap;
@@ -522,7 +522,7 @@
 
 @font-face {
   font-family: 'sf-mardoto';
-  src: url('/fonts/mardoto/400-italic.woff2') format('woff2');
+  src: url('/fonts/mardoto/400-italic.woff2?v=6b761aaa21') format('woff2');
   font-weight: 400;
   font-style: italic;
   font-display: swap;
@@ -530,7 +530,7 @@
 
 @font-face {
   font-family: 'sf-mardoto';
-  src: url('/fonts/mardoto/500-italic.woff2') format('woff2');
+  src: url('/fonts/mardoto/500-italic.woff2?v=587a863f6a') format('woff2');
   font-weight: 500;
   font-style: italic;
   font-display: swap;
@@ -538,7 +538,7 @@
 
 @font-face {
   font-family: 'sf-mardoto';
-  src: url('/fonts/mardoto/700-italic.woff2') format('woff2');
+  src: url('/fonts/mardoto/700-italic.woff2?v=015486c9b3') format('woff2');
   font-weight: 700;
   font-style: italic;
   font-display: swap;
@@ -546,7 +546,7 @@
 
 @font-face {
   font-family: 'sf-mardoto';
-  src: url('/fonts/mardoto/900-italic.woff2') format('woff2');
+  src: url('/fonts/mardoto/900-italic.woff2?v=8fef7d9713') format('woff2');
   font-weight: 900;
   font-style: italic;
   font-display: swap;
@@ -554,7 +554,7 @@
 
 @font-face {
   font-family: 'sf-mardoto';
-  src: url('/fonts/mardoto/100.woff2') format('woff2');
+  src: url('/fonts/mardoto/100.woff2?v=8f7b3e72d8') format('woff2');
   font-weight: 100;
   font-style: normal;
   font-display: swap;
@@ -562,7 +562,7 @@
 
 @font-face {
   font-family: 'sf-mardoto';
-  src: url('/fonts/mardoto/300.woff2') format('woff2');
+  src: url('/fonts/mardoto/300.woff2?v=d92d5e3674') format('woff2');
   font-weight: 300;
   font-style: normal;
   font-display: swap;
@@ -570,7 +570,7 @@
 
 @font-face {
   font-family: 'sf-mardoto';
-  src: url('/fonts/mardoto/400.woff2') format('woff2');
+  src: url('/fonts/mardoto/400.woff2?v=040bfb6fde') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -578,7 +578,7 @@
 
 @font-face {
   font-family: 'sf-mardoto';
-  src: url('/fonts/mardoto/500.woff2') format('woff2');
+  src: url('/fonts/mardoto/500.woff2?v=c4e4ddaa18') format('woff2');
   font-weight: 500;
   font-style: normal;
   font-display: swap;
@@ -586,7 +586,7 @@
 
 @font-face {
   font-family: 'sf-mardoto';
-  src: url('/fonts/mardoto/700.woff2') format('woff2');
+  src: url('/fonts/mardoto/700.woff2?v=8dbe466a5a') format('woff2');
   font-weight: 700;
   font-style: normal;
   font-display: swap;
@@ -594,7 +594,7 @@
 
 @font-face {
   font-family: 'sf-mardoto';
-  src: url('/fonts/mardoto/900.woff2') format('woff2');
+  src: url('/fonts/mardoto/900.woff2?v=d766f27596') format('woff2');
   font-weight: 900;
   font-style: normal;
   font-display: swap;
@@ -602,7 +602,7 @@
 
 @font-face {
   font-family: 'sf-montserrat-armenian';
-  src: url('/fonts/montserrat-armenian/100.woff2') format('woff2');
+  src: url('/fonts/montserrat-armenian/100.woff2?v=b9d1132e89') format('woff2');
   font-weight: 100;
   font-style: normal;
   font-display: swap;
@@ -610,7 +610,7 @@
 
 @font-face {
   font-family: 'sf-montserrat-armenian';
-  src: url('/fonts/montserrat-armenian/200.woff2') format('woff2');
+  src: url('/fonts/montserrat-armenian/200.woff2?v=98c57cf0f8') format('woff2');
   font-weight: 200;
   font-style: normal;
   font-display: swap;
@@ -618,7 +618,7 @@
 
 @font-face {
   font-family: 'sf-montserrat-armenian';
-  src: url('/fonts/montserrat-armenian/300.woff2') format('woff2');
+  src: url('/fonts/montserrat-armenian/300.woff2?v=0e70123eb0') format('woff2');
   font-weight: 300;
   font-style: normal;
   font-display: swap;
@@ -626,7 +626,7 @@
 
 @font-face {
   font-family: 'sf-montserrat-armenian';
-  src: url('/fonts/montserrat-armenian/400.woff2') format('woff2');
+  src: url('/fonts/montserrat-armenian/400.woff2?v=1823899a7c') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -634,7 +634,7 @@
 
 @font-face {
   font-family: 'sf-montserrat-armenian';
-  src: url('/fonts/montserrat-armenian/500.woff2') format('woff2');
+  src: url('/fonts/montserrat-armenian/500.woff2?v=e2a8f1ce42') format('woff2');
   font-weight: 500;
   font-style: normal;
   font-display: swap;
@@ -642,7 +642,7 @@
 
 @font-face {
   font-family: 'sf-montserrat-armenian';
-  src: url('/fonts/montserrat-armenian/600.woff2') format('woff2');
+  src: url('/fonts/montserrat-armenian/600.woff2?v=ddb4722f78') format('woff2');
   font-weight: 600;
   font-style: normal;
   font-display: swap;
@@ -650,7 +650,7 @@
 
 @font-face {
   font-family: 'sf-montserrat-armenian';
-  src: url('/fonts/montserrat-armenian/700.woff2') format('woff2');
+  src: url('/fonts/montserrat-armenian/700.woff2?v=ecd0522a00') format('woff2');
   font-weight: 700;
   font-style: normal;
   font-display: swap;
@@ -658,7 +658,7 @@
 
 @font-face {
   font-family: 'sf-montserrat-armenian';
-  src: url('/fonts/montserrat-armenian/800.woff2') format('woff2');
+  src: url('/fonts/montserrat-armenian/800.woff2?v=8ea709a0ea') format('woff2');
   font-weight: 800;
   font-style: normal;
   font-display: swap;
@@ -666,7 +666,7 @@
 
 @font-face {
   font-family: 'sf-montserrat-armenian';
-  src: url('/fonts/montserrat-armenian/900.woff2') format('woff2');
+  src: url('/fonts/montserrat-armenian/900.woff2?v=ee80e59541') format('woff2');
   font-weight: 900;
   font-style: normal;
   font-display: swap;
@@ -674,7 +674,7 @@
 
 @font-face {
   font-family: 'sf-nasa-font';
-  src: url('/fonts/nasa-font/400.woff2') format('woff2');
+  src: url('/fonts/nasa-font/400.woff2?v=b80b6ac8b7') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -682,7 +682,7 @@
 
 @font-face {
   font-family: 'sf-nortar-body';
-  src: url('/fonts/nortar-body/400.woff2') format('woff2');
+  src: url('/fonts/nortar-body/400.woff2?v=b2bc44ab1c') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -690,7 +690,7 @@
 
 @font-face {
   font-family: 'sf-noto-sans-armenian';
-  src: url('/fonts/noto-sans-armenian/100.woff2') format('woff2');
+  src: url('/fonts/noto-sans-armenian/100.woff2?v=0af9f81932') format('woff2');
   font-weight: 100;
   font-style: normal;
   font-display: swap;
@@ -698,7 +698,7 @@
 
 @font-face {
   font-family: 'sf-noto-sans-armenian';
-  src: url('/fonts/noto-sans-armenian/200.woff2') format('woff2');
+  src: url('/fonts/noto-sans-armenian/200.woff2?v=9d5c13d8c8') format('woff2');
   font-weight: 200;
   font-style: normal;
   font-display: swap;
@@ -706,7 +706,7 @@
 
 @font-face {
   font-family: 'sf-noto-sans-armenian';
-  src: url('/fonts/noto-sans-armenian/300.woff2') format('woff2');
+  src: url('/fonts/noto-sans-armenian/300.woff2?v=55ddc67f8a') format('woff2');
   font-weight: 300;
   font-style: normal;
   font-display: swap;
@@ -714,7 +714,7 @@
 
 @font-face {
   font-family: 'sf-noto-sans-armenian';
-  src: url('/fonts/noto-sans-armenian/400.woff2') format('woff2');
+  src: url('/fonts/noto-sans-armenian/400.woff2?v=54f841652a') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -722,7 +722,7 @@
 
 @font-face {
   font-family: 'sf-noto-sans-armenian';
-  src: url('/fonts/noto-sans-armenian/500.woff2') format('woff2');
+  src: url('/fonts/noto-sans-armenian/500.woff2?v=522dbd6cd0') format('woff2');
   font-weight: 500;
   font-style: normal;
   font-display: swap;
@@ -730,7 +730,7 @@
 
 @font-face {
   font-family: 'sf-noto-sans-armenian';
-  src: url('/fonts/noto-sans-armenian/600.woff2') format('woff2');
+  src: url('/fonts/noto-sans-armenian/600.woff2?v=7447d45447') format('woff2');
   font-weight: 600;
   font-style: normal;
   font-display: swap;
@@ -738,7 +738,7 @@
 
 @font-face {
   font-family: 'sf-noto-sans-armenian';
-  src: url('/fonts/noto-sans-armenian/700.woff2') format('woff2');
+  src: url('/fonts/noto-sans-armenian/700.woff2?v=638efd8426') format('woff2');
   font-weight: 700;
   font-style: normal;
   font-display: swap;
@@ -746,7 +746,7 @@
 
 @font-face {
   font-family: 'sf-noto-sans-armenian';
-  src: url('/fonts/noto-sans-armenian/800.woff2') format('woff2');
+  src: url('/fonts/noto-sans-armenian/800.woff2?v=6082693300') format('woff2');
   font-weight: 800;
   font-style: normal;
   font-display: swap;
@@ -754,7 +754,7 @@
 
 @font-face {
   font-family: 'sf-noto-sans-armenian';
-  src: url('/fonts/noto-sans-armenian/900.woff2') format('woff2');
+  src: url('/fonts/noto-sans-armenian/900.woff2?v=2bc8df163b') format('woff2');
   font-weight: 900;
   font-style: normal;
   font-display: swap;
@@ -762,7 +762,7 @@
 
 @font-face {
   font-family: 'sf-noyemi';
-  src: url('/fonts/noyemi/400.woff2') format('woff2');
+  src: url('/fonts/noyemi/400.woff2?v=2f43556675') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -770,7 +770,7 @@
 
 @font-face {
   font-family: 'sf-poqrik-dzeragir';
-  src: url('/fonts/poqrik-dzeragir/400.woff2') format('woff2');
+  src: url('/fonts/poqrik-dzeragir/400.woff2?v=e121bf23a0') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -778,7 +778,7 @@
 
 @font-face {
   font-family: 'sf-reactive';
-  src: url('/fonts/reactive/400.woff2') format('woff2');
+  src: url('/fonts/reactive/400.woff2?v=b901061eac') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -786,7 +786,7 @@
 
 @font-face {
   font-family: 'sf-shk-aida';
-  src: url('/fonts/shk-aida/200-italic.woff2') format('woff2');
+  src: url('/fonts/shk-aida/200-italic.woff2?v=ec50ebe837') format('woff2');
   font-weight: 200;
   font-style: italic;
   font-display: swap;
@@ -794,7 +794,7 @@
 
 @font-face {
   font-family: 'sf-shk-aida';
-  src: url('/fonts/shk-aida/300-italic.woff2') format('woff2');
+  src: url('/fonts/shk-aida/300-italic.woff2?v=125787d8b7') format('woff2');
   font-weight: 300;
   font-style: italic;
   font-display: swap;
@@ -802,7 +802,7 @@
 
 @font-face {
   font-family: 'sf-shk-aida';
-  src: url('/fonts/shk-aida/400-italic.woff2') format('woff2');
+  src: url('/fonts/shk-aida/400-italic.woff2?v=16d0d16ad2') format('woff2');
   font-weight: 400;
   font-style: italic;
   font-display: swap;
@@ -810,7 +810,7 @@
 
 @font-face {
   font-family: 'sf-shk-aida';
-  src: url('/fonts/shk-aida/500-italic.woff2') format('woff2');
+  src: url('/fonts/shk-aida/500-italic.woff2?v=d72ca6a83e') format('woff2');
   font-weight: 500;
   font-style: italic;
   font-display: swap;
@@ -818,7 +818,7 @@
 
 @font-face {
   font-family: 'sf-shk-aida';
-  src: url('/fonts/shk-aida/600-italic.woff2') format('woff2');
+  src: url('/fonts/shk-aida/600-italic.woff2?v=9abc854fd2') format('woff2');
   font-weight: 600;
   font-style: italic;
   font-display: swap;
@@ -826,7 +826,7 @@
 
 @font-face {
   font-family: 'sf-shk-aida';
-  src: url('/fonts/shk-aida/700-italic.woff2') format('woff2');
+  src: url('/fonts/shk-aida/700-italic.woff2?v=05cd2891f9') format('woff2');
   font-weight: 700;
   font-style: italic;
   font-display: swap;
@@ -834,7 +834,7 @@
 
 @font-face {
   font-family: 'sf-shk-aida';
-  src: url('/fonts/shk-aida/200.woff2') format('woff2');
+  src: url('/fonts/shk-aida/200.woff2?v=b9570641c1') format('woff2');
   font-weight: 200;
   font-style: normal;
   font-display: swap;
@@ -842,7 +842,7 @@
 
 @font-face {
   font-family: 'sf-shk-aida';
-  src: url('/fonts/shk-aida/300.woff2') format('woff2');
+  src: url('/fonts/shk-aida/300.woff2?v=8049ec3fe9') format('woff2');
   font-weight: 300;
   font-style: normal;
   font-display: swap;
@@ -850,7 +850,7 @@
 
 @font-face {
   font-family: 'sf-shk-aida';
-  src: url('/fonts/shk-aida/400.woff2') format('woff2');
+  src: url('/fonts/shk-aida/400.woff2?v=b5b5845ebe') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -858,7 +858,7 @@
 
 @font-face {
   font-family: 'sf-shk-aida';
-  src: url('/fonts/shk-aida/500.woff2') format('woff2');
+  src: url('/fonts/shk-aida/500.woff2?v=883bae2143') format('woff2');
   font-weight: 500;
   font-style: normal;
   font-display: swap;
@@ -866,7 +866,7 @@
 
 @font-face {
   font-family: 'sf-shk-aida';
-  src: url('/fonts/shk-aida/600.woff2') format('woff2');
+  src: url('/fonts/shk-aida/600.woff2?v=e7b129f56f') format('woff2');
   font-weight: 600;
   font-style: normal;
   font-display: swap;
@@ -874,7 +874,7 @@
 
 @font-face {
   font-family: 'sf-shk-aida';
-  src: url('/fonts/shk-aida/700.woff2') format('woff2');
+  src: url('/fonts/shk-aida/700.woff2?v=a514183b92') format('woff2');
   font-weight: 700;
   font-style: normal;
   font-display: swap;
@@ -882,7 +882,7 @@
 
 @font-face {
   font-family: 'sf-tumanian-dzeragir';
-  src: url('/fonts/tumanian-dzeragir/400.woff2') format('woff2');
+  src: url('/fonts/tumanian-dzeragir/400.woff2?v=a3d33a131f') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -890,7 +890,7 @@
 
 @font-face {
   font-family: 'sf-vrdznagir';
-  src: url('/fonts/vrdznagir/400.woff2') format('woff2');
+  src: url('/fonts/vrdznagir/400.woff2?v=7f35ca37f7') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;

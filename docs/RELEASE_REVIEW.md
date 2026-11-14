@@ -1,7 +1,8 @@
 # Pre-release review — 2026-11-12
 
 Whole-app review before production: security, payments, ops, performance, SEO, UX/responsiveness,
-accessibility, maintainability. Read-only — nothing was changed.
+accessibility, maintainability. Findings below as found on 2026-11-12; what was done about each
+is in [Status](#status-2026-11-13), what is left to do by hand in [Manual steps](#manual-steps-2026-11-13).
 
 **Baseline:** `pnpm verify` passes (typecheck, server typecheck, lint, tests, build).
 No Critical vulnerability was found: list scoping, payment verification (server-to-server, CAS,
@@ -15,6 +16,135 @@ Priorities:
 - **P1 — launch week.** Real users will hit these.
 - **P2 — soon after.** Hardening and polish.
 - **P3 — backlog.**
+
+## Status (2026-11-15)
+
+Every finding was re-checked against the code at `c3259d8` (which had already changed payments,
+the payment result page and photo import) before it was fixed. `pnpm verify` passes with all of
+the fixes below. Nothing is committed.
+
+**Brought over from crossword's and CV Builder's reviews (2026-11-15):**
+- The deploy's first job, **Check configuration** (`scripts/check-deploy-config.mjs`, tested in
+  `tests/unit/deployConfig.spec.ts`), checks every secret in seconds: SSH, `APP_DIR`, both public
+  origins, and inside `ENV_API_BASE64` `DATABASE_URL`, `JWT_SECRET`, `CORS_ORIGIN` = site,
+  `API_PUBLIC_URL` = API, the Google callback and the Ameria set. Optional features that are off
+  are warnings. It replaces the scattered `grep` checks in the workflow.
+- The host reads the API env file literally instead of sourcing it: as shell code an `&` in
+  `DATABASE_URL` (`?schema=public&connection_limit=5`) backgrounded the assignment and the
+  migration saw no URL.
+- `SSH_KNOWN_HOSTS` removed again: back to `ssh-keyscan`, as in crossword.
+- `returnTo` is resolved through the URL parser (`safeReturnPath`) and returned cleaned, instead
+  of refused on any odd character.
+- Backups keep 22 days, as the other apps, with their own guide: `docs/DRIVE_BACKUP.md`.
+- The consent banner shows only where the law asks for an opt-in (EU/EEA, UK, Switzerland, told
+  by the device's time zone); elsewhere, Armenia included, analytics cookies are on from the
+  first page. Closing the banner counts as accepting, and its text says so. Privacy §6 says the
+  same.
+
+**P0 — all addressed in code; 2, 6 and part of 4 need the manual steps at the end.**
+1. Config — fixed. In production the API refuses to start with a short or example `JWT_SECRET`,
+   or with `AMERIA_AMOUNT_OVERRIDE` beside `AMERIA_TEST_MODE="false"`. The override is also
+   ignored on the live terminal, and the deploy's Check configuration job and `pnpm env:base64`
+   check both. Running on the
+   test terminal is still allowed (it is the step before the bank signs off), with a loud warning
+   at boot.
+2. Backups — fixed in code: `deployment/backup-db.sh` (nightly to Google Drive, 22 days kept,
+   `docs/DRIVE_BACKUP.md`) and a `pg_dump` before every migration. **Manual: install it.**
+3. Paid but never credited — fixed: an hourly sweep (`services/paymentSweep.ts`) settles every
+   payment still pending after its bank page timed out (up to 30 days back). Paid becomes
+   succeeded; nothing charged becomes failed.
+4. Gemini cost — mostly fixed already by `c3259d8`: photo reading needs a running pass, 5 reads
+   per pass, each claimed before the model is called. Every limiter now keys on the client's /64
+   for IPv6 (`clientAddress`). **Manual: a budget cap on the Gemini key.**
+5. Deploy — fixed:
+   - A re-run of a live commit installs into a side directory instead of deleting the live one.
+   - The env file is 0600 and removed by `trap` however the script ends.
+   - A failed health check or `check_pdf` rolls back to the previous release.
+   - The env file is read literally on the host, and every secret is checked first.
+6. Legal:
+   - GA now waits for consent where the law asks for it (EU/EEA, UK, Switzerland): Consent Mode
+     v2, a banner on site pages, "Cookie settings" in the footer everywhere, privacy §6 updated.
+   - **Manual:** get the drafts reviewed by a lawyer.
+   - Operator details: left out, by your decision.
+
+**P1**
+- **Fixed:**
+  - 1 storage-blocked loop: a translated screen instead of a redirect.
+  - 2 pending page: `c3259d8` already fixed the copy; a "Check again" button is added.
+  - 3 date-less success copy.
+  - 4 checkout buttons wrap.
+  - 5 bottom bar labels wrap to two lines, with soft hyphens.
+  - 6 graceful shutdown (SIGTERM, 25 s).
+  - 8 autosave stops on 4xx instead of looping.
+  - 9 rollback.
+  - 10 limits:
+    - Login: 40 per address per 15 min, whatever the email.
+    - Prints: at most 2 per address, printing or queued; a queued print is dropped when its client hangs up.
+    - Bank: reads that only show state reconcile at most every 3 s per owner.
+  - 11 previews lay out only near the screen.
+  - 12 font re-layouts coalesced to one per frame.
+  - 13 `llms.txt`.
+  - 14 JSON-LD `isAccessibleForFree` per template.
+- **Partly:**
+  - 7 monitoring: `/health` now fails when the database is down, and uptime monitors are a
+    manual step. No Sentry on the API (journald, as before).
+
+**P2**
+- **Fixed:**
+  - HSTS (nginx, manual re-paste), API `nosniff`, a basic CSP (`frame-ancestors`, `base-uri`,
+    `object-src`, `form-action`).
+  - Seed refuses a non-local database.
+  - Two tabs: 409 `listChangedElsewhere` → "Changed elsewhere — Reload".
+  - Bank return uses the unique index.
+  - `User.lastActiveAt` index (new migration).
+  - `/health` checks the database.
+  - API gzip (nginx, manual re-paste) and CORS `maxAge`.
+  - PDF waits for `load`, not `networkidle0`.
+  - `memo(GuestRow)`.
+  - Editor dialogs load with `next/dynamic`.
+  - `sheet-fonts.css` and its fonts carry a content hash.
+  - Import dialog drops stale photo reads.
+  - Touch delete in the import preview.
+  - Contrast: focus ring, CTA text, small accent text.
+  - Slider pauses on focus and has a pause button.
+  - CI runs on test-only pushes.
+  - New tests: return path, `clientAddress`, the PDF queue's drop-on-disconnect, the deploy
+    config check, consent by region.
+- **Not done, on purpose:**
+  - Logout revocation: bumping `tokenVersion` would sign every device out, and the cookie is
+    httpOnly.
+  - The sign-in list cap: a guest owns at most 10 lists.
+  - Actions pinned by SHA: well-known publishers; Dependabot is the better tool.
+  - Pinning the deploy's SSH host key: `ssh-keyscan` at deploy time, as in crossword.
+  - A warm Chrome: one per print isolates crashes; fine at this scale.
+  - Virtualising the guest rows: dnd-kit's cross-table sorting needs every row in the DOM.
+  - antd locales: a few KB, and loading lazily breaks hydration.
+- **Not done, worth doing later:**
+  - Unit tests for the DB paths (payments settle/sweep, claim, retention purge, CSRF): they need
+    a Prisma mock or a test database.
+
+**P3**
+- **Fixed:**
+  - `HintTooltip` on tapped controls.
+  - Darker field borders.
+  - 40 px targets: slider dots, card menu, back arrow.
+  - Zoom `aria-label`, bottom bar `aria-current`.
+  - Translated breadcrumb label and sort labels.
+  - Per-kind "All … templates" links, the hall badge naming the template.
+  - Slider `scale` transition, frozen progress bar.
+  - Sitemap `lastModified`; robots no longer blocks `/editor/` (it is `noindex`).
+  - UI italic faces dropped.
+  - Stale "buy a template" / "CV" comments.
+- **Moot:** the 5-photo message — one photo per request now.
+- **Not done:**
+  - `<Link><Button/></Link>` (14 places, wants a shared link-button).
+  - SelectionBar tap targets.
+  - Arrow keys in radio tiles.
+  - Keyboard placement on the canvas.
+  - Static `[locale]` pages.
+  - Splitting `GuestsPanel.tsx`.
+  - `paidAt` = settle time.
+  - Draft import duplicated across two tabs.
 
 ---
 
@@ -236,3 +366,104 @@ Priorities:
 - **Responsive editor and SEO basics:**
   - Bottom sheets on phones; dialogs capped to the screen.
   - Canonicals, noindex on private pages, sitemap, valid JSON-LD, static OG images.
+
+---
+
+## Manual steps (2026-11-15)
+
+What code cannot do by itself, in order. **[PC]** your machine, repo root · **[SRV]** the server,
+as `michael` · **[GH]** GitHub → the repo → Settings · **[EXT]** a third-party console · **[WEB]** a browser.
+
+### Before pushing
+
+1. **Apply the new migration and verify** **[PC]** (Docker Desktop running):
+   ```powershell
+   pnpm db:up
+   pnpm db:migrate
+   pnpm verify
+   ```
+2. **Try the two-tab conflict locally** **[PC]**: `pnpm dev`, sign in as a seeded account
+   (`docs/DEV_CREDS.md`), and open the same list in two tabs. Edit in tab A, wait for "Saved",
+   then edit in tab B. Tab B should show **Changed elsewhere** with a **Reload** button and a
+   message, and must not overwrite tab A.
+3. **Check `JWT_SECRET`** **[PC]** in the server's production env file (`server/.env.production.local`).
+   It must be at least 32 characters and must not start with `change-me`, or the deploy stops
+   and the API refuses to start. To make a new one, run `openssl rand -hex 64` in Git Bash and
+   paste it as `JWT_SECRET="…"`. A new secret signs everyone out once.
+4. **Check the Ameria pair** **[PC]**, in the same file. With `AMERIA_TEST_MODE="false"`, delete
+   the `AMERIA_AMOUNT_OVERRIDE` line, or the API refuses to start. With the test terminal still
+   on, leave both as they are.
+5. **If you changed that file, re-encode it**: run `pnpm env:base64 production | clip` **[PC]**,
+   then **[GH]** Secrets and variables → Actions → `ENV_API_BASE64` → Update, and paste.
+6. **If you created `SSH_KNOWN_HOSTS`** from the earlier version of these steps **[GH]**: Secrets
+   and variables → Actions → `SSH_KNOWN_HOSTS` → Remove. Nothing reads it any more.
+7. **Review the diff, commit, push to `master`.** The deploy's first job, **Check configuration**,
+   checks every secret and stops the run within seconds if one is missing or wrong; its log names
+   the secret and the fix. Yellow warnings there are optional features that are off (photo
+   import, mail, or the test terminal). The deploy then dumps the database before migrating, and
+   rolls back by itself if the new release fails its checks.
+
+### On the server, after the deploy is green
+
+8. **nginx: HSTS on both hosts, gzip on the API** **[SRV]**. Empty each conf, paste the repo
+   file into it, then test and reload:
+   ```bash
+   sudo truncate -s 0 /etc/nginx/sites-available/guests-seating-board.eapps.site.conf
+   sudo nano /etc/nginx/sites-available/guests-seating-board.eapps.site.conf        # deployment/guests-seating-board.eapps.site.conf
+   sudo truncate -s 0 /etc/nginx/sites-available/api.guests-seating-board.eapps.site.conf
+   sudo nano /etc/nginx/sites-available/api.guests-seating-board.eapps.site.conf    # deployment/api.guests-seating-board.eapps.site.conf
+   sudo nginx -t && sudo systemctl reload nginx
+   ```
+   Check from **[PC]**:
+   - `curl.exe -sI https://guests-seating-board.eapps.site/ | findstr /i strict` should print
+     `Strict-Transport-Security: max-age=31536000`.
+   - `curl.exe -s -o NUL -w "%{http_code}" https://api.guests-seating-board.eapps.site/health`
+     should print `200`.
+9. **Nightly backups to Google Drive** **[SRV]**: follow [DRIVE_BACKUP.md](DRIVE_BACKUP.md).
+   rclone and its `gdrive` remote are already on the server (crossword set them up). In short:
+   - Paste `deployment/backup-db.sh` into `/home/michael/apps/guests-seating-board/shared/backup-db.sh`,
+     run `sudo chown michael:michael` on it, then `chmod 700` it.
+   - Run it once by hand, without `sudo`, and check `rclone ls gdrive:guests-seating-board-backups`.
+   - `crontab -e`, add the `15 4 * * * …` line from the guide (15 minutes after CV Builder's).
+   - Do the restore drill once.
+10. **Backup alert** (optional) **[EXT]**: create a check at https://healthchecks.io (period 1 day,
+    grace 2 hours), and put its URL in the `PING_URL="…"` line of the server's `backup-db.sh`.
+11. **Uptime alerts** **[EXT]**: follow
+    [PRODUCTION_SETUP.md step 13](PRODUCTION_SETUP.md#13-uptime-alerts-ext-once). Add two
+    UptimeRobot HTTP(s) monitors, every 5 minutes:
+    - `https://api.guests-seating-board.eapps.site/health`, with the keyword `"status":"ok"`.
+    - `https://guests-seating-board.eapps.site/`.
+12. **Test terminal still on?** **[SRV]**:
+    `journalctl -u guests-seating-board-api -n 100 --no-pager | grep -i "TEST terminal"`. A line
+    means anyone with Ameria's test cards gets real passes. Switch to the live terminal (step 4)
+    as soon as the bank signs off.
+
+### Outside the code
+
+13. **Cap the Gemini spend** **[EXT]**: Google Cloud console, the project of `GEMINI_API_KEY`.
+    - Billing → Budgets & alerts → Create budget, for example 10 USD a month with email alerts at
+      50/90/100%.
+    - APIs & Services → Generative Language API → Quotas: lower "Generate content requests per
+      day" to a sane ceiling, for example 500.
+14. **Legal review** **[EXT]**: have a lawyer review the terms, privacy and refund texts in
+    `src/constants/legal.ts`. The file still calls them a draft; drop that note from its comment
+    once they are reviewed.
+
+### Check by hand on the live site
+
+15. **Consent banner** **[WEB]**: it shows only where an opt-in is needed (EU/EEA, UK,
+    Switzerland — by the device's time zone, `src/constants/consent.ts`).
+    - From Armenia: a private window shows no banner and sets `_ga*` cookies at once
+      (DevTools → Application → Cookies).
+    - The EU case: DevTools → ⋮ → More tools → Sensors → Location → Berlin (it overrides the time
+      zone), then reload in a fresh private window. The banner shows, and there is no `_ga*`
+      cookie until you click **Accept** or the **×** (closing counts as accepting); **Decline**
+      keeps it cookieless.
+    - Footer → **Cookie settings** reopens the banner anywhere. It never shows in the editor.
+16. **Phone at 360 px** (a real phone or DevTools device mode) **[WEB]**, in hy and ru:
+    - The editor's bottom bar labels fit on two lines.
+    - The checkout dialog's buttons wrap instead of overflowing.
+    - Pause/play on the template page's slider works.
+17. **A real payment on the test terminal** **[WEB]**: pay, then close the tab on the bank page
+    before it redirects. Within the next hour the payment should settle on its own: the access
+    shows up, and the admin mail says "settled by the hourly check".

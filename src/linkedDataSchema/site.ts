@@ -9,7 +9,7 @@ import {
   SUPPORT_POSTAL_ADDRESS,
 } from '@constants/app'
 import { FONT_SLUGS } from '@constants/fonts'
-import { CURRENCY, PASS_DAYS, PASS_PRICE_AMD } from '@constants/pricing'
+import { CURRENCY, PASS_DAYS, PASS_PRICE_AMD, PHOTO_READS_PER_PASS } from '@constants/pricing'
 import { ROUTES, templatePath } from '@constants/routes'
 import { ALTERNATE_NAMES, SEARCH_KEYWORDS } from '@constants/seo'
 import { TEMPLATE_LIST, type TemplateId } from '@constants/templates'
@@ -80,7 +80,7 @@ export const webApplicationSchema = (): WithContext<WebApplication> => ({
   publisher: { '@id': ORGANIZATION_ID },
   featureList: [
     'Հյուրերի ներմուծում Excel-ից, CSV-ից և տեքստից, իսկ լիարժեք հասանելիությամբ՝ լուսանկարից (արհեստական բանականությամբ)',
-    'Նստատեղերի ցուցանակ, հյուրերի ցուցակ և անվանաքարտեր',
+    'Նստատեղերի ցուցանակ, հյուրերի ցուցակ, անվանաքարտեր և սրահի հատակագիծ',
     'Հյուրերի դասավորում քաշելով, սյունակներով և տողերով',
     `${TEMPLATE_LIST.length} դասական և ստեղծագործական ձևանմուշ`,
     `${FONT_SLUGS.length} հայերեն տառատեսակ`,
@@ -92,14 +92,14 @@ export const webApplicationSchema = (): WithContext<WebApplication> => ({
       '@type': 'Offer',
       price: 0,
       priceCurrency: CURRENCY,
-      description: 'Ցուցակի կազմում, նախադիտում և տպում անվճար ձևանմուշով',
+      description: 'Ցուցակի կազմում, նախադիտում և տպում անվճար ձևանմուշով՝ կայքի նշումով',
       availability: 'https://schema.org/InStock',
     },
     {
       '@type': 'Offer',
       price: PASS_PRICE_AMD,
       priceCurrency: CURRENCY,
-      description: `Լիարժեք հասանելիություն ${PASS_DAYS} օրով՝ բոլոր ձևանմուշները, առանց կայքի նշման, մեկ վճարում`,
+      description: `Լիարժեք հասանելիություն ${PASS_DAYS} օրով՝ բոլոր ձևանմուշները, առանց կայքի նշման, ${PHOTO_READS_PER_PASS} ցուցակ լուսանկարից, մեկ վճարում`,
       availability: 'https://schema.org/InStock',
     },
   ],

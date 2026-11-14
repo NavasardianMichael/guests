@@ -23,7 +23,7 @@ export const TileButton: FC<Props> = ({ icon, caption, active, className, childr
     {...rest}
     className={cn(
       'flex min-h-11 min-w-0 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border px-1.5 py-2 text-center',
-      'text-xs leading-tight font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
+      'text-xs leading-tight font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-strong',
       'disabled:cursor-not-allowed disabled:opacity-50',
       active
         ? 'border-ink bg-ink text-white shadow-sm'

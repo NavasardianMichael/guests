@@ -1,7 +1,7 @@
 'use client'
 
 import { type FC, useCallback, useEffect, useRef, useState } from 'react'
-import { Button, Modal, Spin } from 'antd'
+import { Button, Modal, Result, Spin } from 'antd'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
@@ -10,7 +10,7 @@ import { useAuthStore } from '@store/auth/store'
 import { useEditorUiStore } from '@store/editorUi/store'
 import { DRAFT_ID, type ListDocument, type PrintKind, type SheetShape } from '@store/lists/single/types'
 import { useSampleTexts } from '@hooks/useSampleTexts'
-import { editorPath, ROUTES } from '@constants/routes'
+import { editorPath, newListPath, RETURN_TO_QUERY, ROUTES } from '@constants/routes'
 import type { TemplateId } from '@constants/templates'
 import { dedupe } from '@helpers/dedupe'
 import { startingPlanScale } from '@helpers/fitSheet'
@@ -24,7 +24,9 @@ type Props = { templateId: TemplateId; kind: PrintKind; shape: SheetShape }
 /**
  * Starts a list — on the sample wedding's guests, the user's to change — and opens it at the
  * first step. Signed in: created on the server. Guest: written as the local draft — after
- * asking, if a draft is already there, since there is only one.
+ * asking, if a draft is already there, since there is only one. A browser that refuses to store
+ * it (site data blocked) is told so here: the editor reads the draft back, and opening it without
+ * one would send the guest straight back to this page.
  */
 export const NewListClient: FC<Props> = ({ templateId, kind, shape }) => {
   const t = useTranslations('Editor')
@@ -35,6 +37,7 @@ export const NewListClient: FC<Props> = ({ templateId, kind, shape }) => {
   const isResolved = useAuthStore.use.isResolved()
   const [askReplace, setAskReplace] = useState(false)
   const [error, setError] = useState<unknown>(null)
+  const [storageBlocked, setStorageBlocked] = useState(false)
 
   const build = useCallback((): ListDocument => {
     const doc = newListDocument(templateId, kind, { title: t('untitled'), shape, texts })
@@ -44,7 +47,10 @@ export const NewListClient: FC<Props> = ({ templateId, kind, shape }) => {
   }, [kind, shape, t, texts, templateId])
 
   const startDraft = useCallback(() => {
-    writeLocalDraft(build())
+    if (!writeLocalDraft(build())) {
+      setAskReplace(false)
+      return setStorageBlocked(true)
+    }
     useEditorUiStore.getState().markJustCreated(DRAFT_ID)
     router.replace(editorPath(DRAFT_ID))
   }, [build, router])
@@ -68,6 +74,28 @@ export const NewListClient: FC<Props> = ({ templateId, kind, shape }) => {
     // here, once the session is known, is what this effect is for.
     start().catch(setError)
   }, [isResolved, start])
+
+  if (storageBlocked) {
+    return (
+      <div className='grid min-h-dvh place-items-center p-6'>
+        <Result
+          status='warning'
+          title={t('storageBlockedTitle')}
+          subTitle={t('storageBlockedText')}
+          extra={
+            <div className='flex flex-wrap justify-center gap-2'>
+              <Link href={`${ROUTES.signIn}?${RETURN_TO_QUERY}=${encodeURIComponent(newListPath({ template: templateId, kind, shape }))}`}>
+                <Button type='primary'>{t('guestBannerCta')}</Button>
+              </Link>
+              <Link href={ROUTES.templates}>
+                <Button>{tCommon('back')}</Button>
+              </Link>
+            </div>
+          }
+        />
+      </div>
+    )
+  }
 
   if (error) {
     return (

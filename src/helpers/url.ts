@@ -7,21 +7,23 @@ export const absoluteUrl = (path: string): string => `${getSiteUrl()}${path.star
 
 export const getApiUrl = (): string => (process.env.NEXT_PUBLIC_API_URL || API_URL_FALLBACK).replace(/\/+$/, '')
 
-/** Same-site paths only — the client-side twin of the API's `isSafeReturnPath`. */
-export const isSafeReturnPath = (value: unknown): value is string =>
-  typeof value === 'string' && value.startsWith('/') && !value.startsWith('//') && !value.startsWith('/\\')
+const RETURN_BASE = 'https://return-path.invalid'
 
-/** A link for a CV's website/LinkedIn line, or undefined when it does not parse as http(s). */
-export const toWebsiteUrl = (text: string | undefined): string | undefined => {
-  const trimmed = text?.trim()
-  if (!trimmed) return undefined
-  const withScheme = /^[a-z][a-z\d+.-]*:/i.test(trimmed) ? trimmed : `https://${trimmed}`
+/**
+ * The post-sign-in destination as a clean same-site path, or `undefined` when it would leave the
+ * site. Same rule as the API's `safeReturnPath` (`server/src/lib/return-path.ts`): resolved as a
+ * browser would, so a hidden tab or `\` cannot turn it into another host, and a path that merely
+ * carries them is kept, cleaned.
+ */
+export const safeReturnPath = (value: unknown): string | undefined => {
+  if (typeof value !== 'string' || value.length > 512) return undefined
+  let url: URL
   try {
-    const url = new URL(withScheme)
-    if (url.protocol !== 'https:' && url.protocol !== 'http:') return undefined
-    if (!url.hostname.includes('.')) return undefined
-    return url.href
+    url = new URL(value, RETURN_BASE)
   } catch {
     return undefined
   }
+  if (url.origin !== RETURN_BASE) return undefined
+  // `/.//evil.example` normalises to the path `//evil.example`, which a redirect would read as a host.
+  return `/${url.pathname.replace(/^\/+/, '')}${url.search}${url.hash}`
 }

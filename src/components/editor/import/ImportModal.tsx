@@ -1,6 +1,6 @@
 'use client'
 
-import { type FC, useEffect, useMemo, useState } from 'react'
+import { type FC, useEffect, useMemo, useRef, useState } from 'react'
 import { CameraOutlined, FileExcelOutlined, InboxOutlined, LockOutlined, SnippetsOutlined } from '@ant-design/icons'
 import { Alert, App, Button, Input, Modal, Select, Spin, Upload } from 'antd'
 import { useTranslations } from 'next-intl'
@@ -116,8 +116,15 @@ export const ImportModal: FC = () => {
   // Undefined while asked; null when it could not be asked (the API still decides).
   const [photoStatus, setPhotoStatus] = useState<PhotoStatus | null | undefined>(undefined)
   const [edited, setEdited] = useState<IncomingGuest[] | null>(null)
+  /**
+   * Bumped by each photo read and by every reset (closing, another source): a read that comes
+   * back after it was left behind is dropped, so it never lands in a dialog opened since. The
+   * reads left still update — the API has counted it.
+   */
+  const photoRun = useRef(0)
 
   const reset = () => {
+    photoRun.current += 1
     setText('')
     setPasteMapping(null)
     setSheets({})
@@ -200,16 +207,20 @@ export const ImportModal: FC = () => {
 
   /** One photo. It counts once it yields names; one that yields none gives its read back. */
   const onPhoto = async (file: File) => {
+    const run = ++photoRun.current
+    const current = () => run === photoRun.current
     setEdited(null)
     setPhotoGuests(null)
     setPhotoReading(true)
     try {
       const image = await fileToUploadDataUrl(file)
       const result = await extractGuestsAPI({ image })
-      setPhotoGuests(result.guests)
       setPhotoStatus(result.photo)
+      if (!current()) return
+      setPhotoGuests(result.guests)
       if (!result.guests.length) void message.warning(t('photoNothing'))
     } catch (error) {
+      if (!current()) return
       const { code } = processError(error)
       // The API's word wins over what this page last knew: ask again, which shows why.
       if (code === ERROR_CODES.photoNeedsAccess || code === ERROR_CODES.photoLimitReached) {
@@ -219,7 +230,7 @@ export const ImportModal: FC = () => {
       }
       void message.error(tErrors(errorCopyKey(classifyError(error))))
     } finally {
-      setPhotoReading(false)
+      if (current()) setPhotoReading(false)
     }
   }
 

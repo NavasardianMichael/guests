@@ -4,6 +4,7 @@ import { ERROR_CODE } from '../lib/error-codes.js'
 import { readGuestKeyHash } from '../lib/guest.js'
 import { sendPdf } from '../lib/pdf-response.js'
 import { createRateLimiter } from '../lib/rateLimit.js'
+import { clientAddress } from '../lib/request.js'
 import { readRequestInfo } from '../lib/request-info.js'
 import type { ListOwner } from '../middleware/auth.js'
 import { asyncHandler } from '../middleware/error.js'
@@ -38,7 +39,7 @@ const draftOwnerOf = (req: Request): ListOwner | null => {
 pdfRouter.post(
   '/',
   asyncHandler(async (req, res) => {
-    const verdict = draftPdfLimiter(req.ip ?? 'unknown')
+    const verdict = draftPdfLimiter(clientAddress(req))
     if (!verdict.allowed) {
       res.setHeader('Retry-After', String(verdict.retryAfterSeconds))
       return fail(res, 'Too many prints', ERROR_CODE.rateLimited, 429)

@@ -36,13 +36,29 @@ const waiting: (() => void)[] = []
 /** The print queue is full; try again shortly. */
 export class PdfBusyError extends Error {}
 
-const acquire = async (): Promise<void> => {
+/** The client went away while its print was still waiting: it is dropped, not printed. */
+export class PdfAbortedError extends Error {}
+
+const acquire = async (signal?: AbortSignal): Promise<void> => {
+  if (signal?.aborted) throw new PdfAbortedError('client gone')
   if (active < MAX_CONCURRENT) {
     active += 1
     return
   }
   if (waiting.length >= MAX_WAITING) throw new PdfBusyError('PDF queue is full')
-  await new Promise<void>((resolve) => waiting.push(resolve))
+  await new Promise<void>((resolve, reject) => {
+    const turn = () => {
+      signal?.removeEventListener('abort', onAbort)
+      resolve()
+    }
+    const onAbort = () => {
+      const at = waiting.indexOf(turn)
+      if (at >= 0) waiting.splice(at, 1)
+      reject(new PdfAbortedError('client gone'))
+    }
+    signal?.addEventListener('abort', onAbort, { once: true })
+    waiting.push(turn)
+  })
   active += 1
 }
 
@@ -51,8 +67,9 @@ const release = (): void => {
   waiting.shift()?.()
 }
 
-export const renderListPdf = async (doc: RenderDocument): Promise<Uint8Array> => {
-  await acquire()
+/** `signal` drops a print that is still waiting in the queue when its client hangs up. */
+export const renderListPdf = async (doc: RenderDocument, signal?: AbortSignal): Promise<Uint8Array> => {
+  await acquire(signal)
   let browser: Browser | null = null
 
   try {
@@ -69,7 +86,9 @@ export const renderListPdf = async (doc: RenderDocument): Promise<Uint8Array> =>
       ;(window as unknown as { __SHEET_RENDER__: unknown }).__SHEET_RENDER__ = injected
     }, doc)
 
-    await page.goto(`${config.renderOrigin}/render`, { waitUntil: 'networkidle0', timeout: NAVIGATION_TIMEOUT_MS })
+    // `load`, not `networkidle0` (which idles 500 ms more): the page marks itself ready only
+    // after its fonts load and the sheet is laid out, and that marker is waited for next.
+    await page.goto(`${config.renderOrigin}/render`, { waitUntil: 'load', timeout: NAVIGATION_TIMEOUT_MS })
     await page.waitForSelector('[data-sheet-ready="true"]', { timeout: NAVIGATION_TIMEOUT_MS })
     await page.evaluate(() => globalThis.document.fonts.ready.then(() => undefined))
 

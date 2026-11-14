@@ -49,7 +49,8 @@ const resultStatus = (settled: SettleStatus, req: Request): PaymentResultStatus 
 
 /**
  * Ameria sends `paymentID` and echoes `opaque` (our `Payment.id`); the mock sends both too.
- * The ID is matched case-insensitively (InitPayment answers it in upper case), and `opaque`
+ * The ID is matched in any case (InitPayment answers it in upper case) — as exact values, so the
+ * unique index is used rather than a scan of every payment — and `opaque`
  * finds the row when it does not match. Either only picks the row: it is settled from the
  * gateway's record of the ID we stored. A return we cannot place shows "pending" — not
  * "failed", which tells the buyer nothing was charged — and is logged for diagnosis.
@@ -64,7 +65,7 @@ paymentsRouter.get(
 
     const payment =
       (paymentId
-        ? await prisma.payment.findFirst({ where: { gateway, gatewayPaymentId: { equals: paymentId, mode: 'insensitive' } } })
+        ? await prisma.payment.findFirst({ where: { gateway, gatewayPaymentId: { in: [...new Set([paymentId, paymentId.toUpperCase(), paymentId.toLowerCase()])] } } })
         : null) ?? (opaque ? await prisma.payment.findFirst({ where: { gateway, id: opaque } }) : null)
     if (!payment) {
       console.warn(`[payments] unmatched ${gateway} return: ${JSON.stringify(req.query)}`)

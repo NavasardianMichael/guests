@@ -62,7 +62,8 @@ export const ListCard: FC<Props> = ({ list, onDuplicate, onDelete, onDownload })
             ],
           }}
         >
-          <Button type='text' size='small' icon={<MoreOutlined />} aria-label={t('actions')} />
+          {/* Full control height: a 40px tap target, pulled up to the title's line. */}
+          <Button type='text' className='-mt-1.5 -mr-1.5' icon={<MoreOutlined />} aria-label={t('actions')} />
         </Dropdown>
       </div>
     </article>

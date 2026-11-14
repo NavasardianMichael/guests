@@ -4,7 +4,7 @@ import { fail, ok } from '../lib/api-response.js'
 import { ERROR_CODE } from '../lib/error-codes.js'
 import { isMailConfigured, sendInternalMail } from '../lib/mail.js'
 import { createRateLimiter } from '../lib/rateLimit.js'
-import { asBoundedString, asEmail, asFullName, asTrimmedString } from '../lib/request.js'
+import { asBoundedString, asEmail, asFullName, asTrimmedString, clientAddress } from '../lib/request.js'
 import { asyncHandler } from '../middleware/error.js'
 
 /**
@@ -27,7 +27,7 @@ const contactLimiter = createRateLimiter({ limit: 5, windowMs: 60 * 60 * 1000 })
 contactRouter.post(
   '/',
   asyncHandler(async (req, res) => {
-    const verdict = contactLimiter(req.ip ?? 'unknown')
+    const verdict = contactLimiter(clientAddress(req))
     if (!verdict.allowed) {
       res.setHeader('Retry-After', String(verdict.retryAfterSeconds))
       return fail(res, 'Too many messages', ERROR_CODE.rateLimited, 429)

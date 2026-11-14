@@ -131,7 +131,7 @@ export const SpreadsheetCell: FC<Props> = memo(function SpreadsheetCell({
         data-cell={`${row}:${col}`}
         className={cn(
           'block w-full min-w-0 scroll-mt-10 scroll-ml-12 border-0 bg-transparent px-2 py-1.5 text-sm text-text outline-none',
-          'placeholder:text-muted/60 focus:bg-surface focus:ring-2 focus:ring-accent focus:ring-inset',
+          'placeholder:text-muted/60 focus:bg-surface focus:ring-2 focus:ring-accent-strong focus:ring-inset',
           guestId && 'pointer-fine:pl-1',
           className
         )}

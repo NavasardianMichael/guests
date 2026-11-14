@@ -77,7 +77,12 @@ The 21 days, and what happens after them, are said wherever money is:
    — including after it ran out, or after a refund (below).
 
 A buyer who closes the tab before step 3 is covered by **reconcile-on-read**: `GET /purchases`,
-every print and every new checkout re-check the owner's pending payments from the last 3 days.
+every print and every new checkout re-check the owner's pending payments from the last 3 days
+(reads that only show state — `GET /purchases`, `GET /ai/photo` — at most every 3 s per owner).
+A buyer who never comes back at all is covered by the **hourly sweep**
+(`services/paymentSweep.ts` → `settleStalePayments`): every payment still pending after its bank
+page timed out (up to 30 days old) is asked about once more — paid becomes `succeeded` (the admin
+mail says "settled by the hourly check"), nothing charged becomes `failed`.
 `Payment` rows outlive their list and user (`SetNull`) — they are the accounting record.
 
 ### The result page says what happened
@@ -225,7 +230,8 @@ Going live:
    `AMERIA_AMOUNT_OVERRIDE=10` and `AMERIA_ORDER_ID_OFFSET` to the start of the range (the
    OrderID sent is offset + `Payment.orderNumber`). The bank signs off after several
    successful test payments.
-3. Production: `AMERIA_TEST_MODE=false`, remove `AMERIA_AMOUNT_OVERRIDE`, set the offset so
+3. Production: `AMERIA_TEST_MODE=false`, remove `AMERIA_AMOUNT_OVERRIDE` (the API refuses to
+   start with both, and the override is ignored on the live terminal anyway), set the offset so
    live OrderIDs never collide with test ones, `PAYMENT_GATEWAY=ameria`, and
    `API_PUBLIC_URL` to the public API origin (the BackURL is built on it). All of it goes in
    `ENV_API_BASE64` (`pnpm env:base64 production` warns about what is missing).

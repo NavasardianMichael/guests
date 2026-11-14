@@ -40,6 +40,8 @@ export const CANVAS = {
   raised: '#ffffff',
   sunken: '#f3eee6',
   line: '#e8e1d6',
+  /** A form field's edge: 3:1 against white and the canvas (WCAG 1.4.11), where `line` is 1.3:1. */
+  field: '#8f8a82',
 } as const
 
 export const STATUS = {
@@ -56,10 +58,15 @@ export const RADIUS = { sm: 8, md: 12, lg: 18 } as const
 
 export const FONT_SIZE = { base: 15 } as const
 
-/** Variables antd has no slot for, set on <html> by the root layout and aliased in globals.css. */
+/**
+ * Variables antd has no slot for, set on <html> by the root layout and aliased in globals.css.
+ * The accent itself (2.5:1 on white) is for fills, marks and large shapes, never text or a focus
+ * ring: `strong` (4.9:1) is for text, icons and the focus ring, `deep` for text on `soft`.
+ */
 export const BRAND_CSS_VARS = {
   '--brand-accent': APRICOT[500],
-  '--brand-accent-strong': APRICOT[600],
+  '--brand-accent-strong': APRICOT[700],
+  '--brand-accent-deep': APRICOT[800],
   '--brand-accent-soft': APRICOT[100],
   '--brand-ink-soft': INK[100],
   '--brand-ink-deep': INK[950],

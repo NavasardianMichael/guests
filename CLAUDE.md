@@ -25,7 +25,7 @@ pnpm db:up          # Postgres in Docker on :5010, by hand
 pnpm dev            # web :7010 + api :9010
 pnpm verify         # typecheck → typecheck:server → lint → test → build — run before calling anything done
 pnpm test           # vitest (tests/unit)
-pnpm fonts:css      # public/fonts/manifest.json -> public/fonts/sheet-fonts.css
+pnpm fonts:css      # public/fonts/manifest.json -> public/fonts/sheet-fonts.css (+ src/constants/sheetFontsVersion.ts, the ?v= hash)
 pnpm build:api      # server/dist -> out/api, the standalone API release the deploy ships
 pnpm env:base64 production | clip   # server/.env.production.local -> the ENV_API_BASE64 secret
 pnpm payments:reverse refund 12 13  # money back through the gateway (refund | cancel), by Payment.orderNumber —
@@ -52,10 +52,10 @@ cv-builder's notes: under `concurrently` on Windows `tsx watch` never starts the
 | Paper formats | `src/constants/paper.ts` |
 | **Layout engine** (where every block sits, mm; text wrapping) | `src/helpers/sheetLayout.ts` · browser text metrics `src/helpers/measureText.ts` · re-layout when fonts load `src/hooks/useSheetLayout.ts` |
 | "Fit to the page" (button at the first page's top-right corner): columns + text size, fewest pages, names whole | `src/helpers/fitSheet.ts` · store `fitToPage` · button in `EditorCanvas` page extras |
-| The renderer (editor, previews, PDF) | `src/components/sheet/SheetDocument.tsx` + `sheet.css`; scaled previews `SheetPreview.tsx` |
+| The renderer (editor, previews, PDF) | `src/components/sheet/SheetDocument.tsx` + `sheet.css`; scaled previews `SheetPreview.tsx` (laid out — and its fonts fetched — only once near the screen) |
 | Hall plan (tables, chairs, stage / dance floor / entrance) | layout `PLAN`, `placePlan`, `roundDiameter` in `src/helpers/sheetLayout.ts` · views `PlanTableView` / `VenueView` in `SheetDocument.tsx`, `.sh-plan-*` / `.sh-venue-*` in `sheet.css` · arrangement presets (rows, around the dance floor, two sides, long tables) `src/helpers/planArrangement.ts`, picked in the Template step (`components/editor/plan/ArrangementPicker.tsx`, `setArrangement`) · add buttons `components/editor/plan/PlanAdd.tsx` (canvas toolbar + Layout step) · shape and chairs in `SelectionBar` |
 | Editor interactions (drag, drop, snap, marquee, inline edit) | `src/components/editor/canvas/useCanvasInteraction.tsx`, given to the sheet through `SheetInteraction.tsx`; selection actions `SelectionBar.tsx`; keys `useCanvasShortcuts.ts` |
-| Editor state, undo/redo | `src/store/lists/single/store.ts` · autosave `src/components/editor/useAutosave.ts` · chrome state `src/store/editorUi/store.ts` |
+| Editor state, undo/redo | `src/store/lists/single/store.ts` · autosave `src/components/editor/useAutosave.ts` (sends `baseUpdatedAt`; a list saved elsewhere since answers 409 → `conflict`, reload asked; other 4xx → `stopped`, no retry loop) · chrome state `src/store/editorUi/store.ts` |
 | Panels = the editor's steps, in order (`EDITOR_TABS`) | `src/components/editor/panels/` — Kind, Template (shape + template), Design, Guests (quick add, by-table view, rows sorted with @dnd-kit across tables), Layout, Paper. A new list starts with the sample wedding as its own, editable guests and opens at Kind (`newListDocument`, `markJustCreated`). On desktop the column folds to a rail by the button at its top-right corner (`EditorSidebar`, remembered in localStorage; a step click unfolds it) |
 | Reset buttons (top bar: all; tab header; section header) | what each scope puts back `src/helpers/designReset.ts` · button + confirm `src/components/editor/controls/ResetButton.tsx` · paper change maths `src/helpers/paperChange.ts` |
 | "Leave this page?" while unsaved | `src/components/LeaveGuard.tsx` (tab close/reload, links, Back) · register with `useLeaveGuard` (`src/hooks/`) — the editor's autosave does |
@@ -64,12 +64,14 @@ cv-builder's notes: under `concurrently` on Windows `tsx watch` never starts the
 | Guest drafts (localStorage) | `src/helpers/localDraft.ts` — imported on sign-in by `EditorShell` |
 | PDF | `server/src/services/pdf.ts` prints the web's `/render` page (`src/app/render/`); the editor and dashboard only download it (`src/hooks/usePdfDownload.ts`, `PdfActions`) — no browser printing |
 | Who may print what | `server/src/services/entitlement.ts` (pure: `printTerms`, `accessWindow`): the free template (`memorial`, shown as “Classic”) for anyone, everything while the owner's pass runs — `printTermsFor` in `services/payments.ts`; web twin `isPrintable` |
-| Payments (21-day access pass) | `docs/PAYMENTS.md` · server `services/pricing.ts`, `services/payments.ts` (settle, reconcile, open-payment resume), `services/gateways/` (Ameria + dev mock, as cv-builder), `routes/purchases.ts` (access, checkout), `routes/payments.ts` (bank return) · admin mails on checkout and success `services/paymentNotifications.ts` + `paymentMail.ts` (device facts `lib/request-info.ts` ← web `helpers/clientInfo.ts`) · operator refunds `pnpm payments:reverse` (`server/src/cli/`) · web `constants/pricing.ts`, `store/purchases/` + `hooks/useAccess.ts`, `hooks/useCheckout.ts`, `components/editor/download/{CheckoutModal,AccessChip}.tsx`, `dashboard/AccessBanner.tsx`, `/payment/result`, `/pricing`, `/refund-policy` |
+| Payments (21-day access pass) | `docs/PAYMENTS.md` · server `services/pricing.ts`, `services/payments.ts` (settle, reconcile, open-payment resume), `services/gateways/` (Ameria + dev mock, as cv-builder), `routes/purchases.ts` (access, checkout), `routes/payments.ts` (bank return) · admin mails on checkout and success `services/paymentNotifications.ts` + `paymentMail.ts` (device facts `lib/request-info.ts` ← web `helpers/clientInfo.ts`) · operator refunds `pnpm payments:reverse` (`server/src/cli/`) · web `constants/pricing.ts`, `store/purchases/` + `hooks/useAccess.ts`, `hooks/useCheckout.ts`, `components/editor/download/{CheckoutModal,AccessChip}.tsx`, `dashboard/AccessBanner.tsx`, `/payment/result`, `/pricing`, `/refund-policy` · hourly settle of payments left pending `services/paymentSweep.ts` |
 | Retention (wholly unused for a year → deleted) | policy `server/src/services/retention.ts`, daily sweep `retentionSweep.ts`, `User.lastActiveAt` stamped in `middleware/auth.ts` |
 | Languages | `src/i18n/request.ts` (cookie `NEXT_LOCALE`, default hy) · `src/messages/{hy,ru,en}.json` · switcher `components/layout/LanguageSwitcher.tsx` |
 | Auth (password + Google), guest key | as cv-builder: `server/src/routes/identity*.ts`, `lib/guest.ts`, `services/guestLists.ts` |
-| CI/CD, production | `.github/workflows/{ci,deploy}.yml` · `docs/DEPLOYMENT.md` · `docs/PRODUCTION_SETUP.md` · `deployment/` |
+| CI/CD, production | `.github/workflows/{ci,deploy}.yml` (secrets checked first by `scripts/check-deploy-config.mjs`) · `docs/DEPLOYMENT.md` · `docs/PRODUCTION_SETUP.md` · `deployment/` |
 | SEO | `src/helpers/metadata.ts`, `src/constants/seo.ts`, `src/linkedDataSchema/site.ts`, `src/app/{sitemap,robots}.ts`, `src/app/llms.txt/` |
+| Analytics consent (GA4 Consent Mode v2: asked only in the EU/EEA, UK and Switzerland, told by the device's time zone — `src/constants/consent.ts`; denied there until accepted or the banner is closed, granted elsewhere) | `src/helpers/consent.ts` · banner `components/analytics/ConsentBanner.tsx` (site pages only, never the editor or `/render`) · footer "Cookie settings" `ConsentSettingsLink.tsx` |
+| Backups, rate-limit keys | nightly dump to Google Drive, 22 days kept: `deployment/backup-db.sh`, `docs/DRIVE_BACKUP.md`, a dump before each migration in deploy.yml · every limiter keys on `clientAddress` (`server/src/lib/request.ts`: an IPv6 client is its /64) |
 
 ## Architecture facts that are easy to get wrong
 

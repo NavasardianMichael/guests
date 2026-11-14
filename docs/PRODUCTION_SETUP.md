@@ -392,3 +392,22 @@ Inspection → the homepage → Request indexing.
 
 Nothing to submit for AI engines: `robots.txt` welcomes their crawlers by name, and
 `/llms.txt` describes the service in Armenian, English and Russian.
+
+## 12. Backups to Google Drive **[SRV]** (once)
+
+After the first deploy, once the database exists: a nightly cron job dumps the database to
+Google Drive (`guests-seating-board-backups`, dumps kept 22 days). It uses the rclone `gdrive`
+remote already on the server. Follow [DRIVE_BACKUP.md](DRIVE_BACKUP.md): install
+[backup-db.sh](../deployment/backup-db.sh), run it once, add the cron line, and do the restore
+drill. Its real-restore section is what to follow after data loss.
+
+## 13. Uptime alerts **[EXT]** (once)
+
+Errors on the web reach Sentry; the API's go to journald only, so the first sign of an outage
+should not be a customer. Create a free account at https://uptimerobot.com (or Better Stack) and
+add two **HTTP(s)** monitors, 5-minute interval, alerting your email:
+
+| Monitor | URL | Down when |
+| --- | --- | --- |
+| Guests API | `https://api.guests-seating-board.eapps.site/health` (keyword `"status":"ok"`) | not 200 — the API or its database is down |
+| Guests web | `https://guests-seating-board.eapps.site/` | not 200 — the Next server is down |

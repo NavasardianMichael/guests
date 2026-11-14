@@ -13,11 +13,22 @@ const SAMPLE = 'Աա Aa Аа 1'
 let fontsVersion = 0
 const listeners = new Set<() => void>()
 let listening = false
+let bumpScheduled = false
 
+/**
+ * Re-measures every sheet, at most once a frame: a page of previews hears a `loadingdone`, and
+ * each preview's own fetch, many times over while its faces arrive, and each bump lays out
+ * every sheet on the page again.
+ */
 const bump = () => {
-  fontsVersion += 1
-  resetMeasureCache()
-  for (const listener of listeners) listener()
+  if (bumpScheduled) return
+  bumpScheduled = true
+  requestAnimationFrame(() => {
+    bumpScheduled = false
+    fontsVersion += 1
+    resetMeasureCache()
+    for (const listener of listeners) listener()
+  })
 }
 
 const listen = () => {
@@ -27,8 +38,9 @@ const listen = () => {
 }
 
 /**
- * How many times a face has finished loading. A hall preview fitted before the real widths
- * were known subscribes, and fits again when they arrive (`ShapedSheetPreview`).
+ * How many times the faces have been re-measured (at most once a frame). A hall preview fitted
+ * before the real widths were known subscribes, and fits again when they arrive (`SheetPreview`'s
+ * `fit`, given by `ShapedSheetPreview`).
  */
 export const useFontEpoch = (): number => {
   const [version, setVersion] = useState(fontsVersion)

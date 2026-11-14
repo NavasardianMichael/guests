@@ -12,25 +12,24 @@ type Props = {
   onPreview: () => void
 }
 
-const BarButton: FC<{ icon: ReactNode; label: string; active: boolean; onClick: () => void; pressed?: boolean }> = ({
-  icon,
-  label,
-  active,
-  onClick,
-  pressed,
-}) => (
+/**
+ * Seven buttons share a 320–375px phone, about 45px each, where a long Armenian word does not fit
+ * on one line. The label wraps to two at the soft hyphens (U+00AD) in `tabsShort`, "Դասա-վորում",
+ * and the icons stay in one row, top-aligned, however many lines a label takes.
+ */
+const BarButton: FC<{ icon: ReactNode; label: string; active: boolean; onClick: () => void }> = ({ icon, label, active, onClick }) => (
   <button
     type='button'
-    aria-pressed={pressed}
+    aria-current={active ? 'true' : undefined}
     onClick={onClick}
     className={cn(
-      'relative flex min-w-0 flex-1 cursor-pointer flex-col items-center justify-center gap-0.5 border-0 bg-transparent px-1 pt-2 pb-1.5 text-muted transition-colors',
+      'relative flex min-w-0 flex-1 cursor-pointer flex-col items-center justify-start gap-1 border-0 bg-transparent px-0.5 pt-2 pb-1.5 text-muted transition-colors',
       active && 'text-ink'
     )}
   >
     {active && <span className='absolute inset-x-1/4 top-0 h-0.5 rounded-full bg-accent' aria-hidden='true' />}
     <span className='text-lg leading-none'>{icon}</span>
-    <span className={cn('max-w-full truncate text-[11px] leading-tight', active && 'font-semibold')}>{label}</span>
+    <span className={cn('line-clamp-2 max-w-full text-center text-[11px] leading-tight wrap-break-word hyphens-manual', active && 'font-semibold')}>{label}</span>
   </button>
 )
 

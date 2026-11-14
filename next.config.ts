@@ -20,8 +20,8 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
-        // Self-hosted CV fonts never change under the same path (the build script rewrites
-        // the folder), so they can be cached hard by browsers and CDNs.
+        // The sheet fonts and their stylesheet are linked with a content hash (`?v=`, written by
+        // `pnpm fonts:css`), so a changed file gets a new URL and these can be cached hard.
         source: '/fonts/:path*',
         headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }],
       },
@@ -31,6 +31,11 @@ const nextConfig: NextConfig = {
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+          // Only the directives that cannot break a flow. A script/connect allowlist would need
+          // 'unsafe-inline' (Next, antd and the GA consent defaults inline scripts without nonces,
+          // and nonces make every page dynamic), so it buys little against XSS for the risk of
+          // breaking GA, Sentry or the bank redirect. HSTS is set by nginx (deployment/).
+          { key: 'Content-Security-Policy', value: "frame-ancestors 'self'; base-uri 'self'; object-src 'none'; form-action 'self'" },
         ],
       },
     ]
@@ -49,4 +54,6 @@ export default withSentryConfig(withNextIntl(nextConfig), {
   tunnelRoute: true,
   widenClientFileUpload: true,
   sourcemaps: { disable: !process.env.SENTRY_AUTH_TOKEN },
+  // Errors only (`helpers/sentry.ts`): the tracing and debug code is dead weight in the bundle.
+  bundleSizeOptimizations: { excludeDebugStatements: true, excludeTracing: true },
 })

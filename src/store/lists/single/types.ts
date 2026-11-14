@@ -238,7 +238,12 @@ export const DRAFT_ID = 'draft'
 export const HEADER_ID = 'header'
 export const FOOTER_ID = 'footer'
 
-export type SaveStatus = 'saved' | 'dirty' | 'saving' | 'error'
+/**
+ * `error` retries on its own (network, server). `conflict`: the list was saved elsewhere since this
+ * copy was loaded, so saving it would overwrite that — the editor asks to reload. `stopped`: a
+ * refusal retrying cannot fix (signed out, deleted, too large). Both stay until the next edit.
+ */
+export type SaveStatus = 'saved' | 'dirty' | 'saving' | 'error' | 'conflict' | 'stopped'
 
 /** A row arriving from an import or a paste: the table by name, created when new. */
 export type IncomingGuest = { name: string; table?: string; note?: string }
@@ -263,6 +268,8 @@ export type SheetContent = Pick<ListContent, 'guests' | 'tables'>
 export type ListEditorState = {
   listId: string | null
   doc: ListDocument | null
+  /** The server's `updatedAt` of the copy being edited — sent with each save (`baseUpdatedAt`). Null for a draft. */
+  serverUpdatedAt: string | null
   saveStatus: SaveStatus
   past: ListDocument[]
   future: ListDocument[]
@@ -273,7 +280,8 @@ export type ListEditorState = {
 } & StateCommonProps
 
 export type ListEditorActions = {
-  loadDocument: (args: { listId: string; doc: ListDocument }) => void
+  loadDocument: (args: { listId: string; doc: ListDocument; updatedAt?: string }) => void
+  setServerUpdatedAt: (updatedAt: string) => void
   reset: () => void
   setSaveStatus: (status: SaveStatus) => void
   setListId: (listId: string) => void

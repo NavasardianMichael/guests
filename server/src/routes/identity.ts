@@ -12,7 +12,7 @@ import {
 } from '../lib/password-reset.js'
 import { prisma } from '../lib/prisma.js'
 import { createRateLimiter } from '../lib/rateLimit.js'
-import { asEmail, asFullName } from '../lib/request.js'
+import { asEmail, asFullName, clientAddress } from '../lib/request.js'
 import { clearSessionCookie, setSessionCookie } from '../lib/session.js'
 import { hashUrlToken } from '../lib/token.js'
 import { mapUser } from '../mappers/entities.js'
@@ -25,6 +25,11 @@ export const identityRouter = Router()
 identityRouter.use('/google', googleRouter)
 
 const loginLimiter = createRateLimiter({ limit: 10, windowMs: 15 * 60 * 1000 })
+/**
+ * Per address, whatever the email: every attempt costs an argon2 hash (64 MiB, the libuv
+ * pool), so a script varying the email must not get unlimited ones.
+ */
+const loginAddressLimiter = createRateLimiter({ limit: 40, windowMs: 15 * 60 * 1000 })
 const registerLimiter = createRateLimiter({ limit: 10, windowMs: 60 * 60 * 1000 })
 const resetLimiter = createRateLimiter({ limit: 5, windowMs: 60 * 60 * 1000 })
 const verifyLimiter = createRateLimiter({ limit: 5, windowMs: 60 * 60 * 1000 })
@@ -58,7 +63,7 @@ identityRouter.get(
 identityRouter.post(
   '/register',
   asyncHandler(async (req, res) => {
-    const verdict = registerLimiter(req.ip ?? 'unknown')
+    const verdict = registerLimiter(clientAddress(req))
     if (!verdict.allowed) return limited(res, verdict.retryAfterSeconds)
 
     const email = asEmail(req.body?.email)
@@ -90,7 +95,10 @@ identityRouter.post(
     const email = asEmail(req.body?.email)
     const password = typeof req.body?.password === 'string' ? (req.body.password as string) : ''
 
-    const verdict = loginLimiter(`${req.ip ?? 'unknown'}:${email ?? ''}`)
+    const address = clientAddress(req)
+    const byAddress = loginAddressLimiter(address)
+    if (!byAddress.allowed) return limited(res, byAddress.retryAfterSeconds)
+    const verdict = loginLimiter(`${address}:${email ?? ''}`)
     if (!verdict.allowed) return limited(res, verdict.retryAfterSeconds)
 
     const user = email ? await prisma.user.findUnique({ where: { email } }) : null
@@ -127,7 +135,7 @@ identityRouter.post(
 identityRouter.post(
   '/email/resend',
   asyncHandler(async (req, res) => {
-    const verdict = verifyLimiter(req.ip ?? 'unknown')
+    const verdict = verifyLimiter(clientAddress(req))
     if (!verdict.allowed) return limited(res, verdict.retryAfterSeconds)
 
     const email = asEmail(req.body?.email)
@@ -205,7 +213,7 @@ identityRouter.post(
 identityRouter.post(
   '/password/forgot',
   asyncHandler(async (req, res) => {
-    const verdict = resetLimiter(req.ip ?? 'unknown')
+    const verdict = resetLimiter(clientAddress(req))
     if (!verdict.allowed) return limited(res, verdict.retryAfterSeconds)
 
     const email = asEmail(req.body?.email)

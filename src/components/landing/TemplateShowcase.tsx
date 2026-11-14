@@ -61,9 +61,9 @@ const KindBlock: FC<BlockProps> = async ({ kind, title, text, first, wide, child
           </h2>
           <p className='mt-3 text-base text-muted sm:mt-4 sm:text-lg'>{text}</p>
         </div>
-        {/* Every block opens the gallery on its own print kind. */}
+        {/* Every block opens the gallery on its own print kind, and says which. */}
         <Link href={templatesPath({ kind })} className='inline-flex items-center gap-2 font-semibold text-ink no-underline hover:text-accent-strong'>
-          {t('templatesAll')} <ArrowRightOutlined />
+          {t(`templatesAllFor.${kind}`)} <ArrowRightOutlined />
         </Link>
       </div>
       <div
@@ -85,6 +85,7 @@ const ArrangementCard: FC<{ arrangement: PlanArrangement; templateId: TemplateId
   texts,
 }) => {
   const t = await getTranslations('Editor.plan.arrangement')
+  const tHome = await getTranslations('Home')
   const tTemplates = await getTranslations('Templates')
   return (
     <TemplateCardLink
@@ -93,10 +94,11 @@ const ArrangementCard: FC<{ arrangement: PlanArrangement; templateId: TemplateId
     >
       <div className='relative overflow-hidden rounded-2xl bg-surface shadow-[0_10px_30px_-12px_rgba(20,24,45,0.25)] ring-1 ring-black/5 transition duration-300 group-hover:-translate-y-1.5 group-hover:shadow-[0_24px_50px_-16px_rgba(20,24,45,0.35)]'>
         <ShapedSheetPreview doc={previewDocument(texts, templateId, 'plan', arrangement)} />
-        {/* The same badge as a TemplateCard's: this one prints without a pass. */}
+        {/* As a TemplateCard's badge, but naming the template: it is the template that prints
+            without a pass, not the arrangement (every arrangement does, in it). */}
         {TEMPLATES[templateId].free && (
           <span className='absolute top-3 right-3 rounded-full bg-surface/90 px-2.5 py-1 text-xs font-semibold text-ink shadow-sm'>
-            {tTemplates('free')}
+            {tHome('showcase.plan.freeBadge', { name: tTemplates(`names.${templateId}`) })}
           </span>
         )}
         <TemplateCardPending />

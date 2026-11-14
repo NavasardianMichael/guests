@@ -4,6 +4,7 @@ import { fail, ok } from '../lib/api-response.js'
 import { ERROR_CODE } from '../lib/error-codes.js'
 import { readGuestKeyHash } from '../lib/guest.js'
 import { createRateLimiter } from '../lib/rateLimit.js'
+import { clientAddress } from '../lib/request.js'
 import { readRequestInfo } from '../lib/request-info.js'
 import type { ListOwner } from '../middleware/auth.js'
 import { asyncHandler } from '../middleware/error.js'
@@ -66,7 +67,7 @@ aiRouter.post(
   asyncHandler(async (req, res) => {
     if (!isAiConfigured()) return fail(res, 'Photo import is not configured', ERROR_CODE.aiUnavailable, 503)
 
-    const verdict = req.session ? accountLimiter(req.session.userId) : guestLimiter(req.ip ?? 'unknown')
+    const verdict = req.session ? accountLimiter(req.session.userId) : guestLimiter(clientAddress(req))
     if (!verdict.allowed) {
       res.setHeader('Retry-After', String(verdict.retryAfterSeconds))
       return fail(res, 'Too many photos', ERROR_CODE.rateLimited, 429)

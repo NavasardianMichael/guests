@@ -31,7 +31,8 @@
     "menu": "Menu",
     "home": "Home",
     "contact": "Contact us",
-    "language": "Language"
+    "language": "Language",
+    "breadcrumb": "Breadcrumb"
   },
   "Footer": {
     "tagline": "Guest lists, seating charts and place cards for Armenian weddings, christenings and celebrations.",
@@ -119,12 +120,19 @@
       },
       "plan": {
         "title": "The hall plan",
-        "text": "Round and long tables with their guests and chairs, the stage, the dance floor and the entrance. Four ways to set the hall: in rows, around the dance floor, down both sides, or as long tables."
+        "text": "Round and long tables with their guests and chairs, the stage, the dance floor and the entrance. Four ways to set the hall: in rows, around the dance floor, down both sides, or as long tables.",
+        "freeBadge": "“{name}” template · free"
       }
     },
     "faqTitle": "Frequently asked questions",
     "finalTitle": "Your guests will find their seats without asking",
-    "finalCta": "Start now"
+    "finalCta": "Start now",
+    "templatesAllFor": {
+      "seating": "All seating chart templates",
+      "plan": "All hall plan templates",
+      "list": "All guest list templates",
+      "cards": "All place card templates"
+    }
   },
   "Faq": {
     "price": {
@@ -290,7 +298,9 @@
     "slider": {
       "label": "This template, four ways",
       "previous": "Previous",
-      "next": "Next"
+      "next": "Next",
+      "pause": "Pause the slideshow",
+      "play": "Play the slideshow"
     },
     "cardFacts": {
       "seating": "Seating chart",
@@ -369,7 +379,9 @@
     "tryAgain": "Try again",
     "guestTitle": "Keep your access",
     "guestText": "You paid without an account, so the access works only in this browser. Sign in to keep it in your account and use it on any device.",
-    "guestSignIn": "Sign in"
+    "guestSignIn": "Sign in",
+    "succeededTextNoDate": "Thank you. Full access is open: every template and kind, clean downloads.",
+    "checkAgain": "Check again"
   },
   "Contact": {
     "metaTitle": "Contact us",
@@ -497,7 +509,11 @@
       "dirty": "Changes…",
       "saving": "Saving…",
       "error": "Not saved",
-      "local": "Saved in this browser"
+      "local": "Saved in this browser",
+      "conflict": "Changed elsewhere",
+      "conflictHint": "This list was changed in another tab or on another device. Reload to see the latest version — the latest changes made here will not be saved.",
+      "reload": "Reload",
+      "stoppedHint": "Changes are not being saved. Reload the page or sign in again."
     },
     "undo": "Undo (Ctrl+Z)",
     "redo": "Redo (Ctrl+Y)",
@@ -541,7 +557,7 @@
     "keepDraft": "Open the draft",
     "preview": "Preview",
     "previewHint": "See the pages exactly as they will print",
-    "previewShort": "Preview",
+    "previewShort": "Pre­view",
     "previewFit": "Fit to the screen",
     "editorTools": "Editor tools",
     "canvas": {
@@ -684,7 +700,9 @@
       "showTable": "Show the table",
       "showNote": "Show the note",
       "headerOnEveryPage": "Title on every page",
-      "freeTips": "Arrow keys move the selection 1 mm (5 mm with Shift). Hold Alt while dragging to turn snapping off."
+      "freeTips": "Arrow keys move the selection 1 mm (5 mm with Shift). Hold Alt while dragging to turn snapping off.",
+      "sortAz": "A→Z",
+      "sortZa": "Z→A"
     },
     "design": {
       "texts": "Texts",
@@ -850,7 +868,7 @@
     },
     "tabsShort": {
       "kind": "Type",
-      "template": "Template",
+      "template": "Tem­plate",
       "design": "Design",
       "guests": "Guests",
       "layout": "Layout",
@@ -916,7 +934,10 @@
           "banquet": "Rows of long tables facing the stage."
         }
       }
-    }
+    },
+    "storageBlockedTitle": "This browser doesn’t let the site save",
+    "storageBlockedText": "Without an account, your list is kept in this browser, but it blocks this site from storing data. Allow site data for this site and try again, or sign in to keep the list in your account.",
+    "zoomLevel": "Zoom {percent}%, fit width"
   },
   "Errors": {
     "kinds": {
@@ -941,6 +962,7 @@
       "4006": "Your email isn’t confirmed yet. Follow the link in the email we sent.",
       "4007": "The confirmation link is invalid or expired. Sign in to get a new one.",
       "4010": "You have reached the maximum number of lists. Delete old ones.",
+      "4011": "The list was changed in another tab or on another device. Reload the page.",
       "4020": "Your earlier payment went through — full access is already on.",
       "4021": "To download in this template, get full access first.",
       "4022": "Payments aren’t available right now. Try again a little later.",
@@ -961,5 +983,13 @@
   },
   "Legal": {
     "updated": "Last updated: {date}"
+  },
+  "Consent": {
+    "label": "Cookie consent",
+    "text": "We’d like to use Google Analytics cookies to see how the site is used. No ads, no profiling. Until you answer, analytics runs without cookies; closing this message counts as accepting.",
+    "privacy": "Privacy policy",
+    "accept": "Accept",
+    "decline": "Decline",
+    "settings": "Cookie settings"
   }
 }

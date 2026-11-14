@@ -35,6 +35,7 @@ export const MAX_SEATS = 40
 const initialState: ListEditorState = {
   listId: null,
   doc: null,
+  serverUpdatedAt: null,
   saveStatus: 'saved',
   past: [],
   future: [],
@@ -105,7 +106,7 @@ export const useListEditorStoreBase = create<ListEditorState & ListEditorActions
     combine(
       initialState,
       (set, get): ListEditorActions => ({
-        loadDocument: ({ listId, doc }) => {
+        loadDocument: ({ listId, doc, updatedAt }) => {
           // A draft saved in this browser before blocks could be resized has no `sizes`, and
           // one saved before sheets had shapes no `shape`.
           const stored: Partial<Pick<ListDocument['design']['layout'], 'sizes'>> = doc.design.layout
@@ -113,13 +114,16 @@ export const useListEditorStoreBase = create<ListEditorState & ListEditorActions
           const layout = { ...doc.design.layout, sizes: stored.sizes ?? {} }
           // One saved before the hall plan has no table shapes, hall or plan.
           const loaded = withPlanFields({ ...doc, design: { ...doc.design, shape: storedDesign.shape ?? 'rectangle', layout } })
-          set((state) => ({ ...state, ...initialState, listId, doc: loaded }))
+          set((state) => ({ ...state, ...initialState, listId, doc: loaded, serverUpdatedAt: updatedAt ?? null }))
         },
         reset: () => {
           set((state) => ({ ...state, ...initialState }))
         },
         setSaveStatus: (saveStatus) => {
           set({ saveStatus })
+        },
+        setServerUpdatedAt: (serverUpdatedAt) => {
+          set({ serverUpdatedAt })
         },
         setListId: (listId) => {
           set({ listId })

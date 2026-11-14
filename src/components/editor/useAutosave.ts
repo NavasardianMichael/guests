@@ -5,6 +5,8 @@ import { updateListAPI } from '@api/lists/main'
 import { useListEditorStore, useListEditorStoreBase } from '@store/lists/single/store'
 import { DRAFT_ID } from '@store/lists/single/types'
 import { useLeaveGuard } from '@hooks/useLeaveGuard'
+import { ERROR_CODES } from '@constants/errors'
+import { classifyError } from '@helpers/error'
 import { writeLocalDraft } from '@helpers/localDraft'
 import { reportError } from '@helpers/reportError'
 
@@ -16,8 +18,8 @@ let inFlight: Promise<void> = Promise.resolve()
 
 const saveCurrent = (): Promise<void> => {
   inFlight = inFlight.then(async () => {
-    const { listId, doc, saveStatus, setSaveStatus } = useListEditorStoreBase.getState()
-    if (!listId || !doc || saveStatus === 'saved') return
+    const { listId, doc, saveStatus, serverUpdatedAt, setSaveStatus, setServerUpdatedAt } = useListEditorStoreBase.getState()
+    if (!listId || !doc || saveStatus === 'saved' || saveStatus === 'conflict' || saveStatus === 'stopped') return
 
     if (listId === DRAFT_ID) {
       setSaveStatus(writeLocalDraft(doc) ? 'saved' : 'error')
@@ -26,11 +28,26 @@ const saveCurrent = (): Promise<void> => {
 
     setSaveStatus('saving')
     try {
-      await updateListAPI({ id: listId, title: doc.title, content: doc.content, design: doc.design })
+      const { updatedAt } = await updateListAPI({
+        id: listId,
+        baseUpdatedAt: serverUpdatedAt ?? undefined,
+        title: doc.title,
+        content: doc.content,
+        design: doc.design,
+      })
+      setServerUpdatedAt(updatedAt)
       // An edit made while the request was out leaves the document newer than what was sent.
       setSaveStatus(useListEditorStoreBase.getState().doc === doc ? 'saved' : 'dirty')
     } catch (error) {
-      reportError(error, 'editor:autosave')
+      const failure = classifyError(error)
+      if (failure.code === ERROR_CODES.listChangedElsewhere) return setSaveStatus('conflict')
+      // A refusal (signed out, list deleted, too large) is the same on every retry: stop until
+      // the next edit rather than retry it every few seconds.
+      if (failure.status && failure.status >= 400 && failure.status < 500 && failure.kind !== 'rateLimited' && failure.kind !== 'timeout') {
+        reportError(error, 'editor:autosave')
+        return setSaveStatus('stopped')
+      }
+      if (!failure.retryable) reportError(error, 'editor:autosave')
       setSaveStatus('error')
     }
   })
@@ -49,6 +66,7 @@ export const flushSave = async (): Promise<boolean> => {
  */
 export const useAutosave = (): void => {
   const doc = useListEditorStore.use.doc()
+  // `conflict` and `stopped` wait for the next edit (it sets `dirty`): retrying cannot help.
   const saveStatus = useListEditorStore.use.saveStatus()
   const setSaveStatus = useListEditorStore.use.setSaveStatus()
 

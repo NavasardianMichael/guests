@@ -89,8 +89,10 @@ if (databaseUrl.includes('guests:guests@')) warn('DATABASE_URL still has the dev
 if (/^postgresql:\/\/[^:]*:@/.test(databaseUrl)) warn('DATABASE_URL has an empty password')
 
 const jwtSecret = value('JWT_SECRET')
-if (jwtSecret && (jwtSecret.length < 64 || jwtSecret.startsWith('change-me'))) {
-  warn('JWT_SECRET is short or the example value — 128 hex characters, docs/PRODUCTION_SETUP.md step 6')
+if (jwtSecret && (jwtSecret.length < 32 || jwtSecret.startsWith('change-me'))) {
+  warn('JWT_SECRET is short or the example value — the API refuses to start; openssl rand -hex 64, docs/PRODUCTION_SETUP.md step 6')
+} else if (jwtSecret && jwtSecret.length < 64) {
+  warn('JWT_SECRET is under 64 characters — 128 hex characters recommended (openssl rand -hex 64)')
 }
 
 for (const key of ['CORS_ORIGIN', 'API_PUBLIC_URL', 'GOOGLE_REDIRECT_URI']) {
@@ -112,7 +114,13 @@ if (value('PAYMENT_GATEWAY') === 'ameria') {
   if (missingAmeria.length) warn(`missing or empty: ${missingAmeria.join(', ')} — checkout answers 503`)
   if (value('AMERIA_TEST_MODE') !== 'false') warn('AMERIA_TEST_MODE is not "false" — payments go to the bank’s TEST terminal')
 }
-if (value('AMERIA_AMOUNT_OVERRIDE')) warn('AMERIA_AMOUNT_OVERRIDE is set — every pass is charged that amount')
+if (value('AMERIA_AMOUNT_OVERRIDE')) {
+  warn(
+    value('AMERIA_TEST_MODE') === 'false'
+      ? 'AMERIA_AMOUNT_OVERRIDE is set with the live terminal — the API refuses to start; remove it'
+      : 'AMERIA_AMOUNT_OVERRIDE is set — the test terminal charges that amount (ignored on the live one)'
+  )
+}
 
 console.error('')
 console.error(`Encoded ${path.relative(rootDir, filePath)} — ${keys.length} variables`)

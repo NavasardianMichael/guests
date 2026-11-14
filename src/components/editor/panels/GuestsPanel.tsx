@@ -50,7 +50,7 @@ import { HintTooltip } from '@components/ui/HintTooltip'
 import { TileButton } from '@components/ui/TileButton'
 import { LiveTextInput } from '../controls/LiveFields'
 import { PhotoLock } from '../import/PhotoLock'
-import { SpreadsheetButton } from '../spreadsheet/SpreadsheetModal'
+import { SpreadsheetButton } from '../spreadsheet/SpreadsheetButton'
 
 type TableOption = { id: string; name: string }
 
@@ -158,8 +158,13 @@ const GuestFields: FC<RowProps> = memo(function GuestFields({ guest, index, tabl
  * A guest row, dragged by its handle with a mouse or the keyboard (on a touch screen the table
  * picker moves a guest instead). While dragged it stays in the list, faded, as the gap the row
  * will drop into; the overlay follows the pointer.
+ *
+ * A memo too: a keystroke in the quick-add field or in one guest's name re-renders the panel,
+ * and with it would go every row's sortable hooks. The props are the guest (structurally
+ * shared), primitives and the shared table options, so only the row that changed renders;
+ * a drag still reaches every row through dnd-kit's context.
  */
-const GuestRow: FC<RowProps & { selected: boolean }> = ({ selected, ...row }) => {
+const GuestRow: FC<RowProps & { selected: boolean }> = memo(function GuestRow({ selected, ...row }) {
   const t = useTranslations('Editor.guests')
   const { setNodeRef, setActivatorNodeRef, attributes, listeners, transform, transition, isDragging } = useSortable({
     id: row.guest.id,
@@ -189,7 +194,7 @@ const GuestRow: FC<RowProps & { selected: boolean }> = ({ selected, ...row }) =>
       <GuestFields {...row} />
     </li>
   )
-}
+})
 
 /** What follows the pointer while a row is dragged. */
 const DraggedRow: FC<{ name: string }> = ({ name }) => {

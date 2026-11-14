@@ -1,6 +1,6 @@
 'use client'
 
-import type { FC } from 'react'
+import { type FC, useEffect } from 'react'
 import {
   ArrowLeftOutlined,
   CheckCircleFilled,
@@ -13,7 +13,7 @@ import {
   ZoomInOutlined,
   ZoomOutOutlined,
 } from '@ant-design/icons'
-import { Button } from 'antd'
+import { App, Button } from 'antd'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { useAuthStore } from '@store/auth/store'
@@ -37,12 +37,45 @@ type Props = {
   onPreview: () => void
 }
 
-/** The save state; under `md` the icon alone, its words left to screen readers. */
+/**
+ * The save state; under `md` the icon alone, its words left to screen readers. A save that
+ * cannot go through — the list was saved elsewhere since (`conflict`), or a refusal retrying
+ * cannot fix (`stopped`) — also says so once in a message, since the icon alone is easy to miss.
+ */
 const SaveIndicator: FC = () => {
   const t = useTranslations('Editor.status')
+  const { message } = App.useApp()
   const status = useListEditorStore.use.saveStatus()
   const isDraft = useListEditorStore.use.listId() === DRAFT_ID
 
+  useEffect(() => {
+    if (status === 'conflict') void message.warning({ content: t('conflictHint'), duration: 8 })
+    if (status === 'stopped') void message.error({ content: t('stoppedHint'), duration: 8 })
+  }, [message, status, t])
+
+  if (status === 'conflict') {
+    return (
+      <HintTooltip title={t('conflictHint')}>
+        <Button
+          size='small'
+          danger
+          icon={<ExclamationCircleFilled />}
+          aria-label={`${t('conflict')}. ${t('reload')}`}
+          onClick={() => window.location.reload()}
+          className='shrink-0'
+        >
+          <span className='hidden md:inline'>{t('reload')}</span>
+        </Button>
+      </HintTooltip>
+    )
+  }
+  if (status === 'stopped') {
+    return (
+      <span className='flex shrink-0 items-center gap-1.5 text-xs text-danger' title={t('stoppedHint')}>
+        <ExclamationCircleFilled /> <span className='sr-only md:not-sr-only'>{t('error')}</span>
+      </span>
+    )
+  }
   if (status === 'error') {
     return (
       <span className='flex shrink-0 items-center gap-1.5 text-xs text-danger' title={t('error')}>
@@ -82,7 +115,11 @@ export const EditorTopBar: FC<Props> = ({ zoom, fitZoom, pages, onZoomChange, on
 
   return (
     <header className='flex h-14 shrink-0 items-center gap-2 border-b border-line bg-surface px-2 sm:px-3'>
-      <Link href={user ? ROUTES.dashboard : ROUTES.home} aria-label={tCommon('back')} className='flex items-center gap-1 text-muted'>
+      <Link
+        href={user ? ROUTES.dashboard : ROUTES.home}
+        aria-label={tCommon('back')}
+        className='flex h-10 min-w-10 shrink-0 items-center justify-center gap-1 text-muted'
+      >
         <ArrowLeftOutlined />
         <BrandMark className='hidden size-7 sm:block' />
       </Link>
@@ -111,6 +148,7 @@ export const EditorTopBar: FC<Props> = ({ zoom, fitZoom, pages, onZoomChange, on
             type='button'
             className='w-12 cursor-pointer border-0 bg-transparent text-xs font-medium tabular-nums'
             title={t('fit')}
+            aria-label={t('zoomLevel', { percent: Math.round(current * 100) })}
             onClick={() => onZoomChange(null)}
           >
             {Math.round(current * 100)}%

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { getTranslations } from 'next-intl/server'
+import { ConsentBanner } from '@components/analytics/ConsentBanner'
 import { Footer } from '@components/layout/Footer'
 import { Header } from '@components/layout/Header'
 
@@ -19,6 +20,7 @@ export default async function SiteLayout({ children }: { children: ReactNode }) 
         {children}
       </main>
       <Footer />
+      <ConsentBanner />
     </div>
   )
 }

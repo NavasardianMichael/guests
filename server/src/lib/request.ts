@@ -1,3 +1,5 @@
+import { isIPv4, isIPv6 } from 'node:net'
+
 /**
  * Body-reading helpers shared by the routers.
  *
@@ -57,4 +59,30 @@ export const asEmail = (value: unknown): string | null => {
   if (typeof value !== 'string') return null
   const email = value.trim().toLowerCase()
   return email.length <= MAX_EMAIL_LENGTH && isEmail(email) ? email : null
+}
+
+const expandIpv6 = (ip: string): string[] => {
+  const [head = '', tail = ''] = ip.split('::')
+  const start = head ? head.split(':') : []
+  const end = tail ? tail.split(':') : []
+  return [...start, ...Array<string>(Math.max(0, 8 - start.length - end.length)).fill('0'), ...end]
+}
+
+/**
+ * The address rate limits are keyed on (`trust proxy` is 1, so `req.ip` is the client behind
+ * nginx). An IPv6 client is its /64 — one household or phone gets a whole /64 and could
+ * otherwise rotate through it without end — and an IPv4-mapped address (`::ffff:1.2.3.4`) is
+ * the IPv4 address itself.
+ */
+export const clientAddress = (req: { ip?: string | undefined }): string => {
+  const ip = (req.ip ?? '').split('%')[0] ?? ''
+  if (!ip) return 'unknown'
+  const mapped = ip.toLowerCase().startsWith('::ffff:') ? ip.slice('::ffff:'.length) : ''
+  if (isIPv4(mapped)) return mapped
+  if (!isIPv6(ip)) return ip
+  const prefix = expandIpv6(ip)
+    .slice(0, 4)
+    .map((group) => parseInt(group, 16).toString(16))
+    .join(':')
+  return `${prefix}::/64`
 }

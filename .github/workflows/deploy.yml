@@ -15,6 +15,9 @@
 #   NEXT_PUBLIC_API_URL    https://api.guests-seating-board.eapps.site
 #   NEXT_PUBLIC_SITE_URL   https://guests-seating-board.eapps.site
 #
+# The first job after change detection, `config`, checks all of them (scripts/check-deploy-config.mjs)
+# and stops the run before the tests and builds when one is missing or wrong.
+#
 # OPTIONAL (empty = that feature off): NEXT_PUBLIC_SENTRY_DSN, NEXT_PUBLIC_GA_ID,
 #   NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION; SENTRY_AUTH_TOKEN + SENTRY_ORG + SENTRY_PROJECT
 #   upload source maps to Sentry. All build-time: change one, redeploy the web.
@@ -116,10 +119,34 @@ jobs:
           echo "deploy_api=$deploy_api" >> "$GITHUB_OUTPUT"
           echo "deploy_web=$deploy_web deploy_api=$deploy_api"
 
+  # Every secret checked first, in seconds: a missing SSH key, a short JWT_SECRET or a CORS_ORIGIN
+  # that differs from the site would otherwise fail only after the tests and builds, or halfway
+  # through the release swap. The rules, and why each one matters: scripts/check-deploy-config.mjs.
+  config:
+    name: Check configuration
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.deploy_web == 'true' || needs.changes.outputs.deploy_api == 'true'
+    steps:
+      - uses: actions/checkout@v6
+      - name: Check secrets
+        env:
+          DEPLOY_WEB: ${{ needs.changes.outputs.deploy_web }}
+          DEPLOY_API: ${{ needs.changes.outputs.deploy_api }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+          APP_DIR: ${{ secrets.APP_DIR }}
+          ENV_API_BASE64: ${{ secrets.ENV_API_BASE64 }}
+          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL || vars.NEXT_PUBLIC_API_URL }}
+          NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL || vars.NEXT_PUBLIC_SITE_URL }}
+        run: node scripts/check-deploy-config.mjs
+
   verify:
     name: Verify
     runs-on: ubuntu-latest
-    needs: changes
+    needs: [changes, config]
     if: needs.changes.outputs.deploy_web == 'true' || needs.changes.outputs.deploy_api == 'true'
     steps:
       - uses: actions/checkout@v6
@@ -162,29 +189,9 @@ jobs:
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
 
-      # Empty or loopback here ships a bundle whose API calls go to the visitor's own machine
-      # (src/api falls back to localhost:9010) and whose canonicals, sitemap and JSON-LD name
-      # localhost:7010. Fail before that bundle ships.
-      - name: Require public origins
-        run: |
-          fail=0
-          check() {
-            name="$1"
-            value="$2"
-            if [ -z "$value" ]; then
-              echo "::error::$name is empty. Set it as a repository Secret or Variable — secrets.* and vars.* are different stores."
-              fail=1
-              return
-            fi
-            if printf '%s' "$value" | grep -Eqi 'localhost|127\.0\.0\.1|^http://'; then
-              echo "::error::$name must be a public https origin, not the local fallback. Refusing to ship a bundle that talks to the visitor's machine."
-              fail=1
-            fi
-          }
-          check NEXT_PUBLIC_API_URL "$NEXT_PUBLIC_API_URL"
-          check NEXT_PUBLIC_SITE_URL "$NEXT_PUBLIC_SITE_URL"
-          exit "$fail"
-
+      # The `config` job has already refused an empty or loopback origin: that would ship a bundle
+      # whose API calls go to the visitor's own machine (src/api falls back to localhost:9010) and
+      # whose canonicals, sitemap and JSON-LD name localhost:7010.
       - name: Build
         run: pnpm build
 
@@ -330,22 +337,11 @@ jobs:
         env:
           ENV_API_BASE64: ${{ secrets.ENV_API_BASE64 }}
         run: |
-          # Empty when the secret is missing, misnamed, or saved under Settings → Environments
-          # or the Variables tab — none of which this job reads. Stop here rather than ship an
-          # env file holding only the four lines below.
-          if [ -z "$ENV_API_BASE64" ]; then
-            echo "::error::ENV_API_BASE64 is empty: save it under Settings → Secrets and variables → Actions → Secrets → Repository secrets, exactly that name (docs/PRODUCTION_SETUP.md step 9)"
-            exit 1
-          fi
+          # Its contents (DATABASE_URL, JWT_SECRET, CORS_ORIGIN, the Ameria pair, …) were checked
+          # by the `config` job. Owner-only from the start: scp keeps the mode, so the copy on the
+          # host is 0600 too.
+          umask 077
           printf '%s' "$ENV_API_BASE64" | base64 -d | tr -d '\r' > /tmp/env.api
-          missing=""
-          for key in DATABASE_URL JWT_SECRET CORS_ORIGIN API_PUBLIC_URL; do
-            grep -Eq "^${key}=.+" /tmp/env.api || missing="$missing $key"
-          done
-          if [ -n "$missing" ]; then
-            echo "::error::ENV_API_BASE64 lacks:$missing — regenerate it with pnpm env:base64 production (docs/PRODUCTION_SETUP.md step 6)"
-            exit 1
-          fi
           sed -i '/^\(NODE_ENV\|PORT\|HOST\|RENDER_ORIGIN\)=/d' /tmp/env.api
           {
             echo ""
@@ -384,6 +380,23 @@ jobs:
           DEPLOY_WEB="$4"; DEPLOY_API="$5"; WEB_PORT="$6"; API_PORT="$7"
 
           mkdir -p "$APP_DIR/shared" "$APP_DIR/web/releases" "$APP_DIR/api/releases"
+          # The uploaded env copy holds every secret: gone however this script ends.
+          trap 'rm -f /tmp/env.api' EXIT
+
+          # What was live before this run, to switch back to if the new release does not come up.
+          PREV_API=$(readlink -f "$APP_DIR/api/current" 2>/dev/null || true)
+          PREV_WEB=$(readlink -f "$APP_DIR/web/current" 2>/dev/null || true)
+
+          # Points a side back at its previous release and restarts it. The database is NOT
+          # rolled back: migrations are additive (docs/DEPLOYMENT.md), so the old API runs on it.
+          roll_back() {
+            local side="$1" prev="$2" unit="$3"
+            if [ -n "$prev" ] && [ -d "$prev" ]; then
+              echo "::warning::rolling $side back to $(basename "$prev")"
+              ln -sfn "$prev" "$APP_DIR/$side/current"
+              sudo systemctl restart "$unit" || true
+            fi
+          }
 
           wait_for() {
             local name="$1" url="$2" unit="$3"
@@ -535,6 +548,12 @@ jobs:
           if [ "$DEPLOY_API" = "true" ]; then
             echo "==> API $RELEASE"
             NEW="$APP_DIR/api/releases/$RELEASE"
+            # A re-run of the same commit must not delete the directory the running API is
+            # served from: it is built in a side directory and swapped in like any release.
+            if [ "$PREV_API" = "$NEW" ]; then
+              echo "API $RELEASE is already live — installing it again in a side directory"
+              NEW="$NEW-rerun-$(date +%s)"
+            fi
             rm -rf "$NEW"; mkdir -p "$NEW"
             tar -xzf /tmp/api-build.tar.gz -C "$NEW"
             install -m 600 /tmp/env.api "$APP_DIR/shared/.env.api"
@@ -602,27 +621,60 @@ jobs:
             ./node_modules/.bin/prisma generate --schema prisma/schema.prisma
             ensure_chrome
 
-            set -a; . "$APP_DIR/shared/.env.api"; set +a
+            # Read literally, as systemd's EnvironmentFile does, never sourced: as shell code an
+            # `&` in a URL (`?schema=public&connection_limit=5`) backgrounds the assignment and
+            # a `$` in a password expands, so DATABASE_URL arrives empty or wrong.
+            while IFS= read -r line || [ -n "$line" ]; do
+              [[ "$line" =~ ^[A-Za-z_][A-Za-z0-9_]*= ]] || continue
+              key="${line%%=*}"; value="${line#*=}"
+              case "$value" in \"*\" | \'*\') value="${value:1:${#value}-2}" ;; esac
+              export "$key=$value"
+            done < "$APP_DIR/shared/.env.api"
+            : "${DATABASE_URL:?DATABASE_URL is not set in $APP_DIR/shared/.env.api}"
             ensure_database "$NEW/docker-compose.prod.yml"
+            # A dump right before migrating: migrations do not roll back, and this is the copy to
+            # restore from if one goes wrong (docs/PRODUCTION_SETUP.md, backups). The last 5 stay.
+            if docker container inspect guests-seating-board-postgres-prod >/dev/null 2>&1; then
+              mkdir -p "$APP_DIR/backups" && chmod 700 "$APP_DIR/backups"
+              dump="$APP_DIR/backups/pre-deploy-$(date -u +%Y%m%dT%H%MZ)-${RELEASE:0:12}.dump"
+              docker exec guests-seating-board-postgres-prod sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' > "$dump"
+              chmod 600 "$dump"
+              echo "database: dumped to $dump ($(wc -c < "$dump") bytes)"
+              ( cd "$APP_DIR/backups" && ls -t pre-deploy-*.dump | tail -n +6 | xargs -r rm -f )
+            fi
             ./node_modules/.bin/prisma migrate deploy --schema prisma/schema.prisma
             # No seed: prisma/seed.ts creates the dev test accounts and is not in the release.
 
             ln -sfn "$NEW" "$APP_DIR/api/current"
             sudo systemctl restart guests-seating-board-api
-            wait_for "API" "http://127.0.0.1:$API_PORT/health" guests-seating-board-api
+            if ! wait_for "API" "http://127.0.0.1:$API_PORT/health" guests-seating-board-api; then
+              roll_back api "$PREV_API" guests-seating-board-api
+              exit 1
+            fi
           fi
 
           if [ "$DEPLOY_WEB" = "true" ]; then
             echo "==> web $RELEASE"
             NEW="$APP_DIR/web/releases/$RELEASE"
+            if [ "$PREV_WEB" = "$NEW" ]; then
+              echo "web $RELEASE is already live — unpacking it again in a side directory"
+              NEW="$NEW-rerun-$(date +%s)"
+            fi
             rm -rf "$NEW"; mkdir -p "$NEW"
             tar -xzf /tmp/web-build.tar.gz -C "$NEW"
             ln -sfn "$NEW" "$APP_DIR/web/current"
             sudo systemctl restart guests-seating-board-web
-            wait_for "web" "http://127.0.0.1:$WEB_PORT/" guests-seating-board-web
+            if ! wait_for "web" "http://127.0.0.1:$WEB_PORT/" guests-seating-board-web; then
+              roll_back web "$PREV_WEB" guests-seating-board-web
+              exit 1
+            fi
           fi
 
-          check_pdf
+          if ! check_pdf; then
+            [ "$DEPLOY_WEB" = "true" ] && roll_back web "$PREV_WEB" guests-seating-board-web
+            [ "$DEPLOY_API" = "true" ] && roll_back api "$PREV_API" guests-seating-board-api
+            exit 1
+          fi
 
           # Keep the newest $KEEP releases so a rollback target survives.
           for side in web api; do

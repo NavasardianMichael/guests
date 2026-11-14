@@ -8,6 +8,7 @@ import { SEARCH_KEYWORDS, SITE_VERIFICATION } from '@constants/seo'
 import { cn } from '@helpers/cn'
 import { getSiteUrl } from '@helpers/url'
 import { Analytics } from '@components/analytics/Analytics'
+import { AnalyticsConsentDefaults } from '@components/analytics/AnalyticsConsentDefaults'
 import { App } from '@components/App'
 import '@styles/globals.css'
 import { fontUi } from '@styles/fonts'
@@ -64,6 +65,8 @@ export default async function RootLayout({ children }: Props) {
   return (
     <html lang={locale} className={cn(fontUi.variable, CSS_VAR_SCOPE)} style={BRAND_CSS_VARS as CSSProperties}>
       <body>
+        {/* Before the GA tag below: analytics cookies wait for consent (helpers/consent.ts). */}
+        <AnalyticsConsentDefaults />
         {/* All that a browser print of a page shows (globals.css): lists print as the PDF. */}
         <p className='print-note'>{t('printBlocked')}</p>
         <AntdRegistry>

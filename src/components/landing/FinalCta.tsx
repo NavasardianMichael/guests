@@ -18,7 +18,7 @@ export const FinalCta: FC = async () => {
         </h2>
         <Link
           href={newListPath()}
-          className='relative mt-6 sm:mt-8 inline-flex items-center gap-2 rounded-full bg-accent px-6 py-3 sm:px-7 sm:py-3.5 text-base font-semibold text-white no-underline transition hover:-translate-y-0.5 hover:bg-accent-strong'
+          className='relative mt-6 sm:mt-8 inline-flex items-center gap-2 rounded-full bg-accent px-6 py-3 sm:px-7 sm:py-3.5 text-base font-semibold text-ink-deep no-underline transition hover:-translate-y-0.5 hover:brightness-110'
         >
           {t('finalCta')} <ArrowRightOutlined />
         </Link>

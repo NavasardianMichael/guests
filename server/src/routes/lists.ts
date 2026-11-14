@@ -7,6 +7,7 @@ import { ensureGuestKeyHash } from '../lib/guest.js'
 import { sendPdf } from '../lib/pdf-response.js'
 import { prisma } from '../lib/prisma.js'
 import { createRateLimiter } from '../lib/rateLimit.js'
+import { clientAddress } from '../lib/request.js'
 import { readRequestInfo } from '../lib/request-info.js'
 import { mapList } from '../mappers/entities.js'
 import { type ListOwner, listOwnerOf, ownerKey, requireListOwner } from '../middleware/auth.js'
@@ -20,7 +21,7 @@ import { printTermsFor } from '../services/payments.js'
  * account, owned by its guest key (`lib/guest.ts`). Every route is scoped to that owner
  * (`requireListOwner`): an id that is not theirs answers 404, the same as one that does not
  * exist. (A guest normally works in a local draft; a guest's server lists come from
- * duplicates and earlier imports. What a guest buys — a template — belongs to the same key:
+ * duplicates and earlier imports. What a guest buys — an access pass — belongs to the same key:
  * `docs/PAYMENTS.md`.)
  */
 export const listsRouter = Router()
@@ -59,7 +60,7 @@ listsRouter.post(
     let owner: ListOwner
     if (req.session) owner = { userId: req.session.userId }
     else {
-      const verdict = guestCreateLimiter(req.ip ?? 'unknown')
+      const verdict = guestCreateLimiter(clientAddress(req))
       if (!verdict.allowed) return fail(res, 'Too many attempts', ERROR_CODE.rateLimited, 429)
       owner = { guestKeyHash: ensureGuestKeyHash(req, res) }
     }
@@ -98,11 +99,23 @@ listsRouter.get(
   })
 )
 
-/** The autosave. Partial: only the fields sent are written. Answers the stamps, not the body. */
+/**
+ * The autosave. Partial: only the fields sent are written. Answers the stamps, not the body.
+ *
+ * `baseUpdatedAt` is the stamp of the copy the editor started from. When the list has been saved
+ * since — another tab, another device — the write is refused (409 `listChangedElsewhere`)
+ * instead of silently replacing that work; the editor asks to reload. The check and the write
+ * are one compare-and-set. Without the field (an older client) the write goes through as before.
+ */
 listsRouter.put(
   '/:id',
   asyncHandler(async (req, res) => {
     const list = await loadOwnedList(req)
+    const base = typeof req.body?.baseUpdatedAt === 'string' ? new Date(req.body.baseUpdatedAt) : null
+    const expected = base && !Number.isNaN(base.getTime()) ? base : null
+    if (expected && expected.getTime() !== list.updatedAt.getTime()) {
+      return fail(res, 'The list was changed elsewhere', ERROR_CODE.listChangedElsewhere, 409)
+    }
     const data: Prisma.GuestListUpdateInput = {}
     if (req.body?.title !== undefined) data.title = coerceTitle(req.body.title, list.title)
     const content = req.body?.content !== undefined ? coerceContent(req.body.content) : coerceContent(list.content)
@@ -110,12 +123,18 @@ listsRouter.put(
     if (req.body?.content !== undefined) data.content = asJson(content)
     if (req.body?.design !== undefined) data.design = asJson(design)
     Object.assign(data, denormalised(content, design))
+    if (expected) {
+      const written = await prisma.guestList.updateMany({ where: { id: list.id, updatedAt: expected }, data: data as Prisma.GuestListUpdateManyMutationInput })
+      if (written.count !== 1) return fail(res, 'The list was changed elsewhere', ERROR_CODE.listChangedElsewhere, 409)
+      const fresh = await prisma.guestList.findUniqueOrThrow({ where: { id: list.id }, select: { updatedAt: true } })
+      return ok(res, { updatedAt: fresh.updatedAt.toISOString() })
+    }
     const updated = await prisma.guestList.update({ where: { id: list.id }, data })
     ok(res, { updatedAt: updated.updatedAt.toISOString() })
   })
 )
 
-/** A copy is a new list, in the same template: printable on the same terms (a bought template is the owner's). */
+/** A copy is a new list, in the same template: printable on the same terms (the pass is the owner's, not a list's). */
 listsRouter.post(
   '/:id/duplicate',
   asyncHandler(async (req, res) => {

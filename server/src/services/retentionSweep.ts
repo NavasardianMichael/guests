@@ -68,10 +68,19 @@ const sweep = async (): Promise<void> => {
   }
 }
 
+let timers: NodeJS.Timeout[] = []
+
 /** Runs the sweep once a day in the API process. Idempotent, so several instances may each run it. */
 export const scheduleRetention = (): void => {
-  setTimeout(() => {
+  const first = setTimeout(() => {
     void sweep()
-    setInterval(() => void sweep(), SWEEP_EVERY_MS).unref()
+    timers.push(setInterval(() => void sweep(), SWEEP_EVERY_MS).unref())
   }, FIRST_SWEEP_MS).unref()
+  timers.push(first)
+}
+
+/** Graceful shutdown: no new sweep starts. */
+export const stopRetention = (): void => {
+  for (const timer of timers) clearTimeout(timer)
+  timers = []
 }

@@ -11,6 +11,8 @@ export const ERROR_CODES = {
   emailNotVerified: 4006,
   verifyTokenInvalid: 4007,
   listLimitReached: 4010,
+  /** An autosave sent from an older copy: the list was saved since, in another tab or device. */
+  listChangedElsewhere: 4011,
   /** Starting a checkout: an earlier payment turned out to have gone through — access is running. */
   earlierPaymentSucceeded: 4020,
   listNotPaid: 4021,

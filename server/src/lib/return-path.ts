@@ -34,18 +34,28 @@ export type PaymentResultStatus = (typeof PAYMENT_RESULT_STATUSES)[number]
 /** Signed-in default destination (`ROUTES.dashboard`). */
 export const DASHBOARD_PATH = '/dashboard'
 
+const RETURN_BASE = 'https://return-path.invalid'
+
 /**
- * A post-sign-in destination is accepted only as a same-site path: it must start with a single
- * `/`, so `//evil.example` and `/\evil.example` (both protocol-relative to a browser) and any
- * absolute URL are refused. Without this, `returnTo` is an open redirect.
+ * The post-sign-in destination as a clean same-site path, or `undefined` when it would leave the
+ * site (callers then use the dashboard). Without this, `returnTo` is an open redirect. The value
+ * is resolved exactly as a browser would resolve it — tabs and line breaks dropped, `\` read as
+ * `/` — so `/\t/evil.example` is seen as the `//evil.example` it really is and refused, while a
+ * path that merely carries such characters is kept, cleaned. Mirrored by `safeReturnPath` in
+ * `src/helpers/url.ts`.
  */
-export const isSafeReturnPath = (value: unknown): value is string =>
-  typeof value === 'string' &&
-  value.length <= 512 &&
-  value.startsWith('/') &&
-  !value.startsWith('//') &&
-  !value.startsWith('/\\') &&
-  !/[\r\n]/.test(value)
+export const safeReturnPath = (value: unknown): string | undefined => {
+  if (typeof value !== 'string' || value.length > 512) return undefined
+  let url: URL
+  try {
+    url = new URL(value, RETURN_BASE)
+  } catch {
+    return undefined
+  }
+  if (url.origin !== RETURN_BASE) return undefined
+  // `/.//evil.example` normalises to the path `//evil.example`, which a redirect would read as a host.
+  return `/${url.pathname.replace(/^\/+/, '')}${url.search}${url.hash}`
+}
 
 export const buildWebUrl = (origin: string, path: string, query: Record<string, string> = {}): string => {
   const url = new URL(path, origin.endsWith('/') ? origin : `${origin}/`)

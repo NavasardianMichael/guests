@@ -26,7 +26,8 @@ import { HttpError } from '../middleware/error.js'
  *   page reload and a reconcile racing each other settle it once.
  * - `reconcileOwnerPayments` covers the buyer who paid and closed the tab before the redirect:
  *   reading the owner's access, printing, and starting another checkout re-check their recent
- *   pending payments. Computed on read, no background job.
+ *   pending payments, on read. `settleStalePayments` (hourly, `paymentSweep.ts`) catches the
+ *   buyer who never comes back at all.
  * - `findOpenPayment` / `resumeOpenPayment`: a bank page that may still be open in another tab
  *   is offered again rather than a second order, so one click is never paid twice by mistake.
  * - `revalidatePass` drops a refunded payment's days before the next clean print.
@@ -263,10 +264,33 @@ export const settlePayment = async (payment: Payment, context?: SettleContext): 
 }
 
 /**
+ * Reads that only show state (`source: 'access'` — the result page's poll, the photo status)
+ * re-check the bank at most this often per owner (under the result page's 4 s poll, so it never
+ * waits a round): each re-check is up to five calls to the bank,
+ * and a client polling in a loop must not turn into a stream of them. Checkout and printing
+ * always re-check.
+ */
+const ACCESS_RECONCILE_INTERVAL_MS = 3_000
+const lastAccessReconcile = new Map<string, number>()
+
+const readRecently = (owner: ListOwner): boolean => {
+  const key = 'userId' in owner ? `u:${owner.userId}` : `g:${owner.guestKeyHash}`
+  const now = Date.now()
+  const last = lastAccessReconcile.get(key)
+  if (last !== undefined && now - last < ACCESS_RECONCILE_INTERVAL_MS) return true
+  lastAccessReconcile.set(key, now)
+  if (lastAccessReconcile.size > 10_000) {
+    for (const [stale, at] of lastAccessReconcile) if (now - at >= ACCESS_RECONCILE_INTERVAL_MS) lastAccessReconcile.delete(stale)
+  }
+  return false
+}
+
+/**
  * Re-checks this owner's recent pending payments. True when one of them has just succeeded —
  * a payment whose redirect never arrived. Gateway failures are logged, never thrown at a reader.
  */
 export const reconcileOwnerPayments = async (owner: ListOwner, context?: SettleContext): Promise<boolean> => {
+  if (context?.source === 'access' && readRecently(owner)) return false
   const pending = await prisma.payment.findMany({
     where: {
       ...owner,
@@ -287,6 +311,44 @@ export const reconcileOwnerPayments = async (owner: ListOwner, context?: SettleC
     }
   }
   return settled
+}
+
+/** How far back the hourly sweep looks: a bank keeps an order's record well past this. */
+const STALE_PENDING_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000
+
+/**
+ * The hourly sweep (`paymentSweep.ts`): every payment still `pending` after its bank page has
+ * timed out is asked about once more, whoever owns it. Paid → `succeeded` (the buyer who paid
+ * and never came back, past the reconcile window of reads); nothing charged → `failed`, since
+ * that page can no longer be paid. Gateway errors are logged and retried next hour.
+ */
+export const settleStalePayments = async (now = new Date()): Promise<{ succeeded: number; failed: number; unresolved: number }> => {
+  const stale = await prisma.payment.findMany({
+    where: {
+      status: 'pending',
+      gatewayPaymentId: { not: null },
+      createdAt: { lt: new Date(now.getTime() - OPEN_PAYMENT_WINDOW_MS), gte: new Date(now.getTime() - STALE_PENDING_MAX_AGE_MS) },
+    },
+    orderBy: { createdAt: 'asc' },
+    take: 50,
+  })
+
+  const counts = { succeeded: 0, failed: 0, unresolved: 0 }
+  for (const payment of stale) {
+    try {
+      const status = await settlePayment(payment, { source: 'sweep', request: null })
+      if (status === 'succeeded') counts.succeeded += 1
+      else if (status === 'failed') counts.failed += 1
+      else if (status === 'unpaid') {
+        await failPending(payment, 'abandoned: the bank page timed out with nothing charged')
+        counts.failed += 1
+      } else counts.unresolved += 1
+    } catch (error) {
+      counts.unresolved += 1
+      console.error(`[payments] sweep of #${payment.orderNumber} failed`, error instanceof Error ? error.message : error)
+    }
+  }
+  return counts
 }
 
 export type Reversal = 'refund' | 'cancel'
