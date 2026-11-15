@@ -9,7 +9,7 @@
  * can hold it.
  */
 
-export const PHOTO_READS_PER_PASS = 5
+export const PHOTO_READS_PER_PASS = 15
 
 /** The running access window: when it began, when it ends, how many passes it is made of. */
 export type PassWindow = { startedAt: Date; until: Date; passes: number }

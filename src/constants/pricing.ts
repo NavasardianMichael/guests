@@ -13,7 +13,7 @@ export const PASS_PRICE_AMD = 2000
 export const PASS_DAYS = 21
 
 /** Photo reads (a guest list read from a photo by AI) each pass brings. Twin: `server/src/services/photoQuota.ts`. */
-export const PHOTO_READS_PER_PASS = 5
+export const PHOTO_READS_PER_PASS = 15
 
 export const RETENTION_DAYS = 365
 

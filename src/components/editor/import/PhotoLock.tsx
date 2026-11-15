@@ -7,7 +7,7 @@ import { useAccessActive, useAccessUntil } from '@hooks/useAccess'
 
 /**
  * A small lock beside a "From a photo" button while no pass runs: photo reading comes with full
- * access (5 photos per pass). The button stays — the import dialog says why its upload is off and
+ * access (15 photos per pass). The button stays — the import dialog says why its upload is off and
  * offers the checkout. Nothing while the access is still unknown, so it never flickers on.
  */
 export const PhotoLock: FC = () => {

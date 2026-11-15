@@ -1,7 +1,7 @@
 # guests (Իմ հյուրերը)
 
 Guest lists for Armenian events, printed. Users build a list (typed, pasted, Excel/CSV, or a
-photo read by Gemini — full access only, 5 per pass), arrange it on a sheet and print one of four **kinds**: a seating board
+photo read by Gemini — full access only, 15 per pass), arrange it on a sheet and print one of four **kinds**: a seating board
 (guests under their tables), a plain guest list, place cards, or the hall plan (round and long
 tables with their guests inside, chairs around, plus stage / dance floor / entrance, placed
 by hand). Any paper size, 46 templates,
@@ -60,7 +60,7 @@ cv-builder's notes: under `concurrently` on Windows `tsx watch` never starts the
 | Reset buttons (top bar: all; tab header; section header) | what each scope puts back `src/helpers/designReset.ts` · button + confirm `src/components/editor/controls/ResetButton.tsx` · paper change maths `src/helpers/paperChange.ts` |
 | "Leave this page?" while unsaved | `src/components/LeaveGuard.tsx` (tab close/reload, links, Back) · register with `useLeaveGuard` (`src/hooks/`) — the editor's autosave does |
 | Print preview (fullscreen modal) | `src/components/editor/PreviewModal.tsx` |
-| Import | `src/components/editor/import/` · parsing `src/helpers/guestImport.ts` · photo → `server/src/routes/ai.ts` → `services/guestReader.ts` (Gemini); full access only, 5 reads per pass: rule `services/photoQuota.ts`, rows `services/photoReads.ts` (`PhotoRead`), status `GET /ai/photo`, docs `docs/PAYMENTS.md#photo-reading` |
+| Import | `src/components/editor/import/` · parsing `src/helpers/guestImport.ts` · photo → `server/src/routes/ai.ts` → `services/guestReader.ts` (Gemini); full access only, 15 reads per pass: rule `services/photoQuota.ts`, rows `services/photoReads.ts` (`PhotoRead`), status `GET /ai/photo`, docs `docs/PAYMENTS.md#photo-reading` |
 | Guest drafts (localStorage) | `src/helpers/localDraft.ts` — imported on sign-in by `EditorShell` |
 | PDF | `server/src/services/pdf.ts` prints the web's `/render` page (`src/app/render/`); the editor and dashboard only download it (`src/hooks/usePdfDownload.ts`, `PdfActions`) — no browser printing |
 | Who may print what | `server/src/services/entitlement.ts` (pure: `printTerms`, `accessWindow`): the free template (`memorial`, shown as “Classic”) for anyone, everything while the owner's pass runs — `printTermsFor` in `services/payments.ts`; web twin `isPrintable` |

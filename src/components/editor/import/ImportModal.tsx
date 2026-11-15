@@ -15,6 +15,7 @@ import { useFormatDate } from '@hooks/useFormatDate'
 import { ERROR_CODES } from '@constants/errors'
 import { PASS_DAYS, PHOTO_READS_PER_PASS } from '@constants/pricing'
 import { trackEvent } from '@helpers/analytics'
+import { cn } from '@helpers/cn'
 import { classifyError, errorCopyKey, processError } from '@helpers/error'
 import {
   cellText,
@@ -57,6 +58,9 @@ const PHOTO_ACCEPT = [
 ].join(',')
 const MAX_FILE_BYTES = 10 * 1024 * 1024
 
+/** Photos of one selection read at once: a page of names takes the model several seconds. */
+const PHOTO_CONCURRENCY = 3
+
 type Sheet = { rows: string[][]; mapping: ColumnMapping }
 
 /** A spreadsheet or text file as rows. The parsers load only when a file is chosen. */
@@ -80,13 +84,41 @@ const readFile = async (file: File): Promise<{ sheets: Record<string, string[][]
 }
 
 /**
+ * The photo reads left on this pass, made to stand out above the upload: a tinted box with a bar
+ * of what is unused (a pass brings 15, stacked passes more). Green while several are left, apricot on the last.
+ */
+const PhotoReadsLeft: FC<{ remaining: number; allowance: number }> = ({ remaining, allowance }) => {
+  const t = useTranslations('Editor.import')
+  const last = remaining <= 1
+  return (
+    <div
+      className={cn(
+        'flex items-center gap-3 rounded-xl px-4 py-3 ring-1 mx-1',
+        last ? 'bg-accent-soft text-accent-deep ring-accent/40' : 'bg-success/10 text-success ring-success/30'
+      )}
+    >
+      <CameraOutlined aria-hidden='true' className='text-xl' />
+      <div className='flex min-w-0 flex-1 flex-col gap-1.5'>
+        <span className='text-sm font-bold'>{t('photoRemaining', { remaining, count: allowance })}</span>
+        <span aria-hidden='true' className='relative h-1.5 overflow-hidden rounded-full bg-current/20'>
+          <span
+            className='absolute inset-y-0 left-0 rounded-full bg-current'
+            style={{ width: `${allowance > 0 ? (remaining / allowance) * 100 : 0}%` }}
+          />
+        </span>
+      </div>
+    </div>
+  )
+}
+
+/**
  * Bringing an existing list in, three ways: pasted text (one name per line, "Table 5:" lines
  * seating the names under them — or a block copied from Excel), a file (CSV, TSV, TXT, XLSX,
  * with the columns mapped), or a photo read by the AI (`POST /ai/extract-guests`). Whatever the
  * source, the result is shown, editable; on Import, a list that already has guests asks whether
  * the result replaces them or is added to them.
  *
- * The photo comes with full access: `PHOTO_READS_PER_PASS` reads per pass, one photo at a time
+ * The photo comes with full access: `PHOTO_READS_PER_PASS` reads per pass, one per photo, several chosen at once
  * (`server/src/services/photoQuota.ts`, which the API enforces too). The source is never hidden:
  * its upload is disabled, with the reason and the way on — the checkout, to get full access or
  * to add days (which bring more reads) — and the reads left are shown (`GET /ai/photo`).
@@ -113,6 +145,7 @@ export const ImportModal: FC = () => {
   const [fileLines, setFileLines] = useState<string | null>(null)
   const [photoGuests, setPhotoGuests] = useState<IncomingGuest[] | null>(null)
   const [photoReading, setPhotoReading] = useState(false)
+  const [photoProgress, setPhotoProgress] = useState<{ done: number; total: number } | null>(null)
   // Undefined while asked; null when it could not be asked (the API still decides).
   const [photoStatus, setPhotoStatus] = useState<PhotoStatus | null | undefined>(undefined)
   const [edited, setEdited] = useState<IncomingGuest[] | null>(null)
@@ -132,6 +165,7 @@ export const ImportModal: FC = () => {
     setFileLines(null)
     setPhotoGuests(null)
     setPhotoReading(false)
+    setPhotoProgress(null)
     setEdited(null)
   }
 
@@ -205,33 +239,73 @@ export const ImportModal: FC = () => {
     }
   }
 
-  /** One photo. It counts once it yields names; one that yields none gives its read back. */
-  const onPhoto = async (file: File) => {
+  /**
+   * One or several photos, each its own request — each counts once it yields names, one that
+   * yields none gives its read back. More are chosen than reads are left: the first ones are
+   * read. They go `PHOTO_CONCURRENCY` at a time, and their names join what was read before (the
+   * preview's edits included) in the order the photos were chosen, so a list photographed page
+   * by page — one shot at a time on a phone — builds up. The batch stops when the API says the
+   * reads are spent, access has ended, or the hourly limit is reached.
+   */
+  const onPhotos = async (picked: File[]) => {
+    const left = photoStatus?.state === 'available' ? photoStatus.remaining : PHOTO_READS_PER_PASS
+    const files = picked.slice(0, left)
+    if (!files.length) return
+    if (picked.length > files.length) void message.info(t('photoCapped', { count: files.length }))
+
     const run = ++photoRun.current
     const current = () => run === photoRun.current
-    setEdited(null)
-    setPhotoGuests(null)
+    const before = edited ?? photoGuests ?? []
+    const read: IncomingGuest[][] = files.map(() => [])
+    let next = 0
+    let done = 0
+    let nothing = 0
+    let failed = 0
+    let stopped: unknown = null
     setPhotoReading(true)
-    try {
-      const image = await fileToUploadDataUrl(file)
-      const result = await extractGuestsAPI({ image })
-      setPhotoStatus(result.photo)
-      if (!current()) return
-      setPhotoGuests(result.guests)
-      if (!result.guests.length) void message.warning(t('photoNothing'))
-    } catch (error) {
-      if (!current()) return
-      const { code } = processError(error)
+    setPhotoProgress({ done: 0, total: files.length })
+
+    const worker = async () => {
+      while (next < files.length && !stopped && current()) {
+        const index = next++
+        try {
+          const image = await fileToUploadDataUrl(files[index])
+          const result = await extractGuestsAPI({ image })
+          setPhotoStatus(result.photo)
+          read[index] = result.guests
+          if (!result.guests.length) nothing += 1
+        } catch (error) {
+          const { code } = processError(error)
+          // A reason that holds for the rest stops the batch; one photo's failure is counted, and
+          // said in full when it was the only one.
+          const stopsAll =
+            code === ERROR_CODES.photoNeedsAccess || code === ERROR_CODES.photoLimitReached || code === ERROR_CODES.rateLimited
+          if (stopsAll || files.length === 1) stopped ??= error
+          else failed += 1
+        }
+        done += 1
+        if (current()) setPhotoProgress({ done, total: files.length })
+      }
+    }
+    await Promise.all(Array.from({ length: Math.min(PHOTO_CONCURRENCY, files.length) }, worker))
+    if (!current()) return
+
+    setPhotoReading(false)
+    setPhotoProgress(null)
+    setEdited(null)
+    setPhotoGuests([...before, ...read.flat()])
+    if (stopped) {
+      const { code } = processError(stopped)
       // The API's word wins over what this page last knew: ask again, which shows why.
       if (code === ERROR_CODES.photoNeedsAccess || code === ERROR_CODES.photoLimitReached) {
         getPhotoStatusAPI()
           .then(setPhotoStatus)
           .catch(() => undefined)
       }
-      void message.error(tErrors(errorCopyKey(classifyError(error))))
-    } finally {
-      if (current()) setPhotoReading(false)
+      void message.error(tErrors(errorCopyKey(classifyError(stopped))))
     }
+    if (failed) void message.error(t('photoFailedSome', { count: failed }))
+    if (nothing) void message.warning(files.length === 1 ? t('photoNothing') : t('photoNothingSome', { count: nothing }))
   }
 
   const getFullAccess = () => {
@@ -282,7 +356,8 @@ export const ImportModal: FC = () => {
   const sheet = sheetName ? sheets[sheetName] : undefined
   const busy = photoReading
   // Until the status is known the upload waits; if it cannot be asked, the API decides on upload.
-  const photoAllowed = aiOn && photoStatus !== undefined && photoStatus?.state !== 'locked' && photoStatus?.state !== 'used'
+  const photoAllowed =
+    aiOn && photoStatus !== undefined && photoStatus?.state !== 'locked' && photoStatus?.state !== 'used'
 
   return (
     <Modal
@@ -433,21 +508,16 @@ export const ImportModal: FC = () => {
                 />
               )}
               {aiOn && photoStatus?.state === 'available' && (
-                <p className='m-0 text-sm font-medium text-ink'>
-                  {t('photoRemaining', { remaining: photoStatus.remaining, count: photoStatus.allowance })}
-                </p>
+                <PhotoReadsLeft remaining={photoStatus.remaining} allowance={photoStatus.allowance} />
               )}
               <Upload.Dragger
                 accept={PHOTO_ACCEPT}
-                multiple={false}
-                maxCount={1}
+                multiple
                 showUploadList={false}
                 disabled={busy || !photoAllowed}
                 beforeUpload={(file, list) => {
-                  // One photo at a time: of several dropped at once, only the first is read.
-                  if (file !== list[0]) return false
-                  if (list.length > 1) void message.info(t('photoOneAtATime'))
-                  void onPhoto(file)
+                  // Called once per file of the selection: the first call takes the whole of it.
+                  if (file === list[0]) void onPhotos(list)
                   return false
                 }}
               >
@@ -460,10 +530,14 @@ export const ImportModal: FC = () => {
               {photoReading && (
                 <div className='flex items-center gap-2 text-sm'>
                   <Spin size='small' />
-                  {t('photoReading')}
+                  {photoProgress && photoProgress.total > 1
+                    ? t('photoReadingOf', { done: photoProgress.done, total: photoProgress.total })
+                    : t('photoReading')}
                 </div>
               )}
-              <p className='m-0 text-xs leading-relaxed text-muted'>{t('photoRules', { count: PHOTO_READS_PER_PASS, days: PASS_DAYS })}</p>
+              <p className='m-0 text-xs leading-relaxed text-muted'>
+                {t('photoRules', { count: PHOTO_READS_PER_PASS, days: PASS_DAYS })}
+              </p>
               <p className='m-0 text-xs leading-relaxed text-muted'>{t('photoPrivacy')}</p>
             </>
           )}

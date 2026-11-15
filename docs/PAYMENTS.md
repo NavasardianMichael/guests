@@ -3,8 +3,8 @@
 One product: **full access** — an access pass of **21 days** for **2,000 ֏**. While it runs,
 its buyer prints everything: every template, every kind (seating board, list, place cards,
 hall plan), every list they have or make, clean (no "made with" line), edited and downloaded
-without limit — and **5 guest lists read from a photo** (below, Photo reading). A pass bought
-while one is still running **adds its 21 days on top** of it, and its 5 photo reads.
+without limit — and **15 guest lists read from a photo** (below, Photo reading). A pass bought
+while one is still running **adds its 21 days on top** of it, and its 15 photo reads.
 
 Free, for anyone: building any list in any template (typed, pasted, Excel / CSV), previewing
 it, and printing it in the free template (`memorial`, “Classic” in the interface) with the
@@ -146,12 +146,14 @@ so it comes with full access only, and is counted (`services/photoQuota.ts`, pur
 
 - **Free users: none.** Without a running pass `POST /ai/extract-guests` answers 402
   `photoNeedsAccess`.
-- **With a pass: `PHOTO_READS_PER_PASS` (5) per pass**, counted over the running access
-  window — from its first pass's `paidAt`, against 5 × the passes it is made of. Days bought on
-  top of a running pass bring 5 more; a new pass after one ran out starts a fresh count. Spent:
+- **With a pass: `PHOTO_READS_PER_PASS` (15) per pass**, counted over the running access
+  window — from its first pass's `paidAt`, against 15 × the passes it is made of. Days bought on
+  top of a running pass bring 15 more; a new pass after one ran out starts a fresh count. Spent:
   429 `photoLimitReached`.
-- **One photo per request**, and the web sends one at a time (`multiple={false}`; of several
-  dropped, the first is read).
+- **One photo per request.** The web lets several be chosen at once and sends them photo by
+  photo (three at a time), each its own read; a selection larger than the reads left is cut
+  to them, and the batch stops when the API answers `photoLimitReached`, `photoNeedsAccess` or
+  `rateLimited` (30 photos an hour for a guest, 60 for an account).
 - Only a photo that yields names counts: one where none were found, an unreadable answer, or
   our own failure gives the read back.
 

@@ -29,7 +29,9 @@ const MAX_IMAGE_BASE64 = 8 * 1024 * 1024
 const DATA_URL = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/
 
 // Before the pass check, which asks the bank: bounds what a script can make it do.
-const guestLimiter = createRateLimiter({ limit: 15, windowMs: 60 * 60 * 1000 })
+// A guest's limit fits a whole pass's reads chosen at once (the web sends a selection photo by
+// photo) with room for retakes; keyed on the address, which a household may share.
+const guestLimiter = createRateLimiter({ limit: 30, windowMs: 60 * 60 * 1000 })
 const accountLimiter = createRateLimiter({ limit: 60, windowMs: 60 * 60 * 1000 })
 
 /** Whose photo it is: the account, else this browser's guest key, else nobody's (no pass either). */
