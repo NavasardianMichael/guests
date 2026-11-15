@@ -21,13 +21,13 @@ import type { FontSlug } from './fonts'
  */
 export const TEMPLATE_IDS = [
   'memorial',
-  'classic',
-  'minimal',
-  'ivory',
   'ornament',
   'pomegranate',
   'botanical',
   'blush',
+  'classic',
+  'minimal',
+  'ivory',
   'midnight',
   'deco',
   'bold',
