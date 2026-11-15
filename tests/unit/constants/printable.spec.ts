@@ -32,6 +32,18 @@ describe('access window helpers', () => {
     expect(accessDaysLeft(null, NOW)).toBe(0)
   })
 
+  it('reads a pass just bought as PASS_DAYS, though the page clock lags the server', () => {
+    // `useNow` rounds down to the minute; the device may also run a little behind.
+    expect(accessDaysLeft(NOW + PASS_DAYS * DAY + 59 * 1000, NOW)).toBe(PASS_DAYS)
+    expect(accessDaysLeft(NOW + PASS_DAYS * DAY + 20 * 60 * 1000, NOW)).toBe(PASS_DAYS)
+    // Two passes stacked still read both.
+    expect(accessDaysLeft(NOW + 2 * PASS_DAYS * DAY + 59 * 1000, NOW)).toBe(2 * PASS_DAYS)
+  })
+
+  it('shows a day left until the very end', () => {
+    expect(accessDaysLeft(NOW + 10 * 60 * 1000, NOW)).toBe(1)
+  })
+
   it('adds a new pass on top of a running one, else from now', () => {
     expect(accessAfterPurchase(null, NOW)).toBe(NOW + PASS_DAYS * DAY)
     expect(accessAfterPurchase(NOW - 5 * DAY, NOW)).toBe(NOW + PASS_DAYS * DAY)

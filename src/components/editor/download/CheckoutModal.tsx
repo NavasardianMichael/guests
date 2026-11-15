@@ -1,7 +1,7 @@
 'use client'
 
 import { type CSSProperties, type FC, type ReactNode, useEffect, useMemo, useState } from 'react'
-import { CheckOutlined, ClockCircleOutlined, DownloadOutlined, LockOutlined } from '@ant-design/icons'
+import { CheckOutlined, ClockCircleOutlined, DownloadOutlined, ExclamationCircleFilled, LockOutlined } from '@ant-design/icons'
 import { Alert, App, Button, Modal } from 'antd'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
@@ -24,6 +24,7 @@ import { processError } from '@helpers/error'
 import { designInTemplate } from '@helpers/listFactory'
 import { SheetPreview } from '@components/sheet/SheetPreview'
 import { ErrorAlert } from '@components/ui/ErrorAlert'
+import { STATUS } from '@styles/tokens'
 import { SignInToBuyModal } from './SignInToBuyModal'
 import { flushSave } from '../useAutosave'
 
@@ -68,23 +69,60 @@ const DownloadOption: FC<OptionProps> = ({ name, price, items, preview, featured
  */
 const WRAPPING: CSSProperties = { height: 'auto', minHeight: 42, whiteSpace: 'normal', paddingBlock: 8 }
 
-/** What paying without an account means, said before the bank page — not after. */
-const GuestWarning: FC<{ redirecting: boolean; onContinue: () => void; onSignIn: () => void }> = ({
-  redirecting,
-  onContinue,
-  onSignIn,
-}) => {
+/**
+ * The checkout's body scrolls inside the dialog, which stays within the screen (title kept in
+ * view), rather than the whole page scrolling. The few pixels of inline padding, taken back by
+ * the margin, keep the featured card's outside ring from being clipped by the scroll box.
+ */
+const SCROLLING_BODY: CSSProperties = {
+  maxHeight: 'calc(100dvh - 60px)',
+  overflowY: 'auto',
+  overscrollBehavior: 'contain',
+  marginInline: -4,
+  paddingInline: 4,
+}
+
+type GuestWarningProps = {
+  open: boolean
+  redirecting: boolean
+  onContinue: () => void
+  onSignIn: () => void
+  onClose: () => void
+}
+
+/**
+ * What paying without an account means, said before the bank page — not after: a dialog over
+ * the checkout, where the guest either goes on to pay or signs in first.
+ */
+const GuestWarningModal: FC<GuestWarningProps> = ({ open, redirecting, onContinue, onSignIn, onClose }) => {
   const t = useTranslations('Editor.download')
   return (
-    <div className='flex flex-col gap-2'>
-      <Alert type='warning' showIcon className='mb-2' title={t('guestWarningTitle')} description={t('guestWarningText')} />
-      <Button type='primary' size='large' block style={WRAPPING} loading={redirecting} onClick={onContinue}>
-        {redirecting ? t('redirecting') : t('guestContinue')}
-      </Button>
-      <Button size='large' block style={WRAPPING} disabled={redirecting} onClick={onSignIn}>
-        {t('guestSignIn')}
-      </Button>
-    </div>
+    <Modal
+      open={open}
+      onCancel={onClose}
+      closable={!redirecting}
+      mask={{ closable: !redirecting }}
+      keyboard={!redirecting}
+      footer={null}
+      width={440}
+      centered
+      title={
+        <span className='flex items-center gap-2'>
+          <ExclamationCircleFilled style={{ color: STATUS.warning }} />
+          {t('guestWarningTitle')}
+        </span>
+      }
+    >
+      <p className='mt-0 mb-5 text-muted'>{t('guestWarningText')}</p>
+      <div className='flex flex-col gap-2'>
+        <Button type='primary' size='large' block style={WRAPPING} loading={redirecting} onClick={onContinue}>
+          {redirecting ? t('redirecting') : t('guestContinue')}
+        </Button>
+        <Button size='large' block style={WRAPPING} disabled={redirecting} onClick={onSignIn}>
+          {t('guestSignIn')}
+        </Button>
+      </div>
+    </Modal>
   )
 }
 
@@ -174,9 +212,14 @@ export const CheckoutModal: FC = () => {
     try {
       if (listId !== DRAFT_ID) await flushSave()
       // False: an earlier payment may still be open, and the buyer chose not to start another.
-      if (!(await checkout({ listId: listId !== DRAFT_ID ? listId : null, extend: active }))) setRedirecting(false)
+      if (!(await checkout({ listId: listId !== DRAFT_ID ? listId : null, extend: active }))) {
+        setRedirecting(false)
+        setConfirmingGuest(false)
+      }
     } catch (failure) {
       setRedirecting(false)
+      // The failure is shown in the checkout, under the guest warning's dialog.
+      setConfirmingGuest(false)
       if (processError(failure).code === ERROR_CODES.earlierPaymentSucceeded) return earlierPaymentWentThrough()
       setError(failure)
     }
@@ -212,6 +255,7 @@ export const CheckoutModal: FC = () => {
         centered
         title={t('checkoutTitle')}
         destroyOnHidden
+        styles={{ body: SCROLLING_BODY }}
       >
         <p className='mt-0 mb-4 text-sm text-muted'>{t('checkoutLead', { days: PASS_DAYS })}</p>
         <div className={cn('grid gap-4', showFree && 'md:grid-cols-2')}>
@@ -257,22 +301,18 @@ export const CheckoutModal: FC = () => {
               </div>
             )}
             {Boolean(error) && <ErrorAlert error={error} className='mb-4' />}
-            {confirmingGuest ? (
-              <GuestWarning redirecting={redirecting} onContinue={() => void pay()} onSignIn={() => setSigningIn(true)} />
-            ) : (
-              <Button
-                type='primary'
-                size='large'
-                block
-                style={WRAPPING}
-                icon={<LockOutlined />}
-                loading={redirecting}
-                disabled={unavailable || downloading}
-                onClick={() => (isGuest ? setConfirmingGuest(true) : void pay())}
-              >
-                {redirecting ? t('redirecting') : t('pay', { price })}
-              </Button>
-            )}
+            <Button
+              type='primary'
+              size='large'
+              block
+              style={WRAPPING}
+              icon={<LockOutlined />}
+              loading={redirecting}
+              disabled={unavailable || downloading}
+              onClick={() => (isGuest ? setConfirmingGuest(true) : void pay())}
+            >
+              {redirecting ? t('redirecting') : t('pay', { price })}
+            </Button>
           </DownloadOption>
         </div>
 
@@ -297,6 +337,16 @@ export const CheckoutModal: FC = () => {
           })}
         </p>
       </Modal>
+      <GuestWarningModal
+        open={open && confirmingGuest}
+        redirecting={redirecting}
+        onContinue={() => void pay()}
+        onSignIn={() => {
+          setConfirmingGuest(false)
+          setSigningIn(true)
+        }}
+        onClose={() => setConfirmingGuest(false)}
+      />
       <SignInToBuyModal listId={listId} open={signingIn} onClose={() => setSigningIn(false)} />
     </>
   )
