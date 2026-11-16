@@ -3,9 +3,11 @@
 import { type FC, type ReactNode, useState } from 'react'
 import {
   AppstoreOutlined,
+  FileTextOutlined,
   HomeOutlined,
   MenuOutlined,
   PlusOutlined,
+  ReadOutlined,
   SnippetsOutlined,
   WalletOutlined,
 } from '@ant-design/icons'
@@ -30,9 +32,14 @@ export const Header: FC = () => {
 
   const items: NavItem[] = [
     { href: ROUTES.templates, label: t('templates'), icon: <AppstoreOutlined /> },
+    { href: ROUTES.examples, label: t('examples'), icon: <FileTextOutlined /> },
+    { href: ROUTES.guides, label: t('guides'), icon: <ReadOutlined /> },
     { href: ROUTES.pricing, label: t('pricing'), icon: <WalletOutlined /> },
     ...(user ? [{ href: ROUTES.dashboard, label: t('dashboard'), icon: <SnippetsOutlined /> }] : []),
   ]
+  // Five links leave no room for the full "create" button until ~1400px; between the desktop
+  // menu's breakpoint (xl) and that, it becomes a round + with the same label for screen readers.
+  const crowded = items.length > 4
 
   const isActive = (href: string): boolean => pathname === href || pathname.startsWith(`${href}/`)
 
@@ -40,7 +47,8 @@ export const Header: FC = () => {
     <header className='sticky top-0 z-40 border-b border-line/70 bg-canvas/80 backdrop-blur-md'>
       <div className='mx-auto flex h-16 max-w-page items-center gap-3 px-4 sm:gap-6 md:px-6'>
         <BrandLogo />
-        <nav className='hidden items-center gap-1 md:flex' aria-label={t('menu')}>
+        {/* From xl: below it the logo and the menu do not fit side by side (the drawer has them). */}
+        <nav className='hidden items-center gap-1 xl:flex' aria-label={t('menu')}>
           {items.map((item) => (
             <Link
               key={item.href}
@@ -58,15 +66,20 @@ export const Header: FC = () => {
           ))}
         </nav>
         <div className='ml-auto flex shrink-0 items-center gap-2'>
-          <Link href={newListPath()} className='hidden sm:block'>
+          <Link href={newListPath()} className={cn('hidden sm:block', crowded && 'xl:hidden min-[1400px]:block')}>
             <Button type='primary' shape='round'>
               {t('create')}
             </Button>
           </Link>
+          {crowded && (
+            <Link href={newListPath()} className='hidden xl:block min-[1400px]:hidden' aria-label={t('create')} title={t('create')}>
+              <Button type='primary' shape='circle' icon={<PlusOutlined />} tabIndex={-1} />
+            </Link>
+          )}
           <AccountMenu />
-          {/* `md:hidden` on a wrapper: antd's Button styles are unlayered and its `display` beats
+          {/* `xl:hidden` on a wrapper: antd's Button styles are unlayered and its `display` beats
               Tailwind's utilities, so on the Button itself the menu showed beside the nav links. */}
-          <span className='flex md:hidden'>
+          <span className='flex xl:hidden'>
             <Button type='text' icon={<MenuOutlined />} aria-label={t('menu')} onClick={() => setOpen(true)} />
           </span>
         </div>

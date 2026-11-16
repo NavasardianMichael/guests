@@ -10,7 +10,7 @@ import { useAuthStore } from '@store/auth/store'
 import { useEditorUiStore } from '@store/editorUi/store'
 import { DRAFT_ID, type ListDocument, type PrintKind, type SheetShape } from '@store/lists/single/types'
 import { useSampleTexts } from '@hooks/useSampleTexts'
-import { editorPath, newListPath, RETURN_TO_QUERY, ROUTES } from '@constants/routes'
+import { editorPath, newListFromExamplePath, newListPath, RETURN_TO_QUERY, ROUTES } from '@constants/routes'
 import type { TemplateId } from '@constants/templates'
 import { dedupe } from '@helpers/dedupe'
 import { startingPlanScale } from '@helpers/fitSheet'
@@ -19,16 +19,22 @@ import { readLocalDraft, writeLocalDraft } from '@helpers/localDraft'
 import { measureText } from '@helpers/measureText'
 import { ErrorState } from '@components/ui/ErrorState'
 
-type Props = { templateId: TemplateId; kind: PrintKind; shape: SheetShape }
+type Props = {
+  templateId: TemplateId
+  kind: PrintKind
+  shape: SheetShape
+  /** An event example page's list to start from (`?example=`), or null. */
+  example: { slug: string; doc: ListDocument } | null
+}
 
 /**
- * Starts a list — on the sample wedding's guests, the user's to change — and opens it at the
- * first step. Signed in: created on the server. Guest: written as the local draft — after
+ * Starts a list — on the sample wedding's guests, the user's to change, or on an event example's
+ * list — and opens it at the first step. Signed in: created on the server. Guest: written as the local draft — after
  * asking, if a draft is already there, since there is only one. A browser that refuses to store
  * it (site data blocked) is told so here: the editor reads the draft back, and opening it without
  * one would send the guest straight back to this page.
  */
-export const NewListClient: FC<Props> = ({ templateId, kind, shape }) => {
+export const NewListClient: FC<Props> = ({ templateId, kind, shape, example }) => {
   const t = useTranslations('Editor')
   const tCommon = useTranslations('Common')
   const texts = useSampleTexts()
@@ -40,11 +46,13 @@ export const NewListClient: FC<Props> = ({ templateId, kind, shape }) => {
   const [storageBlocked, setStorageBlocked] = useState(false)
 
   const build = useCallback((): ListDocument => {
+    // The example's own list, as its page shows it (already fitted to its page).
+    if (example) return structuredClone(example.doc)
     const doc = newListDocument(templateId, kind, { title: t('untitled'), shape, texts })
     // A hall plan starts on one page, as when it is picked in the editor (KindPanel).
     const textScale = startingPlanScale(doc, measureText)
     return textScale === null ? doc : { ...doc, design: { ...doc.design, textScale } }
-  }, [kind, shape, t, texts, templateId])
+  }, [example, kind, shape, t, texts, templateId])
 
   const startDraft = useCallback(() => {
     if (!writeLocalDraft(build())) {
@@ -57,13 +65,13 @@ export const NewListClient: FC<Props> = ({ templateId, kind, shape }) => {
 
   const start = useCallback(async () => {
     if (user) {
-      const id = await dedupe(`new-list:${templateId}:${kind}:${shape}`, async () => (await createListAPI(build())).id)
+      const id = await dedupe(`new-list:${templateId}:${kind}:${shape}:${example?.slug ?? ''}`, async () => (await createListAPI(build())).id)
       useEditorUiStore.getState().markJustCreated(id)
       return router.replace(editorPath(id))
     }
     if (readLocalDraft()) return setAskReplace(true)
     startDraft()
-  }, [build, kind, router, shape, startDraft, templateId, user])
+  }, [build, example, kind, router, shape, startDraft, templateId, user])
 
   // Once per visit: a re-render must never start a second list.
   const startedRef = useRef(false)
@@ -84,7 +92,7 @@ export const NewListClient: FC<Props> = ({ templateId, kind, shape }) => {
           subTitle={t('storageBlockedText')}
           extra={
             <div className='flex flex-wrap justify-center gap-2'>
-              <Link href={`${ROUTES.signIn}?${RETURN_TO_QUERY}=${encodeURIComponent(newListPath({ template: templateId, kind, shape }))}`}>
+              <Link href={`${ROUTES.signIn}?${RETURN_TO_QUERY}=${encodeURIComponent(example ? newListFromExamplePath(example.slug) : newListPath({ template: templateId, kind, shape }))}`}>
                 <Button type='primary'>{t('guestBannerCta')}</Button>
               </Link>
               <Link href={ROUTES.templates}>

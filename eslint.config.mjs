@@ -92,6 +92,7 @@ const eslintConfig = defineConfig([
               '@interfaces/',
               '@i18n/',
               '@constants/',
+              '@content/',
               '@helpers/',
               '@linkedDataSchema/',
               '@utils/',
@@ -132,6 +133,8 @@ const eslintConfig = defineConfig([
       '@typescript-eslint/no-explicit-any': 'off',
       // Test doubles routinely pass shapes narrower than the real type.
       'security/detect-object-injection': 'off',
+      // Tests read repo files (content folders, public/) by paths built from the repo root.
+      'security/detect-non-literal-fs-filename': 'off',
     },
   },
   {

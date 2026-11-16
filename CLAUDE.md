@@ -26,6 +26,8 @@ pnpm dev            # web :7010 + api :9010
 pnpm verify         # typecheck → typecheck:server → lint → test → build — run before calling anything done
 pnpm test           # vitest (tests/unit)
 pnpm fonts:css      # public/fonts/manifest.json -> public/fonts/sheet-fonts.css (+ src/constants/sheetFontsVersion.ts, the ?v= hash)
+pnpm content:images # event example pictures (public/content/examples), needs the web running; a stale one fails the content tests
+pnpm content:video  # the tutorial video (public/content/video), needs web + API running and ffmpeg
 pnpm build:api      # server/dist -> out/api, the standalone API release the deploy ships
 pnpm env:base64 production | clip   # server/.env.production.local -> the ENV_API_BASE64 secret
 pnpm payments:reverse refund 12 13  # money back through the gateway (refund | cancel), by Payment.orderNumber —
@@ -68,7 +70,8 @@ cv-builder's notes: under `concurrently` on Windows `tsx watch` never starts the
 | Retention (wholly unused for a year → deleted) | policy `server/src/services/retention.ts`, daily sweep `retentionSweep.ts`, `User.lastActiveAt` stamped in `middleware/auth.ts` |
 | Languages | `src/i18n/request.ts` (cookie `NEXT_LOCALE`, default hy) · `src/messages/{hy,ru,en}.json` · switcher `components/layout/LanguageSwitcher.tsx` |
 | Auth (password + Google), guest key | as cv-builder: `server/src/routes/identity*.ts`, `lib/guest.ts`, `services/guestLists.ts` |
-| CI/CD, production | `.github/workflows/{ci,deploy}.yml` (secrets checked first by `scripts/check-deploy-config.mjs`) · `docs/DEPLOYMENT.md` · `docs/PRODUCTION_SETUP.md` · `deployment/` |
+| CI/CD, production | `.github/workflows/{ci,deploy,content}.yml` (secrets checked first by `scripts/check-deploy-config.mjs`) · `docs/DEPLOYMENT.md` · `docs/PRODUCTION_SETUP.md` · `deployment/` |
+| Guides, event examples, About (SEO content) | `src/content/` (typed Armenian copy, one file per slug, registry `index.ts`; an example's list `exampleDocument.ts`, its picture `exampleImages.ts` + `scripts/content/example-images.mjs`; tutorial video `scripts/content/video/` — music synthesised there, no third-party audio; `/about` copy `about.ts`) · routes `app/(site)/{guides,examples,about}` · `components/content/` · "use this example" `/editor/new?example=` · checks `tests/unit/content` · own pipeline `.github/workflows/content.yml` + IndexNow `scripts/content/indexnow.mjs` (`docs/DEPLOYMENT.md`, "Content") |
 | SEO | `src/helpers/metadata.ts`, `src/constants/seo.ts`, `src/linkedDataSchema/site.ts`, `src/app/{sitemap,robots}.ts`, `src/app/llms.txt/` |
 | Analytics consent (GA4 Consent Mode v2: asked only in the EU/EEA, UK and Switzerland, told by the device's time zone — `src/constants/consent.ts`; denied there until accepted or the banner is closed, granted elsewhere) | `src/helpers/consent.ts` · banner `components/analytics/ConsentBanner.tsx` (site pages only, never the editor or `/render`) · footer "Cookie settings" `ConsentSettingsLink.tsx` |
 | Backups, rate-limit keys | nightly dump to Google Drive, 22 days kept: `deployment/backup-db.sh`, `docs/DRIVE_BACKUP.md`, a dump before each migration in deploy.yml · every limiter keys on `clientAddress` (`server/src/lib/request.ts`: an IPv6 client is its /64) |
@@ -128,7 +131,7 @@ cv-builder's notes: under `concurrently` on Windows `tsx watch` never starts the
   survives the server's coercion unchanged.
 - **Interface language is a cookie, not a URL.** Pages are indexed in Armenian. Calls with an
   explicit locale (`getTranslations({ locale: 'hy' })`, used by static OG images and llms.txt)
-  must stay explicit so those routes stay static. Legal pages are Armenian in every language.
+  must stay explicit so those routes stay static. Legal pages, guides, event examples and /about are Armenian in every language (their chrome is translated).
 - **A list is owned by an account or a guest key**, never both (CHECK constraint); every
   `/lists` route scopes by `listOwnerOf(req)`.
 - **What is bought is time, not a template or a list.** The owner's `succeeded` `Payment`

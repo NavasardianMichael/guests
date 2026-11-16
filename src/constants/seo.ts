@@ -1,3 +1,5 @@
+import { SITE_DOMAIN } from './app'
+
 /**
  * What people type to find this. Pages are indexed in Armenian; the Russian and English
  * phrasings live in metadata: the `keywords` meta (a weak signal for some search engines,
@@ -47,6 +49,14 @@ export const CONTENT_UPDATED = '2026-11-13'
 
 /** The service's name as an English or Russian speaker would put it. */
 export const ALTERNATE_NAMES = ['Guests', 'Guest list & seating chart', 'Список гостей и рассадка']
+
+/**
+ * Google's "preferred sources" page for this site: a reader who adds it sees the site more
+ * often in Top Stories and AI answers. The no-script deeplink from
+ * developers.google.com/search/docs/appearance/preferred-sources, so the footer's badge is
+ * drawn in the app's own colours and loads nothing from Google.
+ */
+export const GOOGLE_PREFERRED_SOURCE_URL = `https://www.google.com/preferences/source?q=${SITE_DOMAIN}`
 
 /**
  * Google Search Console ownership tag, inlined at build time and left out when empty. A DNS

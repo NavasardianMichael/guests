@@ -2,9 +2,10 @@ import { getTranslations } from 'next-intl/server'
 import { APP_DESCRIPTION, APP_NAME, APP_NAME_LATIN } from '@constants/app'
 import { FONT_SLUGS, FONTS } from '@constants/fonts'
 import { formatAmount, PASS_DAYS, PASS_PRICE_AMD, PHOTO_READS_PER_PASS } from '@constants/pricing'
-import { ROUTES, templatePath } from '@constants/routes'
+import { examplePath, guidePath, ROUTES, templatePath } from '@constants/routes'
 import { KEYWORDS_EN, KEYWORDS_RU } from '@constants/seo'
 import { TEMPLATE_LIST } from '@constants/templates'
+import { EVENT_EXAMPLES, GUIDES } from '@content/index'
 import { buildLlmsTxt } from '@helpers/llmsTxt'
 import { absoluteUrl } from '@helpers/url'
 
@@ -40,8 +41,17 @@ export async function GET(): Promise<Response> {
           { name: 'Գլխավոր', url: absoluteUrl(ROUTES.home), note: 'ինչ է ծառայությունը, հաճախ տրվող հարցեր' },
           { name: 'Ձևանմուշներ', url: absoluteUrl(ROUTES.templates), note: `բոլոր ${TEMPLATE_LIST.length} ձևանմուշները` },
           { name: 'Գինը', url: absoluteUrl(ROUTES.pricing), note: `անվճար ձևանմուշ և ${price} դրամ՝ ${PASS_DAYS} օր լիարժեք հասանելիություն` },
+          { name: 'Մեր մասին', url: absoluteUrl(ROUTES.about), note: 'ով է կանգնած ծառայության հետևում, ինչպես են գրվում ուղեցույցները' },
           { name: 'Կապ մեզ հետ', url: absoluteUrl(ROUTES.contact), note: 'հարցեր և առաջարկներ' },
         ],
+      },
+      {
+        title: 'Ուղեցույցներ',
+        links: GUIDES.map((guide) => ({ name: guide.title, url: absoluteUrl(guidePath(guide.slug)), note: guide.description })),
+      },
+      {
+        title: 'Տոների օրինակներ',
+        links: EVENT_EXAMPLES.map((example) => ({ name: example.title, url: absoluteUrl(examplePath(example.slug)), note: example.description })),
       },
       {
         title: 'Ձևանմուշներ',

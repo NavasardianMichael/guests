@@ -1,0 +1,44 @@
+{
+  "harsaniq": {
+    "fingerprint": "5aec48d0a4603c49",
+    "width": 1588,
+    "height": 2246,
+    "pages": 1,
+    "fits": true
+  },
+  "knunq": {
+    "fingerprint": "4b043ea5cf8a8c1b",
+    "width": 1588,
+    "height": 2246,
+    "pages": 1,
+    "fits": true
+  },
+  "nshandreq": {
+    "fingerprint": "b8e46236bf223fb1",
+    "width": 2246,
+    "height": 1588,
+    "pages": 1,
+    "fits": true
+  },
+  "tsnund": {
+    "fingerprint": "19501488221559eb",
+    "width": 1588,
+    "height": 2246,
+    "pages": 1,
+    "fits": true
+  },
+  "hobelyan": {
+    "fingerprint": "c1ed0f65d9e40f6b",
+    "width": 2246,
+    "height": 1588,
+    "pages": 1,
+    "fits": true
+  },
+  "korporativ": {
+    "fingerprint": "93c94244f651b9fc",
+    "width": 1588,
+    "height": 2246,
+    "pages": 1,
+    "fits": true
+  }
+}

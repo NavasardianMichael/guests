@@ -16,6 +16,8 @@
     "typecheck": "tsc --noEmit",
     "typecheck:server": "pnpm --filter guests-server exec tsc --noEmit",
     "fonts:css": "node scripts/fonts/build-css.mjs",
+    "content:images": "pnpm --filter guests-server exec tsx --tsconfig ../tsconfig.json ../scripts/content/example-images.mjs",
+    "content:video": "node scripts/content/video/record.mjs",
     "verify": "pnpm typecheck && pnpm typecheck:server && pnpm lint && pnpm test && pnpm build",
     "test": "vitest run",
     "test:watch": "vitest",

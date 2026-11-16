@@ -3,11 +3,13 @@ import Link from 'next/link'
 import { getTranslations } from 'next-intl/server'
 import { APP_NAME } from '@constants/app'
 import { FONTS_SOURCE_URL } from '@constants/fonts'
-import { ROUTES } from '@constants/routes'
+import { examplePath, guidePath, ROUTES } from '@constants/routes'
+import { EVENT_EXAMPLES, GUIDES } from '@content/index'
 import { GA_ID } from '@helpers/analytics'
 import { ConsentSettingsLink } from '@components/analytics/ConsentSettingsLink'
 import { BrandLogo } from './BrandLogo'
 import { LanguageSwitcher } from './LanguageSwitcher'
+import { PreferredSourceBadge } from './PreferredSourceBadge'
 
 export const Footer: FC = async () => {
   const t = await getTranslations('Footer')
@@ -19,8 +21,19 @@ export const Footer: FC = async () => {
       links: [
         { href: ROUTES.templates, label: tNav('templates') },
         { href: ROUTES.pricing, label: tNav('pricing') },
+        { href: ROUTES.about, label: tNav('about') },
         { href: ROUTES.contact, label: tNav('contact') },
         { href: ROUTES.signIn, label: tNav('signIn') },
+      ],
+    },
+    {
+      // Every article and example from every page: how they are found and crawled.
+      title: t('resources'),
+      links: [
+        { href: ROUTES.guides, label: tNav('guides') },
+        ...GUIDES.map((guide) => ({ href: guidePath(guide.slug), label: guide.shortTitle })),
+        { href: ROUTES.examples, label: tNav('examples') },
+        ...EVENT_EXAMPLES.map((example) => ({ href: examplePath(example.slug), label: example.shortTitle })),
       ],
     },
     {
@@ -41,7 +54,7 @@ export const Footer: FC = async () => {
 
   return (
     <footer className='mt-24 border-t border-line bg-surface'>
-      <div className='mx-auto grid max-w-page gap-10 px-4 py-12 md:grid-cols-[2fr_1fr_1fr] md:px-6'>
+      <div className='mx-auto grid max-w-page gap-10 px-4 py-12 md:grid-cols-[2fr_1.2fr_1fr] md:px-6 lg:grid-cols-[2fr_1fr_1.4fr_1fr]'>
         <div className='max-w-sm'>
           <BrandLogo />
           <p className='mt-4 text-sm leading-relaxed text-muted'>{t('tagline')}</p>
@@ -59,6 +72,9 @@ export const Footer: FC = async () => {
               ),
             })}
           </p>
+          <div className='mt-5'>
+            <PreferredSourceBadge />
+          </div>
         </div>
         {columns.map((column) => (
           <nav key={column.title} aria-label={column.title}>

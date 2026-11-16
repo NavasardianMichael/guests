@@ -1,8 +1,10 @@
 import type { Metadata } from 'next'
 import { getTranslations } from 'next-intl/server'
 import { PRINT_KINDS, type PrintKind, SHEET_SHAPES, type SheetShape } from '@store/lists/single/types'
-import { KIND_QUERY, SHAPE_QUERY, TEMPLATE_QUERY } from '@constants/routes'
+import { EXAMPLE_QUERY, KIND_QUERY, SHAPE_QUERY, TEMPLATE_QUERY } from '@constants/routes'
 import { DEFAULT_TEMPLATE_ID, isTemplateId } from '@constants/templates'
+import { exampleDocument } from '@content/exampleDocument'
+import { findExample } from '@content/index'
 import { NewListClient } from '@components/editor/NewListClient'
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -20,8 +22,11 @@ export default async function NewListPage({ searchParams }: Props) {
   const template = query[TEMPLATE_QUERY]
   const kind = query[KIND_QUERY]
   const shape = query[SHAPE_QUERY]
+  // An event example page's "use this example": its whole list, in its own template and kind.
+  const example = findExample(query[EXAMPLE_QUERY])
   return (
     <NewListClient
+      example={example ? { slug: example.slug, doc: exampleDocument(example) } : null}
       templateId={isTemplateId(template) ? template : DEFAULT_TEMPLATE_ID}
       kind={isKind(kind) ? kind : 'seating'}
       shape={isShape(shape) ? shape : 'rectangle'}

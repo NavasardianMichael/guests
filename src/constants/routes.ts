@@ -23,6 +23,9 @@ export const ROUTES = {
   privacy: '/privacy',
   refundPolicy: '/refund-policy',
   contact: '/contact',
+  about: '/about',
+  guides: '/guides',
+  examples: '/examples',
   /** Where the bank's return trip lands. Twin: `PAYMENT_RESULT_PATH` on the server. */
   paymentResult: '/payment/result',
 } as const
@@ -48,6 +51,15 @@ export const templatesPath = (options: { kind?: PrintKind; arrangement?: PlanArr
   const search = query.toString()
   return search ? `${ROUTES.templates}?${search}` : ROUTES.templates
 }
+
+/** An article in `src/content/guides`, by its slug (a transliterated search phrase). */
+export const guidePath = (slug: string): string => `${ROUTES.guides}/${slug}`
+
+/** An event example in `src/content/examples`, by its slug. */
+export const examplePath = (slug: string): string => `${ROUTES.examples}/${slug}`
+
+/** A new list that starts as an event example's list (`content/exampleDocument.ts`). */
+export const newListFromExamplePath = (slug: string): string => `${ROUTES.editorNew}?${EXAMPLE_QUERY}=${encodeURIComponent(slug)}`
 
 export const editorPath = (listId: string): string => `${ROUTES.editor}/${listId}`
 
@@ -77,5 +89,7 @@ export const TEMPLATE_QUERY = 'template'
 export const KIND_QUERY = 'kind'
 export const ARRANGEMENT_QUERY = 'arrangement'
 export const SHAPE_QUERY = 'shape'
+/** `ROUTES.editorNew`'s event example slug: the new list starts as that example's list. */
+export const EXAMPLE_QUERY = 'example'
 /** On the editor's URL: open the checkout at once (back from signing in to buy). */
 export const CHECKOUT_QUERY = 'checkout'

@@ -1,26 +1,8 @@
-import type { FC, ReactNode } from 'react'
-import Link from 'next/link'
+import type { FC } from 'react'
 import { getLocale, getTranslations } from 'next-intl/server'
 import type { LegalDocument } from '@constants/legal'
 import { formatDate } from '@helpers/date'
-
-const LINK = /\[([^\]]+)\]\(([^)\s]+)\)/g
-
-/** A paragraph's `[label](/path)` links as `<Link>`s; the rest stays text. */
-const renderParagraph = (paragraph: string): ReactNode[] => {
-  // `split` with two capture groups yields: text, label, href, text, label, href, …
-  const parts = paragraph.split(LINK)
-  return parts.map((part, index) => {
-    if (index % 3 === 1) {
-      return (
-        <Link key={index} href={parts[index + 1]} className='font-medium text-ink underline'>
-          {part}
-        </Link>
-      )
-    }
-    return index % 3 === 2 ? null : part
-  })
-}
+import { RichText } from '@components/content/RichText'
 
 export const LegalPage: FC<{ document: LegalDocument }> = async ({ document }) => {
   const t = await getTranslations('Legal')
@@ -34,7 +16,7 @@ export const LegalPage: FC<{ document: LegalDocument }> = async ({ document }) =
           <h2 className='m-0 text-lg font-bold text-ink sm:text-xl'>{section.heading}</h2>
           {section.paragraphs.map((paragraph) => (
             <p key={paragraph} className='mt-3 mb-0 leading-relaxed text-text'>
-              {renderParagraph(paragraph)}
+              <RichText text={paragraph} />
             </p>
           ))}
         </section>

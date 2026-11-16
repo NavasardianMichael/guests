@@ -32,7 +32,10 @@
     "home": "Home",
     "contact": "Contact us",
     "language": "Language",
-    "breadcrumb": "Breadcrumb"
+    "breadcrumb": "Breadcrumb",
+    "examples": "Examples",
+    "guides": "Guides",
+    "about": "About us"
   },
   "Footer": {
     "tagline": "Guest lists, seating charts and place cards for Armenian weddings, christenings and celebrations.",
@@ -42,7 +45,10 @@
     "privacy": "Privacy policy",
     "refund": "Refund policy",
     "rights": "© {year} {name}. All rights reserved.",
-    "fonts": "Fonts from <link>fonter.am</link>, all free for commercial use."
+    "fonts": "Fonts from <link>fonter.am</link>, all free for commercial use.",
+    "resources": "Resources",
+    "preferredSourceEyebrow": "See us more often on Google",
+    "preferredSource": "Add as a preferred source"
   },
   "Meta": {
     "tagline": "guest list and seating chart",
@@ -307,6 +313,35 @@
       "list": "Guest list",
       "cards": "Place cards"
     }
+  },
+  "Content": {
+    "guidesTitle": "Guides to guest lists and seating",
+    "guidesSubtitle": "How to make a guest list, who sits where, how to make a seating chart, place cards and a hall plan — practical advice with examples. The guides are in Armenian.",
+    "guidesMetaTitle": "Guides to guest lists and seating charts",
+    "guidesMetaDescription": "Practical guides in Armenian: how to make a wedding guest list, seat your guests, and make a seating chart, place cards and a hall plan.",
+    "examplesTitle": "Event examples with guest lists",
+    "examplesSubtitle": "Ready-made examples for a wedding, christening, engagement, birthday and more. Open any of them in the editor, replace the names with your guests and print.",
+    "examplesMetaTitle": "Seating chart and guest list examples",
+    "examplesMetaDescription": "{count} ready-made examples in Armenian: a wedding seating chart, a christening, an engagement hall plan, place cards and more. Open one in the editor and fill in your guests.",
+    "readingTime": "{minutes} min read",
+    "updated": "Updated: <date></date>",
+    "byline": "By <link>{name}</link>",
+    "toc": "Contents",
+    "faqTitle": "Frequently asked questions",
+    "relatedGuides": "Read next",
+    "relatedExamples": "Event examples",
+    "moreExamples": "More examples",
+    "useExample": "Use this example",
+    "otherTemplate": "Pick another template",
+    "exampleNote": "Shown as a {kind} in the “{template}” template. In the editor you can change the template, what it prints, colours and fonts without losing your guests.",
+    "examplePreviewLabel": "{event} — example",
+    "ctaTitle": "Make your guest list now",
+    "ctaText": "Import the names, seat guests at tables and print a seating chart, a list or place cards. No sign-up, and free in the “Classic” template.",
+    "ctaButton": "Make a list",
+    "ctaTemplates": "Browse templates",
+    "weak": "Not like this",
+    "strong": "Like this",
+    "tip": "Tip"
   },
   "Shapes": {
     "label": "Shape",

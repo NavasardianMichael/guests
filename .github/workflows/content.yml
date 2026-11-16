@@ -1,0 +1,160 @@
+# =============================================================================
+# Content — guides and event examples (src/content/**, with their pictures and video in
+# public/content/**), built and shipped only when they change.
+#
+# How it works (docs/DEPLOYMENT.md, "Content"):
+#   1. check     the content tests (tests/unit/content): slugs, links, lengths, Armenian
+#                punctuation, every example list surviving the API's save, a current picture
+#                of each example. Fast, and the reason a content edit needs no full review.
+#   2. deploy    deploy.yml called with `scope: web`: its full verify, then the web alone.
+#                The pages are prerendered, so the web build is where content is "built".
+#                A push that also changed code is deploy.yml's own run (it does not ignore
+#                that push), so this one waits for it instead of deploying twice.
+#   3. indexnow  once the pages are live, tells IndexNow engines (Bing, Yandex) which
+#                URLs changed (scripts/content/indexnow.mjs). Google reads the sitemap.
+#
+# Manual run (workflow_dispatch): deploys the web and announces every content page.
+# Needs no secrets of its own: deploy.yml's are inherited; NEXT_PUBLIC_SITE_URL names the site.
+# =============================================================================
+
+name: Content
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'src/content/**'
+      - 'public/content/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  # `gh run list/watch`: waiting for deploy.yml's run of the same commit.
+  actions: read
+
+concurrency:
+  group: content-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  PUPPETEER_SKIP_DOWNLOAD: 'true'
+
+jobs:
+  check:
+    name: Check content
+    runs-on: ubuntu-latest
+    outputs:
+      code_changed: ${{ steps.scope.outputs.code_changed }}
+      base: ${{ steps.scope.outputs.base }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      # Whether deploy.yml runs for this push too: it does unless every changed file is one
+      # of its paths-ignore (keep the two lists the same).
+      - name: What else this push changed
+        id: scope
+        run: |
+          base="${{ github.event.before }}"
+          if [ "${{ github.event_name }}" != "push" ] || [ -z "$base" ] || ! git cat-file -e "$base^{commit}" 2>/dev/null; then
+            echo "code_changed=false" >> "$GITHUB_OUTPUT"
+            echo "base=" >> "$GITHUB_OUTPUT"
+            echo "no usable base commit: deploying here, announcing every content page"
+            exit 0
+          fi
+          others=$(git diff --name-only "$base" "$GITHUB_SHA" | grep -Ev '\.md$|^docs/|^\.claude/|^\.cursor/|^src/content/|^public/content/' || true)
+          if [ -n "$others" ]; then
+            echo "code_changed=true" >> "$GITHUB_OUTPUT"
+            echo "this push also changed (deploy.yml ships it):"; printf '  %s\n' $others
+          else
+            echo "code_changed=false" >> "$GITHUB_OUTPUT"
+            echo "content only"
+          fi
+          echo "base=$base" >> "$GITHUB_OUTPUT"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+
+      # CI=true: the postinstall skips the env files, Docker, migrations and seed.
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Content tests
+        run: pnpm vitest run tests/unit/content
+
+  deploy:
+    name: Deploy web
+    needs: check
+    if: needs.check.outputs.code_changed != 'true'
+    uses: ./.github/workflows/deploy.yml
+    with:
+      scope: web
+    secrets: inherit
+
+  # Code changed in the same push: deploy.yml's push run ships the content. Wait for it, so
+  # search engines are told only once the pages are live.
+  wait-for-deploy:
+    name: Wait for deploy.yml
+    needs: check
+    if: needs.check.outputs.code_changed == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Wait for this commit's deploy
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          id=""
+          for i in $(seq 1 30); do
+            id=$(gh run list -R "$GITHUB_REPOSITORY" --workflow deploy.yml --commit "$GITHUB_SHA" --event push --limit 1 --json databaseId -q '.[0].databaseId')
+            [ -n "$id" ] && break
+            sleep 10
+          done
+          if [ -z "$id" ]; then
+            echo "::error::no deploy.yml run for $GITHUB_SHA"
+            exit 1
+          fi
+          echo "following deploy.yml run $id"
+          gh run watch "$id" -R "$GITHUB_REPOSITORY" --exit-status --interval 30 > /dev/null
+
+  indexnow:
+    name: Notify search engines
+    needs: [check, deploy, wait-for-deploy]
+    # One of deploy / wait-for-deploy runs, the other is skipped; the pages must be live.
+    if: |
+      always() &&
+      needs.check.result == 'success' &&
+      (needs.deploy.result == 'success' || needs.wait-for-deploy.result == 'success')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      # No pnpm here (the script needs only Node), so no package-manager cache: setup-node
+      # otherwise reads `packageManager` from package.json and fails looking for pnpm.
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: '.nvmrc'
+          package-manager-cache: false
+
+      - name: IndexNow
+        env:
+          NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL || vars.NEXT_PUBLIC_SITE_URL }}
+        run: |
+          base="${{ needs.check.outputs.base }}"
+          if [ -n "$base" ]; then
+            node scripts/content/indexnow.mjs --base "$base" --head "$GITHUB_SHA"
+          else
+            node scripts/content/indexnow.mjs --all
+          fi

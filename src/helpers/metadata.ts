@@ -20,6 +20,7 @@ export const pageMetadata = ({
   path,
   absoluteTitle = false,
   ownImage = false,
+  article,
 }: {
   title: string
   description: string
@@ -28,12 +29,14 @@ export const pageMetadata = ({
   absoluteTitle?: boolean
   /** The route has its own `opengraph-image` / `twitter-image` files, which a named image would override. */
   ownImage?: boolean
+  /** A guide or an event example: OpenGraph `article` with its dates (ISO). */
+  article?: { published: string; updated: string }
 }): Metadata => ({
   title: absoluteTitle ? { absolute: title } : title,
   description,
   alternates: { canonical: absoluteUrl(path) },
   openGraph: {
-    type: 'website',
+    ...(article ? { type: 'article', publishedTime: article.published, modifiedTime: article.updated } : { type: 'website' }),
     siteName: APP_NAME,
     locale: OG_LOCALE,
     url: absoluteUrl(path),
