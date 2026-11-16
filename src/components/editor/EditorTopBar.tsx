@@ -18,9 +18,9 @@ import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { useAuthStore } from '@store/auth/store'
 import { useListEditorStore, useListEditorStoreBase } from '@store/lists/single/store'
-import { DRAFT_ID } from '@store/lists/single/types'
 import { ROUTES } from '@constants/routes'
 import { stepZoom } from '@helpers/canvasZoom'
+import { isDraftId } from '@helpers/localDraft'
 import { BrandMark } from '@components/layout/BrandMark'
 import { HintTooltip } from '@components/ui/HintTooltip'
 import { LiveInput } from './controls/LiveFields'
@@ -46,7 +46,7 @@ const SaveIndicator: FC = () => {
   const t = useTranslations('Editor.status')
   const { message } = App.useApp()
   const status = useListEditorStore.use.saveStatus()
-  const isDraft = useListEditorStore.use.listId() === DRAFT_ID
+  const isDraft = isDraftId(useListEditorStore.use.listId())
 
   useEffect(() => {
     if (status === 'conflict') void message.warning({ content: t('conflictHint'), duration: 8 })

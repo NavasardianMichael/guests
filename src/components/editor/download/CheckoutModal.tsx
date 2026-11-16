@@ -8,7 +8,6 @@ import { useTranslations } from 'next-intl'
 import { useAuthStore } from '@store/auth/store'
 import { useEditorUiStore, useEditorUiStoreBase } from '@store/editorUi/store'
 import { useListEditorStore, useListEditorStoreBase } from '@store/lists/single/store'
-import { DRAFT_ID } from '@store/lists/single/types'
 import { usePurchasesStoreBase } from '@store/purchases/store'
 import { useAccessUntil, useNow } from '@hooks/useAccess'
 import { useCapabilities } from '@hooks/useCapabilities'
@@ -22,6 +21,7 @@ import { FREE_TEMPLATE_ID, isPrintable, TEMPLATES } from '@constants/templates'
 import { cn } from '@helpers/cn'
 import { processError } from '@helpers/error'
 import { designInTemplate } from '@helpers/listFactory'
+import { isDraftId } from '@helpers/localDraft'
 import { SheetPreview } from '@components/sheet/SheetPreview'
 import { ErrorAlert } from '@components/ui/ErrorAlert'
 import { STATUS } from '@styles/tokens'
@@ -210,9 +210,9 @@ export const CheckoutModal: FC = () => {
     setError(null)
     setRedirecting(true)
     try {
-      if (listId !== DRAFT_ID) await flushSave()
+      if (!isDraftId(listId)) await flushSave()
       // False: an earlier payment may still be open, and the buyer chose not to start another.
-      if (!(await checkout({ listId: listId !== DRAFT_ID ? listId : null, extend: active }))) {
+      if (!(await checkout({ listId: isDraftId(listId) ? null : listId, extend: active }))) {
         setRedirecting(false)
         setConfirmingGuest(false)
       }
@@ -229,7 +229,7 @@ export const CheckoutModal: FC = () => {
   const downloadFree = async () => {
     const current = useListEditorStoreBase.getState()
     if (!current.listId || !current.doc) return
-    if (current.listId !== DRAFT_ID && !(await flushSave())) {
+    if (!isDraftId(current.listId) && !(await flushSave())) {
       void message.error(tErrors('kinds.server'))
       return
     }

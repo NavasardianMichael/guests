@@ -12,7 +12,8 @@ import { SheetPreview } from '@components/sheet/SheetPreview'
 
 type Props = {
   list: GuestList
-  onDuplicate: (list: GuestList) => void
+  /** Absent for a guest's local draft: a copy would be a second draft of the same list. */
+  onDuplicate?: (list: GuestList) => void
   onDelete: (list: GuestList) => void
   onDownload: (list: GuestList) => void
 }
@@ -56,7 +57,9 @@ export const ListCard: FC<Props> = ({ list, onDuplicate, onDelete, onDownload })
             items: [
               { key: 'edit', icon: <EditOutlined />, label: <Link href={href}>{tCommon('edit')}</Link> },
               { key: 'download', icon: <DownloadOutlined />, label: tCommon('download'), onClick: () => onDownload(list) },
-              { key: 'duplicate', icon: <CopyOutlined />, label: tCommon('duplicate'), onClick: () => onDuplicate(list) },
+              ...(onDuplicate
+                ? [{ key: 'duplicate', icon: <CopyOutlined />, label: tCommon('duplicate'), onClick: () => onDuplicate(list) }]
+                : []),
               { type: 'divider' },
               { key: 'delete', icon: <DeleteOutlined />, label: tCommon('delete'), danger: true, onClick: () => onDelete(list) },
             ],

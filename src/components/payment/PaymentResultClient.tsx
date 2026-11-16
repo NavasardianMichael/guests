@@ -7,7 +7,6 @@ import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import type { PaymentStatus } from '@api/purchases/types'
 import { useAuthStore } from '@store/auth/store'
-import { DRAFT_ID } from '@store/lists/single/types'
 import { usePurchasesStoreBase } from '@store/purchases/store'
 import { accessActiveNow, useAccessUntil } from '@hooks/useAccess'
 import { useCheckout } from '@hooks/useCheckout'
@@ -18,7 +17,7 @@ import { editorPath, newListPath, type PaymentResultStatus, RETURN_TO_QUERY, ROU
 import { FREE_TEMPLATE_ID } from '@constants/templates'
 import { trackEvent } from '@helpers/analytics'
 import { processError } from '@helpers/error'
-import { readLocalDraft } from '@helpers/localDraft'
+import { listLocalDrafts } from '@helpers/localDraft'
 import { ErrorAlert } from '@components/ui/ErrorAlert'
 
 type Props = { status: PaymentResultStatus; listId?: string; paymentId?: string }
@@ -55,9 +54,11 @@ export const PaymentResultClient: FC<Props> = ({ status, listId, paymentId }) =>
   const [retryError, setRetryError] = useState<unknown>(null)
 
   useEffect(() => {
-    // localStorage is only readable after hydration.
+    // localStorage is only readable after hydration. A draft pays without an id of its own: the
+    // one saved last is the one the checkout left.
+    const latest = listId ? undefined : listLocalDrafts()[0]
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (!listId && readLocalDraft()) setBackTo(editorPath(DRAFT_ID))
+    if (latest) setBackTo(editorPath(latest.id))
   }, [listId])
 
   // Each read (the first once the owner is known, then each poll) settles a pending payment and

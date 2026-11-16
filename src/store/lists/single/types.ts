@@ -231,9 +231,6 @@ export type GuestList = ListDocument & {
   updatedAt: string
 }
 
-/** The id of a guest's local draft (`helpers/localDraft.ts`): it is not a server list. */
-export const DRAFT_ID = 'draft'
-
 /** Block ids of the sheet's header and footer in `layout.positions`. */
 export const HEADER_ID = 'header'
 export const FOOTER_ID = 'footer'

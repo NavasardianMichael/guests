@@ -3,11 +3,10 @@
 import { type FC, useEffect } from 'react'
 import { updateListAPI } from '@api/lists/main'
 import { useListEditorStore, useListEditorStoreBase } from '@store/lists/single/store'
-import { DRAFT_ID } from '@store/lists/single/types'
 import { useLeaveGuard } from '@hooks/useLeaveGuard'
 import { ERROR_CODES } from '@constants/errors'
 import { classifyError } from '@helpers/error'
-import { writeLocalDraft } from '@helpers/localDraft'
+import { isDraftId, writeLocalDraft } from '@helpers/localDraft'
 import { reportError } from '@helpers/reportError'
 
 const DEBOUNCE_MS = 900
@@ -21,8 +20,8 @@ const saveCurrent = (): Promise<void> => {
     const { listId, doc, saveStatus, serverUpdatedAt, setSaveStatus, setServerUpdatedAt } = useListEditorStoreBase.getState()
     if (!listId || !doc || saveStatus === 'saved' || saveStatus === 'conflict' || saveStatus === 'stopped') return
 
-    if (listId === DRAFT_ID) {
-      setSaveStatus(writeLocalDraft(doc) ? 'saved' : 'error')
+    if (isDraftId(listId)) {
+      setSaveStatus(writeLocalDraft(listId, doc) ? 'saved' : 'error')
       return
     }
 

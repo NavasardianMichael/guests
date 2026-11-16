@@ -12,6 +12,7 @@ import type { GuestList } from '@store/lists/single/types'
 import { usePdfDownload } from '@hooks/usePdfDownload'
 import { CHECKOUT_QUERY, editorPath, newListPath, RETURN_TO_QUERY, ROUTES } from '@constants/routes'
 import { classifyError, errorCopyKey } from '@helpers/error'
+import { clearLocalDraft, hasLocalDrafts, listLocalDrafts, type LocalDraft } from '@helpers/localDraft'
 import { reportError } from '@helpers/reportError'
 import { ErrorState } from '@components/ui/ErrorState'
 import { AccessBanner } from './AccessBanner'
@@ -24,7 +25,7 @@ export const DashboardClient: FC = () => {
   const list = useListsStore.use.list()
   const user = useAuthStore.use.user()
   const isResolved = useAuthStore.use.isResolved()
-  // Signed out here means a guest whose cookie owns lists on the server (src/proxy.ts).
+  // Signed out here means a guest: drafts in this browser, or a cookie that owns server lists (src/proxy.ts).
   const isGuest = isResolved && !user
   const isLoaded = useListsStore.use.isLoaded()
   const getLists = useListsStore.use.getLists()
@@ -38,10 +39,15 @@ export const DashboardClient: FC = () => {
     if ((await run(item.id, item)) === 'locked') router.push(`${editorPath(item.id)}?${CHECKOUT_QUERY}=1`)
   }
   const [loadError, setLoadError] = useState<unknown>(null)
+  /** The API knows no owner here: signed out and no guest cookie, so no server lists. */
+  const [noOwner, setNoOwner] = useState(false)
+  /** This browser's drafts (`helpers/localDraft`); opening one signed in imports it to the account. */
+  const [drafts, setDrafts] = useState<LocalDraft[]>([])
 
   const load = useCallback(
     () =>
       getLists().catch((failure: unknown) => {
+        if (classifyError(failure).kind === 'unauthorized') return setNoOwner(true)
         reportError(failure, 'dashboard:list')
         setLoadError(failure)
       }),
@@ -51,6 +57,18 @@ export const DashboardClient: FC = () => {
   useEffect(() => {
     void load()
   }, [load])
+
+  useEffect(() => {
+    // localStorage exists only after hydration — the external system this effect reads.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setDrafts(listLocalDrafts())
+  }, [])
+
+  // Nothing of theirs in this browser and not signed in: the dashboard is the account's.
+  const nothingHere = isGuest && noOwner && !drafts.length && !hasLocalDrafts()
+  useEffect(() => {
+    if (nothingHere) router.replace(`${ROUTES.signIn}?${RETURN_TO_QUERY}=${encodeURIComponent(ROUTES.dashboard)}`)
+  }, [nothingHere, router])
 
   const retry = () => {
     setLoadError(null)
@@ -86,11 +104,30 @@ export const DashboardClient: FC = () => {
           .catch(showError),
     })
 
+  const onDeleteDraft = (draft: LocalDraft) =>
+    modal.confirm({
+      title: t('deleteTitle', { title: draft.doc.title }),
+      content: t('deleteText'),
+      okText: tCommon('delete'),
+      okButtonProps: { danger: true },
+      cancelText: tCommon('cancel'),
+      centered: true,
+      onOk: () => {
+        clearLocalDraft(draft.id)
+        setDrafts((current) => current.filter((item) => item.id !== draft.id))
+        message.success(t('deleted'))
+      },
+    })
+
+  /** A draft drawn as a list card; its id opens it in the editor, which imports it when signed in. */
+  const draftList = (draft: LocalDraft): GuestList => ({ ...draft.doc, id: draft.id, createdAt: draft.savedAt, updatedAt: draft.savedAt })
   const lists = list.allIds.map((id) => list.byId[id])
+  const loaded = isLoaded || noOwner
+  const count = lists.length + drafts.length
 
   const body = () => {
     if (loadError) return <ErrorState error={loadError} onRetry={retry} />
-    if (!isLoaded) {
+    if (!loaded || nothingHere) {
       return (
         <div className='mt-10 grid grid-cols-2 gap-6 md:grid-cols-3 xl:grid-cols-4'>
           {Array.from({ length: 4 }, (_, index) => (
@@ -99,7 +136,7 @@ export const DashboardClient: FC = () => {
         </div>
       )
     }
-    if (!lists.length) {
+    if (!count) {
       return (
         <Empty
           className='mt-12 sm:mt-20'
@@ -118,6 +155,14 @@ export const DashboardClient: FC = () => {
     }
     return (
       <div className='mt-10 grid grid-cols-2 gap-x-6 gap-y-10 md:grid-cols-3 xl:grid-cols-4'>
+        {drafts.map((draft) => (
+          <ListCard
+            key={draft.id}
+            list={draftList(draft)}
+            onDelete={() => onDeleteDraft(draft)}
+            onDownload={(target) => void onDownload(target)}
+          />
+        ))}
         {lists.map((item) => (
           <ListCard
             key={item.id}
@@ -139,7 +184,7 @@ export const DashboardClient: FC = () => {
           <p className='mt-2 mb-0 text-muted'>{t('subtitle')}</p>
         </div>
         {/* With no lists the empty state carries its own button. */}
-        {isLoaded && !loadError && lists.length > 0 && (
+        {loaded && !loadError && count > 0 && (
           <Tooltip title={t('new')}>
             <Link href={newListPath()} className='shrink-0'>
               <Button color='primary' variant='dashed' size='large' className='bg-transparent!' shape='circle' icon={<PlusOutlined />} aria-label={t('new')} />
@@ -148,7 +193,7 @@ export const DashboardClient: FC = () => {
         )}
       </div>
       {/* Margin on a wrapper: antd's Alert styles are unlayered and reset `margin`. */}
-      {isGuest && (
+      {isGuest && !nothingHere && (
         <div className='mt-6'>
           <Alert
             type='warning'

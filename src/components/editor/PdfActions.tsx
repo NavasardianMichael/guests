@@ -6,10 +6,10 @@ import { App, Button } from 'antd'
 import { useTranslations } from 'next-intl'
 import { useEditorUiStore } from '@store/editorUi/store'
 import { useListEditorStoreBase } from '@store/lists/single/store'
-import { DRAFT_ID } from '@store/lists/single/types'
 import { accessActiveNow, useAccessUntil } from '@hooks/useAccess'
 import { usePdfDownload } from '@hooks/usePdfDownload'
 import { isPrintable } from '@constants/templates'
+import { isDraftId } from '@helpers/localDraft'
 import { flushSave } from './useAutosave'
 
 /**
@@ -38,7 +38,7 @@ export const PdfActions: FC<Props> = ({ label = false }) => {
     if (!listId || !doc) return
     const active = accessActiveNow()
     if (active !== null && !isPrintable(doc.design.templateId, active)) return setCheckoutOpen(true)
-    if (listId !== DRAFT_ID && !(await flushSave())) {
+    if (!isDraftId(listId) && !(await flushSave())) {
       void message.error(tErrors('kinds.server'))
       return
     }

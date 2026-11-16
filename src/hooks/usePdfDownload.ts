@@ -4,7 +4,7 @@ import { useCallback, useState } from 'react'
 import { App } from 'antd'
 import { useTranslations } from 'next-intl'
 import { downloadDraftPdfAPI, downloadListPdfAPI } from '@api/lists/main'
-import { DRAFT_ID, type ListDocument } from '@store/lists/single/types'
+import type { ListDocument } from '@store/lists/single/types'
 import { usePurchasesStoreBase } from '@store/purchases/store'
 import { accessActiveNow } from '@hooks/useAccess'
 import { ERROR_CODES } from '@constants/errors'
@@ -12,6 +12,7 @@ import { isPrintable } from '@constants/templates'
 import { trackEvent } from '@helpers/analytics'
 import { classifyError, errorCopyKey } from '@helpers/error'
 import { saveBlob } from '@helpers/image'
+import { isDraftId } from '@helpers/localDraft'
 
 /**
  * - `done`: saved as a file.
@@ -50,7 +51,7 @@ export const usePdfDownload = (): {
       message.loading({ key, content: t('preparing'), duration: 0 })
       try {
         const blob =
-          listId === DRAFT_ID || options?.asGiven
+          isDraftId(listId) || options?.asGiven
             ? await downloadDraftPdfAPI(doc)
             : await downloadListPdfAPI({ id: listId })
         saveBlob(blob, `${doc.title.trim() || 'guests'}.pdf`)

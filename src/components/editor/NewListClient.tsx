@@ -1,21 +1,21 @@
 'use client'
 
 import { type FC, useCallback, useEffect, useRef, useState } from 'react'
-import { Button, Modal, Result, Spin } from 'antd'
+import { Button, Result, Spin } from 'antd'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { createListAPI } from '@api/lists/main'
 import { useAuthStore } from '@store/auth/store'
 import { useEditorUiStore } from '@store/editorUi/store'
-import { DRAFT_ID, type ListDocument, type PrintKind, type SheetShape } from '@store/lists/single/types'
+import type { ListDocument, PrintKind, SheetShape } from '@store/lists/single/types'
 import { useSampleTexts } from '@hooks/useSampleTexts'
 import { editorPath, newListFromExamplePath, newListPath, RETURN_TO_QUERY, ROUTES } from '@constants/routes'
 import type { TemplateId } from '@constants/templates'
 import { dedupe } from '@helpers/dedupe'
 import { startingPlanScale } from '@helpers/fitSheet'
 import { newListDocument } from '@helpers/listFactory'
-import { readLocalDraft, writeLocalDraft } from '@helpers/localDraft'
+import { startLocalDraft } from '@helpers/localDraft'
 import { measureText } from '@helpers/measureText'
 import { ErrorState } from '@components/ui/ErrorState'
 
@@ -29,10 +29,10 @@ type Props = {
 
 /**
  * Starts a list — on the sample wedding's guests, the user's to change, or on an event example's
- * list — and opens it at the first step. Signed in: created on the server. Guest: written as the local draft — after
- * asking, if a draft is already there, since there is only one. A browser that refuses to store
- * it (site data blocked) is told so here: the editor reads the draft back, and opening it without
- * one would send the guest straight back to this page.
+ * list — and opens it at the first step. Signed in: created on the server. Guest: kept as a new
+ * local draft beside any others (`helpers/localDraft`), so nothing is replaced and nothing is
+ * asked. A browser that refuses to store it (site data blocked) is told so here: the editor reads
+ * the draft back, and opening it without one would send the guest straight back to this page.
  */
 export const NewListClient: FC<Props> = ({ templateId, kind, shape, example }) => {
   const t = useTranslations('Editor')
@@ -41,7 +41,6 @@ export const NewListClient: FC<Props> = ({ templateId, kind, shape, example }) =
   const router = useRouter()
   const user = useAuthStore.use.user()
   const isResolved = useAuthStore.use.isResolved()
-  const [askReplace, setAskReplace] = useState(false)
   const [error, setError] = useState<unknown>(null)
   const [storageBlocked, setStorageBlocked] = useState(false)
 
@@ -54,32 +53,22 @@ export const NewListClient: FC<Props> = ({ templateId, kind, shape, example }) =
     return textScale === null ? doc : { ...doc, design: { ...doc.design, textScale } }
   }, [example, kind, shape, t, texts, templateId])
 
-  const startDraft = useCallback(() => {
-    if (!writeLocalDraft(build())) {
-      setAskReplace(false)
-      return setStorageBlocked(true)
-    }
-    useEditorUiStore.getState().markJustCreated(DRAFT_ID)
-    router.replace(editorPath(DRAFT_ID))
-  }, [build, router])
-
   const start = useCallback(async () => {
-    if (user) {
-      const id = await dedupe(`new-list:${templateId}:${kind}:${shape}:${example?.slug ?? ''}`, async () => (await createListAPI(build())).id)
-      useEditorUiStore.getState().markJustCreated(id)
-      return router.replace(editorPath(id))
-    }
-    if (readLocalDraft()) return setAskReplace(true)
-    startDraft()
-  }, [build, example, kind, router, shape, startDraft, templateId, user])
+    const id = user
+      ? await dedupe(`new-list:${templateId}:${kind}:${shape}:${example?.slug ?? ''}`, async () => (await createListAPI(build())).id)
+      : startLocalDraft(build())
+    if (!id) return setStorageBlocked(true)
+    useEditorUiStore.getState().markJustCreated(id)
+    router.replace(editorPath(id))
+  }, [build, example, kind, router, shape, templateId, user])
 
   // Once per visit: a re-render must never start a second list.
   const startedRef = useRef(false)
   useEffect(() => {
     if (!isResolved || startedRef.current) return
     startedRef.current = true
-    // Reading localStorage (is there a draft?) is an external system; asking about it from
-    // here, once the session is known, is what this effect is for.
+    // Writing the guest's draft to localStorage (an external system) once the session is known
+    // is what this effect is for; it reports a refusal through state.
     start().catch(setError)
   }, [isResolved, start])
 
@@ -127,18 +116,6 @@ export const NewListClient: FC<Props> = ({ templateId, kind, shape, example }) =
   return (
     <div className='grid min-h-dvh place-items-center bg-canvas'>
       <Spin size='large' description={tCommon('loading')} />
-      <Modal
-        open={askReplace}
-        title={t('replaceDraftTitle')}
-        closable={false}
-        mask={{ closable: false }}
-        onOk={startDraft}
-        okText={t('replaceDraft')}
-        cancelText={t('keepDraft')}
-        onCancel={() => router.replace(editorPath(DRAFT_ID))}
-      >
-        {t('replaceDraftText')}
-      </Modal>
     </div>
   )
 }

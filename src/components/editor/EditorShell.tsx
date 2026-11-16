@@ -11,12 +11,12 @@ import { createListAPI, getListAPI } from '@api/lists/main'
 import { useAuthStore } from '@store/auth/store'
 import { useEditorUiStore } from '@store/editorUi/store'
 import { useListEditorStore, useListEditorStoreBase } from '@store/lists/single/store'
-import { DRAFT_ID, type ListDocument } from '@store/lists/single/types'
+import type { ListDocument } from '@store/lists/single/types'
 import { COMPACT_QUERY, useMediaQuery } from '@hooks/useMediaQuery'
 import { editorPath, newListPath, RETURN_TO_QUERY, ROUTES } from '@constants/routes'
 import { dedupe } from '@helpers/dedupe'
 import { classifyError } from '@helpers/error'
-import { clearLocalDraft, readLocalDraft } from '@helpers/localDraft'
+import { clearLocalDraft, isDraftId, LEGACY_DRAFT_ID, listLocalDrafts, readLocalDraft } from '@helpers/localDraft'
 import { ErrorState } from '@components/ui/ErrorState'
 import { CanvasZoomControl } from './canvas/CanvasZoomControl'
 import { EditorCanvas } from './canvas/EditorCanvas'
@@ -87,7 +87,7 @@ const startStep = (doc: ListDocument) => (doc.content.guests.length > 0 ? 'guest
  *
  * - A server list needs a session (or this browser's guest key). Without either the user is
  *   sent to sign in and back.
- * - `draft` is a guest's local list. Once the user is signed in it is imported as a server
+ * - `draft-…` is a guest's local list. Once the user is signed in it is imported as a server
  *   list and the URL replaced — so signing in carries the work across.
  */
 export const EditorShell: FC<Props> = ({ listId }) => {
@@ -136,18 +136,23 @@ export const EditorShell: FC<Props> = ({ listId }) => {
   const tTabs = useTranslations('Editor.tabs')
 
   const load = useCallback(async () => {
-    if (listId === DRAFT_ID) {
-      const draft = readLocalDraft()
+    if (listId === LEGACY_DRAFT_ID) {
+      // A link from before drafts had ids (a sign-in's way back): the last saved draft is that one.
+      const latest = listLocalDrafts()[0]
+      return router.replace(latest ? `${editorPath(latest.id)}${window.location.search}` : newListPath())
+    }
+    if (isDraftId(listId)) {
+      const draft = readLocalDraft(listId)
       if (!draft) return router.replace(newListPath())
       if (!user) {
-        loadDocument({ listId: DRAFT_ID, doc: draft })
-        useEditorUiStore.getState().startAt(startStep(draft), DRAFT_ID)
+        loadDocument({ listId, doc: draft })
+        useEditorUiStore.getState().startAt(startStep(draft), listId)
         return setState({ phase: 'ready' })
       }
       setState({ phase: 'importing' })
-      const createdId = await dedupe('import-draft', async () => {
+      const createdId = await dedupe(`import-draft:${listId}`, async () => {
         const created = await createListAPI(draft)
-        clearLocalDraft()
+        clearLocalDraft(listId)
         return created.id
       })
       // `?checkout=1` (back from signing in to buy) follows the draft to its new address.
@@ -224,11 +229,11 @@ export const EditorShell: FC<Props> = ({ listId }) => {
       <Autosave />
       <EditorTopBar zoom={zoom} fitZoom={fitZoom} pages={pages} onZoomChange={setZoom} onPreview={openPreview} />
       <EditorSteps />
-      {!user && openListId === DRAFT_ID && !bannerHidden && (
+      {!user && isDraftId(openListId) && !bannerHidden && (
         <div className='relative flex shrink-0 items-center justify-center gap-3 bg-accent-soft py-1 pr-9 pl-3 text-center text-[11px] leading-snug sm:py-1.5 sm:pr-10 sm:pl-4 sm:text-xs'>
           <span>{t('guestBanner')}</span>
           <Link
-            href={`${ROUTES.signIn}?${RETURN_TO_QUERY}=${encodeURIComponent(editorPath(DRAFT_ID))}`}
+            href={`${ROUTES.signIn}?${RETURN_TO_QUERY}=${encodeURIComponent(editorPath(openListId))}`}
             className='shrink-0 font-semibold text-ink underline'
           >
             {t('guestBannerCta')}

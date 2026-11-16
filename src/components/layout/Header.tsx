@@ -1,6 +1,6 @@
 'use client'
 
-import { type FC, type ReactNode, useState } from 'react'
+import { type FC, type ReactNode, useState, useSyncExternalStore } from 'react'
 import {
   AppstoreOutlined,
   FileTextOutlined,
@@ -18,16 +18,25 @@ import { useTranslations } from 'next-intl'
 import { useAuthStore } from '@store/auth/store'
 import { newListPath, ROUTES } from '@constants/routes'
 import { cn } from '@helpers/cn'
+import { hasLocalDrafts } from '@helpers/localDraft'
 import { AccountMenu } from './AccountMenu'
 import { BrandLogo } from './BrandLogo'
 
 /** `icon` shows only in the mobile drawer; the desktop bar stays text. */
 type NavItem = { href: string; label: string; icon: ReactNode }
 
+/**
+ * localStorage has no change event within a tab. The site's header remounts whenever the
+ * editor is left (another layout), which is where a draft appears.
+ */
+const subscribeNever = (): (() => void) => () => undefined
+
 export const Header: FC = () => {
   const t = useTranslations('Nav')
   const pathname = usePathname()
   const user = useAuthStore.use.user()
+  // A guest with drafts in this browser gets the way back to them ("My lists").
+  const guestDrafts = useSyncExternalStore(subscribeNever, hasLocalDrafts, () => false)
   const [open, setOpen] = useState(false)
 
   const items: NavItem[] = [
@@ -35,7 +44,7 @@ export const Header: FC = () => {
     { href: ROUTES.examples, label: t('examples'), icon: <FileTextOutlined /> },
     { href: ROUTES.guides, label: t('guides'), icon: <ReadOutlined /> },
     { href: ROUTES.pricing, label: t('pricing'), icon: <WalletOutlined /> },
-    ...(user ? [{ href: ROUTES.dashboard, label: t('dashboard'), icon: <SnippetsOutlined /> }] : []),
+    ...(user || guestDrafts ? [{ href: ROUTES.dashboard, label: t('dashboard'), icon: <SnippetsOutlined /> }] : []),
   ]
   // Five links leave no room for the full "create" button until ~1400px; between the desktop
   // menu's breakpoint (xl) and that, it becomes a round + with the same label for screen readers.
